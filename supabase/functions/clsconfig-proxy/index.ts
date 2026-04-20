@@ -33,9 +33,20 @@ Deno.serve(async (req: Request) => {
   try {
     if (req.method === "GET" && (route === "clsconfig" || route === "clsconfig-proxy")) {
       const base = PW_API_BASE_URL.replace(/\/+$/, "");
-      // base should already include /apicls or wherever api_cls.php lives.
-      // We support both: if user set base ending in /apicls -> appends /api_cls.php,
-      // if user already set the full php path -> uses as is.
+
+      // Validate that the secret looks like a real URL
+      if (!/^https?:\/\//i.test(base)) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error:
+              "PW_API_BASE_URL inválida. Deve começar com http:// ou https:// (ex.: https://seusite.com/apicls). Valor recebido: " +
+              base.slice(0, 80),
+          }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
       const target = base.endsWith(".php")
         ? `${base}?action=getClsconfig&secret=${encodeURIComponent(PW_API_SECRET)}`
         : `${base}/api_cls.php?action=getClsconfig&secret=${encodeURIComponent(PW_API_SECRET)}`;

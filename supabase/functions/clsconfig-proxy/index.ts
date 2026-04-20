@@ -1,0 +1,76 @@
+// Edge Function: clsconfig-proxy
+// Proxies requests to the external PW API so the secret is never exposed to the browser.
+// Routes:
+//   GET /clsconfig  -> calls `${PW_API_BASE_URL}/api_cls.php?action=getClsconfig&secret=${PW_API_SECRET}`
+
+import { corsHeaders } from "@supabase/supabase-js/cors";
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  const url = new URL(req.url);
+  // Path can be "/clsconfig-proxy/clsconfig" or "/clsconfig"
+  const segments = url.pathname.split("/").filter(Boolean);
+  const route = segments[segments.length - 1] || "";
+
+  const PW_API_BASE_URL = Deno.env.get("PW_API_BASE_URL");
+  const PW_API_SECRET = Deno.env.get("PW_API_SECRET");
+
+  if (!PW_API_BASE_URL || !PW_API_SECRET) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Missing PW_API_BASE_URL or PW_API_SECRET" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
+  try {
+    if (req.method === "GET" && (route === "clsconfig" || route === "clsconfig-proxy")) {
+      const base = PW_API_BASE_URL.replace(/\/+$/, "");
+      // base should already include /apicls or wherever api_cls.php lives.
+      // We support both: if user set base ending in /apicls -> appends /api_cls.php,
+      // if user already set the full php path -> uses as is.
+      const target = base.endsWith(".php")
+        ? `${base}?action=getClsconfig&secret=${encodeURIComponent(PW_API_SECRET)}`
+        : `${base}/api_cls.php?action=getClsconfig&secret=${encodeURIComponent(PW_API_SECRET)}`;
+
+      const upstream = await fetch(target, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      });
+
+      const text = await upstream.text();
+      let json: unknown;
+      try {
+        json = JSON.parse(text);
+      } catch {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "Upstream returned non-JSON",
+            status: upstream.status,
+            body: text.slice(0, 2000),
+          }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      return new Response(JSON.stringify(json), {
+        status: upstream.ok ? 200 : upstream.status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(
+      JSON.stringify({ success: false, error: "Not found", path: url.pathname }),
+      { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return new Response(JSON.stringify({ success: false, error: message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});

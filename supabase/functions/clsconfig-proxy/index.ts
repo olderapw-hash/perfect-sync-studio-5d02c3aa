@@ -3,7 +3,12 @@
 // Routes:
 //   GET /clsconfig  -> calls `${PW_API_BASE_URL}/api_cls.php?action=getClsconfig&secret=${PW_API_SECRET}`
 
-import { corsHeaders } from "@supabase/supabase-js/cors";
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+};
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {

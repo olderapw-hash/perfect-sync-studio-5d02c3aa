@@ -183,24 +183,30 @@ const normUsedClasses = (raw: unknown): number[] => {
     .filter((n) => Number.isFinite(n));
 };
 
-/** Whitelist de roleids que devem ser exibidos. Mantenha em sincronia com a lista do servidor. */
-export const ALLOWED_ROLEIDS: ReadonlySet<number> = new Set([
-  16, 17, 18, 19, 20, 21, 22, 23, 24, 27, 28, 31,
-]);
+import { CLS_TO_ROLEID } from "./clsRoleidMap";
+
+/** Roleids válidos derivados do mapa cls → roleid (fonte única da verdade). */
+export const ALLOWED_ROLEIDS: ReadonlySet<number> = new Set(Object.values(CLS_TO_ROLEID));
 
 export function normalizeClsconfigResponse(raw: unknown): ClsconfigResponse {
   const r = (raw ?? {}) as Record<string, any>;
-  const allEntries: ClsEntry[] = Array.isArray(r.entries)
-    ? r.entries.map((e: any) => ({
-        source: str(e?.source),
-        key_hex: str(e?.key_hex),
-        version: num(e?.version),
-        template: normTemplate(e?.template),
-      }))
+  // Mantemos TODOS os entries retornados em response.entries — sem filtro restritivo.
+  // Se o template não tiver roleid próprio, derivamos a partir do cls usando CLS_TO_ROLEID.
+  const entries: ClsEntry[] = Array.isArray(r.entries)
+    ? r.entries.map((e: any) => {
+        const tpl = normTemplate(e?.template);
+        if (!tpl.roleid && tpl.summary?.cls != null) {
+          const fallback = CLS_TO_ROLEID[tpl.summary.cls];
+          if (fallback) tpl.roleid = fallback;
+        }
+        return {
+          source: str(e?.source),
+          key_hex: str(e?.key_hex),
+          version: num(e?.version),
+          template: tpl,
+        };
+      })
     : [];
-
-  // Filtro pela whitelist de roleids reais.
-  const entries = allEntries.filter((e) => ALLOWED_ROLEIDS.has(e.template.roleid));
 
   const classes: ApiClass[] = Array.isArray(r.classes)
     ? r.classes.map(normApiClass)
@@ -230,6 +236,15 @@ export interface SavePayload {
 export function buildSavePayload(entry: ClsEntry, template: ClsTemplate): SavePayload {
   // status.reputation é a fonte da verdade para fama. Sincronizamos summary.reputation só por consistência.
   const reputation = template.status.reputation;
+
+  // CHAVE CANÔNICA: SEMPRE entry.template.roleid. Nunca usar cls como roleid.
+  // Se por algum motivo vier 0, derivamos do mapa cls→roleid como último recurso.
+  const roleid =
+    template.roleid ||
+    entry.template.roleid ||
+    CLS_TO_ROLEID[template.summary.cls] ||
+    CLS_TO_ROLEID[template.base.cls] ||
+    0;
 
   // Recompute summary counters from the edited template so they stay in sync.
   const synced: ClsTemplate = {

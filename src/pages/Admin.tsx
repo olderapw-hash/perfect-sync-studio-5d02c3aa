@@ -3,6 +3,7 @@ import { AlertCircle, Database, Loader2, RefreshCw, Shield } from "lucide-react"
 import { useClsconfig } from "@/hooks/useClsconfig";
 import { ClsconfigList } from "@/components/admin/ClsconfigList";
 import { ClsconfigEditor } from "@/components/admin/ClsconfigEditor";
+import { ItemCatalogManager } from "@/components/admin/ItemCatalogManager";
 
 const Admin = () => {
   const { data, raw, loading, error, reload } = useClsconfig();
@@ -34,6 +35,7 @@ const Admin = () => {
           <span className="rounded-full bg-success/15 px-3 py-1 text-[11px] font-medium text-success">
             Edge proxy ativo
           </span>
+          <ItemCatalogManager />
           <button
             onClick={reload}
             disabled={loading}

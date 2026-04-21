@@ -1,5 +1,5 @@
 import type { ClsTemplate } from "@/types/clsconfig";
-import { ItemList } from "./ItemList";
+import { InventoryGrid } from "./InventoryGrid";
 
 interface Props {
   template: ClsTemplate;
@@ -23,24 +23,28 @@ export const StorehouseTab = ({ template, onChange }: Props) => {
         />
       </div>
 
-      <ItemList
+      <InventoryGrid
         title="Itens do baú"
         items={sh.items}
+        gridSize={Math.max(sh.capacity || 0, sh.items.length, 48)}
         onChange={(items) => onChange({ ...template, storehouse: { ...sh, items } })}
       />
-      <ItemList
+      <InventoryGrid
         title="Dress"
         items={sh.dress}
+        gridSize={Math.max(sh.dress.length, 16)}
         onChange={(dress) => onChange({ ...template, storehouse: { ...sh, dress } })}
       />
-      <ItemList
+      <InventoryGrid
         title="Material"
         items={sh.material}
+        gridSize={Math.max(sh.material.length, 16)}
         onChange={(material) => onChange({ ...template, storehouse: { ...sh, material } })}
       />
-      <ItemList
+      <InventoryGrid
         title="General card"
         items={sh.generalcard}
+        gridSize={Math.max(sh.generalcard.length, 16)}
         onChange={(generalcard) => onChange({ ...template, storehouse: { ...sh, generalcard } })}
       />
     </div>

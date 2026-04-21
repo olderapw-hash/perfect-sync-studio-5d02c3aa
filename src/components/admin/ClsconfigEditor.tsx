@@ -1,7 +1,15 @@
 import { useEffect, useState } from "react";
 import { RotateCcw, Save, User, Activity, Backpack, Sword, Warehouse, Loader2 } from "lucide-react";
 import type { ClsEntry, ClsTemplate } from "@/types/clsconfig";
-import { buildReputationPayload, buildSavePayload, normalizeClsconfigResponse } from "@/lib/clsconfig";
+import {
+  buildSavePayload,
+  buildStatusPayload,
+  diffSimpleStatus,
+  normalizeClsconfigResponse,
+  onlySimpleStatusChanged,
+  SIMPLE_STATUS_FIELDS,
+  type SimpleStatusField,
+} from "@/lib/clsconfig";
 import { buildClassIconUrl } from "@/lib/pwIcons";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";

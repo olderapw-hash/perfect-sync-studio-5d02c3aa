@@ -87,6 +87,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const target = `${endpoint}?action=saveClsconfigTemplate`;
+      console.log("[clsconfig-proxy] POST →", target, "key_hex:", String((body as Record<string, unknown>).key_hex));
       const upstream = await fetch(target, {
         method: "POST",
         headers: {
@@ -96,6 +97,9 @@ Deno.serve(async (req: Request) => {
         },
         body: JSON.stringify(body),
       });
+      const cloned = upstream.clone();
+      const preview = (await cloned.text()).slice(0, 500);
+      console.log("[clsconfig-proxy] upstream status:", upstream.status, "body:", preview);
       return await relay(upstream);
     }
 

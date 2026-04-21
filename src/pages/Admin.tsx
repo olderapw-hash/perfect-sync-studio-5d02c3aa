@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { AlertCircle, Database, Loader2, RefreshCw, Shield } from "lucide-react";
+import { AlertCircle, Database, Loader2, LogOut, RefreshCw, Shield } from "lucide-react";
 import { useClsconfig } from "@/hooks/useClsconfig";
+import { useAuth } from "@/hooks/useAuth";
 import { ClsconfigEditor } from "@/components/admin/ClsconfigEditor";
 import { ItemCatalogManager } from "@/components/admin/ItemCatalogManager";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
@@ -8,6 +9,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 const Admin = () => {
   const { data, raw, loading, error, reload } = useClsconfig();
+  const { user, signOut } = useAuth();
   const [selected, setSelected] = useState<string | null>(null);
 
   useEffect(() => {
@@ -56,6 +58,19 @@ const Admin = () => {
               >
                 {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
                 Recarregar
+              </button>
+              {user && (
+                <span className="hidden text-[11px] text-muted-foreground sm:inline" title={user.email ?? ""}>
+                  {user.email}
+                </span>
+              )}
+              <button
+                onClick={signOut}
+                className="inline-flex items-center gap-2 rounded-md border border-border bg-card/60 px-3 py-2 text-xs transition-smooth hover:border-destructive/50 hover:text-destructive"
+                title="Sair"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                Sair
               </button>
             </div>
           </header>

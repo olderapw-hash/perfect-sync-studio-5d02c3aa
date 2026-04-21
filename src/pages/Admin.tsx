@@ -48,7 +48,7 @@ const Admin = () => {
       </header>
 
       {/* Body: sidebar + editor */}
-      <div className="grid flex-1 grid-cols-1 overflow-hidden md:grid-cols-[320px_1fr]">
+      <div className="grid flex-1 grid-cols-1 overflow-hidden md:grid-cols-[360px_1fr]">
         <ClsconfigList
           entries={data?.entries ?? []}
           selectedKey={selected}

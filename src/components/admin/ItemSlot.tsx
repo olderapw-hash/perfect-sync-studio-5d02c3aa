@@ -65,7 +65,7 @@ export const ItemSlot = ({ item, onClick }: Props) => {
   return (
     <HoverCard openDelay={120} closeDelay={50}>
       <HoverCardTrigger asChild>{slotInner}</HoverCardTrigger>
-      <HoverCardContent className="w-72 border-primary/40 bg-popover/95 p-0 backdrop-blur-md">
+      <HoverCardContent className="w-80 border-primary/40 bg-popover/95 p-0 backdrop-blur-md">
         <div className="flex items-start gap-3 p-3">
           {iconUrl && !iconBroken ? (
             <img src={iconUrl} alt="" className="h-12 w-12 rounded border border-border object-contain" />

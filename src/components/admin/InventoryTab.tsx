@@ -1,5 +1,5 @@
 import type { ClsTemplate } from "@/types/clsconfig";
-import { ItemList } from "./ItemList";
+import { InventoryGrid } from "./InventoryGrid";
 
 interface Props {
   template: ClsTemplate;
@@ -28,9 +28,10 @@ export const InventoryTab = ({ template, onChange }: Props) => {
         />
       </div>
 
-      <ItemList
+      <InventoryGrid
         title="Itens do inventário"
         items={inv.items}
+        gridSize={Math.max(inv.capacity || 0, inv.items.length, 32)}
         onChange={(items) => onChange({ ...template, inventory: { ...inv, items } })}
       />
     </div>

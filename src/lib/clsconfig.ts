@@ -249,6 +249,7 @@ export function buildSavePayload(entry: ClsEntry, template: ClsTemplate): SavePa
   // Recompute summary counters from the edited template so they stay in sync.
   const synced: ClsTemplate = {
     ...template,
+    roleid,
     summary: {
       ...template.summary,
       name: template.base.name,
@@ -274,7 +275,7 @@ export function buildSavePayload(entry: ClsEntry, template: ClsTemplate): SavePa
     key_hex: entry.key_hex,
     version: entry.version,
     // Chave canônica para a VPS: SEMPRE roleid (ex.: Sacerdote = 31), nunca cls (ex.: 7).
-    roleid: template.roleid,
+    roleid,
     template: synced,
   };
 }

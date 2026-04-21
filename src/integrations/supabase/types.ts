@@ -14,7 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      item_catalogs: {
+        Row: {
+          created_at: string
+          icons_prefix: string
+          id: string
+          is_active: boolean
+          item_count: number
+          name: string
+          tab_path: string
+        }
+        Insert: {
+          created_at?: string
+          icons_prefix?: string
+          id?: string
+          is_active?: boolean
+          item_count?: number
+          name: string
+          tab_path: string
+        }
+        Update: {
+          created_at?: string
+          icons_prefix?: string
+          id?: string
+          is_active?: boolean
+          item_count?: number
+          name?: string
+          tab_path?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -236,7 +236,8 @@ export interface SavePayload {
 /**
  * Resolve o roleid canônico a partir do entry/template.
  * 0 NÃO é considerado válido aqui (a VPS não tem roleid 0).
- * Usa fallback via CLS_TO_ROLEID apenas se necessário.
+ * Usa fallback via CLS_TO_ROLEID apenas se necessário — checagem explícita,
+ * nunca truthy genérico (porque 0 é valor válido em outros campos).
  */
 function resolveRoleid(entry: ClsEntry, template: ClsTemplate): number {
   const candidates: Array<number | undefined> = [
@@ -253,10 +254,10 @@ function resolveRoleid(entry: ClsEntry, template: ClsTemplate): number {
 
 export function buildSavePayload(entry: ClsEntry, template: ClsTemplate): SavePayload {
   const roleid = resolveRoleid(entry, template);
+  // Coerção explícita — Number(0) === 0 (válido). Nunca usar `if (value)`.
+  const reputation = Number(template.status.reputation);
 
   // Recompute summary counters from the edited template so they stay in sync.
-  // IMPORTANTE: 0 é valor válido em todos os campos numéricos. Nunca usamos `if (value)` —
-  // o spread do template original preserva 0 e tudo é copiado por valor explícito.
   const synced: ClsTemplate = {
     ...template,
     roleid,
@@ -269,8 +270,7 @@ export function buildSavePayload(entry: ClsEntry, template: ClsTemplate): SavePa
       level: template.status.level,
       level2: template.status.level2,
       cultivation: template.status.cultivation,
-      // status.reputation é a fonte da verdade — coerce explícito para Number (0 é válido).
-      reputation: Number(template.status.reputation),
+      reputation,
       inventory_money: template.inventory.money,
       inventory_items: template.inventory.items.filter((i) => i.id > 0).length,
       equipment_items: template.equipment.items.filter((i) => i.id > 0).length,
@@ -282,26 +282,23 @@ export function buildSavePayload(entry: ClsEntry, template: ClsTemplate): SavePa
     },
     status: {
       ...template.status,
-      // Coerce explícito; 0 deve passar.
-      reputation: Number(template.status.reputation),
+      reputation,
     },
   };
   return {
     source: entry.source,
     key_hex: entry.key_hex,
     version: entry.version,
-    // Chave canônica para a VPS: SEMPRE roleid (ex.: Sacerdote = 31), nunca cls (ex.: 7).
     roleid,
     template: synced,
   };
 }
 
 /**
- * Payload mínimo para salvar SOMENTE fama (status.reputation).
- * Estrutura exata exigida pela VPS:
+ * Payload mínimo para salvar SOMENTE fama. Estrutura exigida pela VPS:
  *   { roleid: entry.template.roleid, status: { reputation: Number(form.status.reputation) } }
  *
- * Use quando quiser persistir só a fama sem reenviar o template inteiro.
+ * 0 é valor válido — usamos checagem explícita por undefined/null/"".
  */
 export interface ReputationPayload {
   roleid: number;
@@ -313,7 +310,6 @@ export function buildReputationPayload(
   reputation: number | string,
 ): ReputationPayload {
   const roleid = resolveRoleid(entry, entry.template);
-  // Number(0) === 0 (válido). Number("") === 0 também — checamos explicitamente.
   const num =
     reputation === undefined || reputation === null || reputation === ""
       ? entry.template.status.reputation
@@ -326,6 +322,5 @@ export function buildReputationPayload(
     status: { reputation: num },
   };
 }
-
 
 export const newEmptyItem = emptyItem;

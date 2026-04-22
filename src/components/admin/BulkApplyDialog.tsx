@@ -168,6 +168,7 @@ export const BulkApplyDialog = ({
       } catch (e) {
         errCount++;
         const msg = e instanceof Error ? e.message : "erro";
+        handleMaybeAuthError(e);
         setResults((prev) => ({
           ...prev,
           [rid]: { ...prev[rid], status: "error", message: msg },

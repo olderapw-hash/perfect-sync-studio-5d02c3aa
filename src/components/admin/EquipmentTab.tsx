@@ -154,6 +154,11 @@ export const EquipmentTab = ({ template, onChange }: Props) => {
   const extrasByPos = new Map<number, ClsItem>();
   extras.forEach((it) => extrasByPos.set(it.pos, it));
 
+  // Slots ativos conforme a aba. "Provador" usa as roupas para preview.
+  const activeLeft   = invTab === "normal" ? NORMAL_LEFT   : FASHION_LEFT;
+  const activeRight  = invTab === "normal" ? NORMAL_RIGHT  : FASHION_RIGHT;
+  const activeBottom = invTab === "normal" ? NORMAL_BOTTOM : FASHION_BOTTOM;
+
   return (
     <div className="space-y-3">
       {/* Painel principal estilo cliente PW BR */}

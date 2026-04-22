@@ -11,6 +11,8 @@ export interface SaveChecklistResult {
   backupRoleJson?: string;
   backupClsconfigFile?: string;
   exportLogFile?: string;
+  /** True se saved.export.scheduled === true ou existe export.log_file. */
+  exportScheduled?: boolean;
   /** mensagem de erro principal (se houver) */
   error?: string;
   /** opcional: status do export consultado após delay */
@@ -63,7 +65,7 @@ export const SaveChecklistDialog = ({ open, onClose, result }: Props) => {
             }
           />
           <Item
-            ok={Boolean(result.exportLogFile)}
+            ok={Boolean(result.exportScheduled ?? result.exportLogFile)}
             label="Export agendado"
             extra={
               <>

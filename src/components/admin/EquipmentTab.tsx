@@ -13,31 +13,27 @@ interface Props {
 }
 
 /**
- * Layout paper-doll do PW BR — duas colunas laterais (4 linhas) com a silhueta
- * do personagem no meio. Bate com a tela "Inventário" do cliente nacional.
+ * Layout paper-doll do PW BR — duas colunas laterais com silhueta no meio.
  *
- *   Col esquerda            silhueta            Col direita
- *   row 1 → Capacete                            Voadora
- *   row 2 → Colar                               Capa
- *   row 3 → Armadura                            Talismã
- *   row 4 → Cinto                               Calça
- *   (linha inferior centralizada: Arma · Botas · Sub-arma · Anel E · Pet · Anel D)
+ * Aba "Normal"  → equipamento real (pos 0..15) — armadura/arma/anéis/etc.
+ * Aba "Roupas"  → fashion/cosmético (pos 16..31) — visual sobreposto.
+ *
+ * As pos do fashion seguem a mesma ordem do equipamento equivalente
+ * (cliente PW armazena roupa em pos = equipPos + 16).
  */
-const LEFT_SLOTS: { pos: number; label: string; row: number }[] = [
-  { pos: 0,  label: "Capacete", row: 1 },
-  { pos: 1,  label: "Colar",    row: 2 },
-  { pos: 2,  label: "Armadura", row: 3 },
-  { pos: 3,  label: "Cinto",    row: 4 },
+const NORMAL_LEFT: { pos: number; label: string }[] = [
+  { pos: 0, label: "Capacete" },
+  { pos: 1, label: "Colar" },
+  { pos: 2, label: "Armadura" },
+  { pos: 3, label: "Cinto" },
 ];
-
-const RIGHT_SLOTS: { pos: number; label: string; row: number }[] = [
-  { pos: 12, label: "Voadora",  row: 1 },
-  { pos: 10, label: "Capa",     row: 2 },
-  { pos: 13, label: "Talismã",  row: 3 },
-  { pos: 4,  label: "Calça",    row: 4 },
+const NORMAL_RIGHT: { pos: number; label: string }[] = [
+  { pos: 12, label: "Voadora" },
+  { pos: 10, label: "Capa" },
+  { pos: 13, label: "Talismã" },
+  { pos: 4,  label: "Calça" },
 ];
-
-const BOTTOM_SLOTS: { pos: number; label: string }[] = [
+const NORMAL_BOTTOM: { pos: number; label: string }[] = [
   { pos: 8,  label: "Arma" },
   { pos: 5,  label: "Botas" },
   { pos: 9,  label: "Sub-arma" },
@@ -46,7 +42,37 @@ const BOTTOM_SLOTS: { pos: number; label: string }[] = [
   { pos: 7,  label: "Anel D" },
 ];
 
-const SLOTS = [...LEFT_SLOTS, ...RIGHT_SLOTS, ...BOTTOM_SLOTS.map((s) => ({ ...s, row: 0 }))];
+const FASHION_LEFT: { pos: number; label: string }[] = [
+  { pos: 16, label: "Capacete (R)" },
+  { pos: 18, label: "Armadura (R)" },
+  { pos: 19, label: "Cinto (R)" },
+  { pos: 20, label: "Calça (R)" },
+];
+const FASHION_RIGHT: { pos: number; label: string }[] = [
+  { pos: 26, label: "Capa (R)" },
+  { pos: 24, label: "Arma (R)" },
+  { pos: 25, label: "Sub-arma (R)" },
+  { pos: 21, label: "Botas (R)" },
+];
+const FASHION_BOTTOM: { pos: number; label: string }[] = [
+  { pos: 22, label: "Acess. 1" },
+  { pos: 23, label: "Acess. 2" },
+  { pos: 27, label: "Acess. 3" },
+  { pos: 28, label: "Acess. 4" },
+  { pos: 29, label: "Acess. 5" },
+  { pos: 30, label: "Acess. 6" },
+];
+
+// Mantido para compatibilidade com lógica de "extras" / editingLabel.
+const SLOTS = [
+  ...NORMAL_LEFT,
+  ...NORMAL_RIGHT,
+  ...NORMAL_BOTTOM,
+  ...FASHION_LEFT,
+  ...FASHION_RIGHT,
+  ...FASHION_BOTTOM,
+];
+
 
 type InvTab = "normal" | "roupas" | "provador";
 
@@ -127,6 +153,11 @@ export const EquipmentTab = ({ template, onChange }: Props) => {
   const EXTRA_GRID_SIZE = 32;
   const extrasByPos = new Map<number, ClsItem>();
   extras.forEach((it) => extrasByPos.set(it.pos, it));
+
+  // Slots ativos conforme a aba. "Provador" usa as roupas para preview.
+  const activeLeft   = invTab === "normal" ? NORMAL_LEFT   : FASHION_LEFT;
+  const activeRight  = invTab === "normal" ? NORMAL_RIGHT  : FASHION_RIGHT;
+  const activeBottom = invTab === "normal" ? NORMAL_BOTTOM : FASHION_BOTTOM;
 
   return (
     <div className="space-y-3">
@@ -224,7 +255,7 @@ export const EquipmentTab = ({ template, onChange }: Props) => {
             >
               {/* Col esquerda */}
               <div className="flex flex-col gap-2">
-                {LEFT_SLOTS.map((s) => {
+                {activeLeft.map((s) => {
                   const it = byPos.get(s.pos) ?? newEmptyItem(s.pos);
                   return (
                     <ItemSlot
@@ -258,7 +289,7 @@ export const EquipmentTab = ({ template, onChange }: Props) => {
 
               {/* Col direita */}
               <div className="flex flex-col gap-2">
-                {RIGHT_SLOTS.map((s) => {
+                {activeRight.map((s) => {
                   const it = byPos.get(s.pos) ?? newEmptyItem(s.pos);
                   return (
                     <ItemSlot
@@ -275,7 +306,7 @@ export const EquipmentTab = ({ template, onChange }: Props) => {
 
             {/* Linha inferior centralizada (Arma · Botas · Sub-arma · Anel E · Pet · Anel D) */}
             <div className="mt-3 flex items-center justify-center gap-2">
-              {BOTTOM_SLOTS.map((s) => {
+              {activeBottom.map((s) => {
                 const it = byPos.get(s.pos) ?? newEmptyItem(s.pos);
                 return (
                   <ItemSlot

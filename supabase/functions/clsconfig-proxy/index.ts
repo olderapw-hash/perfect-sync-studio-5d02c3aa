@@ -222,7 +222,9 @@ Deno.serve(async (req: Request) => {
         method: "GET",
         headers: { Accept: "application/json", "x-sync-secret": PW_API_SECRET },
       });
-      return await relay(upstream);
+      const out = await relay(upstream);
+      void logAction("getClsconfig", target, out.status === 200, upstream.status);
+      return out;
     }
 
     if (req.method === "POST" && isClsRoute) {
@@ -267,7 +269,14 @@ Deno.serve(async (req: Request) => {
       const cloned = upstream.clone();
       const preview = (await cloned.text()).slice(0, 500);
       console.log("[clsconfig-proxy] upstream status:", upstream.status, "body:", preview);
-      return await relay(upstream);
+      const out = await relay(upstream);
+      void logAction(
+        hasFull ? "saveClsconfigTemplate" : hasStatus ? "saveStatus" : "saveInventory",
+        `${target} roleid=${String(b.roleid)}`,
+        out.status === 200,
+        upstream.status,
+      );
+      return out;
     }
 
     // ----- Nova rota /action/<name> com whitelist -----
@@ -305,7 +314,9 @@ Deno.serve(async (req: Request) => {
       console.log("[clsconfig-proxy] action →", action, "method:", req.method);
       const upstream = await fetch(target, init);
       console.log("[clsconfig-proxy] action status:", upstream.status);
-      return await relay(upstream);
+      const out = await relay(upstream);
+      void logAction(action, target, out.status === 200, upstream.status);
+      return out;
     }
 
     return new Response(
@@ -314,6 +325,7 @@ Deno.serve(async (req: Request) => {
     );
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
+    void logAction("error", url.pathname, false, 0, message);
     return new Response(JSON.stringify({ success: false, error: message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

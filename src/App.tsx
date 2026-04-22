@@ -9,6 +9,7 @@ import { AppSettingsProvider } from "@/hooks/useAppSettings";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Admin from "./pages/Admin.tsx";
 import Auth from "./pages/Auth.tsx";
+import Landing from "./pages/Landing.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();

@@ -13,6 +13,7 @@ import {
   ArrowRightLeft,
   AlertTriangle,
   UserCog,
+  History,
 } from "lucide-react";
 import {
   AlertDialog,

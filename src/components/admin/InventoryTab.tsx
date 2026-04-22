@@ -24,6 +24,7 @@ interface Props {
 export const InventoryTab = ({ template, onChange }: Props) => {
   const inv = template.inventory;
   const [editingPos, setEditingPos] = useState<number | null>(null);
+  const [clearOpen, setClearOpen] = useState(false);
 
   const totalSlots = Math.max(inv.capacity || 0, inv.items.length, 48);
   const filledCount = inv.items.filter((i) => i.id > 0).length;

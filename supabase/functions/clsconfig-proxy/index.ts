@@ -9,6 +9,10 @@
 // Whitelist de actions extras (Lote 3): getItemCatalog, listBackups,
 // restoreBackup, saveRoleEditable. Tudo fora da whitelist é rejeitado.
 //
+// PERMISSÕES POR MÓDULO: cada action exige uma permissão específica
+// (ver ACTION_PERMISSION). Owner do tenant tem tudo. Outros membros
+// passam por has_server_permission(tenant, user, perm).
+//
 // AUTH: o config.toml ainda usa verify_jwt = false porque precisamos
 // devolver erros customizados (CORS, JSON), então validamos o JWT em
 // código + checamos o papel `admin` em `user_roles` antes de qualquer
@@ -24,12 +28,25 @@ const corsHeaders = {
 };
 
 const ALLOWED_ACTIONS = new Set([
+  "getClsconfig",
   "getItemCatalog",
   "listBackups",
   "restoreBackup",
   "getRoleEditable",
   "saveRoleEditable",
+  "saveClsconfigTemplate",
 ]);
+
+// Mapa Action → permissão exigida (deve refletir src/lib/serverPermissions.ts).
+const ACTION_PERMISSION: Record<string, string> = {
+  getClsconfig: "view",
+  getItemCatalog: "view",
+  listBackups: "view",
+  getRoleEditable: "view",
+  saveClsconfigTemplate: "save_templates",
+  saveRoleEditable: "save_real_roles",
+  restoreBackup: "restore_backup",
+};
 
 function jsonError(message: string, status: number): Response {
   return new Response(
@@ -90,7 +107,6 @@ Deno.serve(async (req: Request) => {
   }
 
   // ⚠️ Auth GLOBAL: nenhuma rota desta função pode rodar sem admin.
-  // Agora também devolvemos o user.id pra ler o tenant correto.
   const authResult = await requireAdmin(req);
   if (authResult instanceof Response) return authResult;
   const callerUserId = authResult.userId;
@@ -100,11 +116,11 @@ Deno.serve(async (req: Request) => {
   const route = segments[segments.length - 1] || "";
 
   // Header opcional: usuário pode escolher um tenant específico (mesmo que não seja o ativo).
-  // Validamos ownership antes de usar.
+  // Validamos ownership/membership antes de usar.
   const requestedServerId = req.headers.get("x-server-id");
 
   // Resolução de credenciais por tenant (multi-servidor):
-  // 1. Se x-server-id veio E pertence ao user → usa esse tenant.
+  // 1. Se x-server-id veio E user é membro → usa esse tenant.
   // 2. Senão lê o tenant ATIVO do user (is_active=true).
   // 3. Senão (superadmin sem tenant) → cai pro app_settings global.
   // 4. Último fallback: env vars.
@@ -119,24 +135,62 @@ Deno.serve(async (req: Request) => {
       ? createClient(SR_URL, SR_KEY, { auth: { persistSession: false } })
       : null;
 
+  /** Checa permissão pro tenant resolvido. Owner ou superadmin global → true. */
+  async function callerHasPermission(perm: string): Promise<boolean> {
+    if (!admin || !resolvedTenantId) {
+      // Sem tenant resolvido só rola se for fallback global (app_settings/env).
+      // Nesse caso usamos a checagem de superadmin como gate (já validamos admin acima).
+      const { data: rows } = await admin!
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", callerUserId)
+        .eq("role", "superadmin");
+      return (rows?.length ?? 0) > 0;
+    }
+    const { data, error } = await admin.rpc("has_server_permission", {
+      _tenant_id: resolvedTenantId,
+      _user_id: callerUserId,
+      _permission: perm,
+    });
+    if (error) {
+      console.warn("[clsconfig-proxy] has_server_permission error:", error.message);
+      return false;
+    }
+    return data === true;
+  }
+
   try {
     if (admin) {
-      // 1) Tenant explícito via header (validar ownership)
+      // 1) Tenant explícito via header (validar membership)
       if (requestedServerId) {
         const { data: tRow } = await admin
           .from("tenants")
           .select("id, owner_id, pw_api_base_url, pw_api_secret")
           .eq("id", requestedServerId)
           .maybeSingle();
-        if (tRow && tRow.owner_id === callerUserId) {
-          PW_API_BASE_URL = tRow.pw_api_base_url ?? "";
-          PW_API_SECRET = tRow.pw_api_secret ?? "";
-          resolvedTenantId = tRow.id;
-          credSource = "tenant_explicit";
+        if (tRow) {
+          // owner direto OU membro via server_members
+          const isOwner = tRow.owner_id === callerUserId;
+          let isMember = isOwner;
+          if (!isOwner) {
+            const { data: m } = await admin
+              .from("server_members")
+              .select("id")
+              .eq("tenant_id", tRow.id)
+              .eq("user_id", callerUserId)
+              .maybeSingle();
+            isMember = !!m;
+          }
+          if (isMember) {
+            PW_API_BASE_URL = tRow.pw_api_base_url ?? "";
+            PW_API_SECRET = tRow.pw_api_secret ?? "";
+            resolvedTenantId = tRow.id;
+            credSource = "tenant_explicit";
+          }
         }
       }
 
-      // 2) Tenant ativo do user
+      // 2) Tenant ativo do user (como owner)
       if (credSource === "env") {
         const { data: tenantRow } = await admin
           .from("tenants")
@@ -214,9 +268,23 @@ Deno.serve(async (req: Request) => {
   const isActionRoute = actionIdx !== -1 && segments[actionIdx + 1];
   const isClsRoute = !isActionRoute && (route === "clsconfig" || route === "clsconfig-proxy");
 
+  /** Bloqueia se a permissão não for atendida. */
+  async function ensurePermission(action: string): Promise<Response | null> {
+    const perm = ACTION_PERMISSION[action];
+    if (!perm) return null; // action sem permissão mapeada → mantém comportamento atual
+    const ok = await callerHasPermission(perm);
+    if (!ok) {
+      void logAction(action, `permission_denied:${perm}`, false, 403, `Missing permission: ${perm}`);
+      return jsonError(`Permissão negada: ${perm}`, 403);
+    }
+    return null;
+  }
+
   try {
     // ----- Rotas legadas /clsconfig (mantidas para compat) -----
     if (req.method === "GET" && isClsRoute) {
+      const denied = await ensurePermission("getClsconfig");
+      if (denied) return denied;
       const target = `${endpoint}?action=getClsconfig`;
       const upstream = await fetch(target, {
         method: "GET",
@@ -254,6 +322,22 @@ Deno.serve(async (req: Request) => {
         );
       }
 
+      // Permissão depende do tipo de payload:
+      //   - template completo → save_templates
+      //   - status/inventory de role real → save_real_roles
+      const requiredPerm = hasFull ? "save_templates" : "save_real_roles";
+      const ok = await callerHasPermission(requiredPerm);
+      if (!ok) {
+        void logAction(
+          hasFull ? "saveClsconfigTemplate" : hasStatus ? "saveStatus" : "saveInventory",
+          `permission_denied:${requiredPerm}`,
+          false,
+          403,
+          `Missing permission: ${requiredPerm}`,
+        );
+        return jsonError(`Permissão negada: ${requiredPerm}`, 403);
+      }
+
       const roleidParam = encodeURIComponent(String(b.roleid));
       const target = `${endpoint}?action=saveClsconfigTemplate&roleid=${roleidParam}`;
       console.log("[clsconfig-proxy] POST →", target, "roleid:", String(b.roleid));
@@ -288,6 +372,9 @@ Deno.serve(async (req: Request) => {
           { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
+
+      const denied = await ensurePermission(action);
+      if (denied) return denied;
 
       // Passthrough da querystring (filtramos chaves perigosas).
       const qs = new URLSearchParams();

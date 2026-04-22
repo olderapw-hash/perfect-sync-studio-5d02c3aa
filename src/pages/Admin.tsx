@@ -15,10 +15,13 @@ import {
   Users as UsersIcon,
   Settings as SettingsIcon,
   ShieldCheck,
+  UserPlus,
 } from "lucide-react";
 import { useClsconfig } from "@/hooks/useClsconfig";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
+import { useServerPermissions } from "@/hooks/useServerPermissions";
+import { PendingInvitesBanner } from "@/components/PendingInvitesBanner";
 import { ClsconfigEditor } from "@/components/admin/ClsconfigEditor";
 import { ItemCatalogManager } from "@/components/admin/ItemCatalogManager";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";

@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ItemCatalogProvider } from "@/context/ItemCatalogContext";
 import { AuthProvider } from "@/hooks/useAuth";
 import { AppSettingsProvider } from "@/hooks/useAppSettings";
+import { ServerPermissionsProvider } from "@/hooks/useServerPermissions";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { SuperadminRoute } from "@/components/SuperadminRoute";
 import Admin from "./pages/Admin.tsx";
@@ -18,6 +19,7 @@ import Onboarding from "./pages/Onboarding.tsx";
 import Servers from "./pages/Servers.tsx";
 import Install from "./pages/Install.tsx";
 import Audit from "./pages/Audit.tsx";
+import Members from "./pages/Members.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -28,59 +30,69 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <AppSettingsProvider>
-            <ItemCatalogProvider>
-              <Toaster />
-              <Sonner />
-              <Routes>
-                <Route path="/" element={<Landing />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/pricing" element={<Pricing />} />
-                <Route path="/checkout/success" element={<CheckoutSuccess />} />
-                <Route
-                  path="/onboarding"
-                  element={
-                    <ProtectedRoute requireAdmin={false}>
-                      <Onboarding />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin"
-                  element={
-                    <ProtectedRoute requireAdmin requireSubscription>
-                      <Admin />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin/users"
-                  element={
-                    <SuperadminRoute>
-                      <AdminUsers />
-                    </SuperadminRoute>
-                  }
-                />
-                <Route
-                  path="/servers"
-                  element={
-                    <ProtectedRoute requireAdmin={false}>
-                      <Servers />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route path="/install" element={<Install />} />
-                <Route
-                  path="/audit"
-                  element={
-                    <ProtectedRoute requireAdmin>
-                      <Audit />
-                    </ProtectedRoute>
-                  }
-                />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </ItemCatalogProvider>
+            <ServerPermissionsProvider>
+              <ItemCatalogProvider>
+                <Toaster />
+                <Sonner />
+                <Routes>
+                  <Route path="/" element={<Landing />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/checkout/success" element={<CheckoutSuccess />} />
+                  <Route
+                    path="/onboarding"
+                    element={
+                      <ProtectedRoute requireAdmin={false}>
+                        <Onboarding />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin"
+                    element={
+                      <ProtectedRoute requireAdmin requireSubscription>
+                        <Admin />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/users"
+                    element={
+                      <SuperadminRoute>
+                        <AdminUsers />
+                      </SuperadminRoute>
+                    }
+                  />
+                  <Route
+                    path="/servers"
+                    element={
+                      <ProtectedRoute requireAdmin={false}>
+                        <Servers />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/members"
+                    element={
+                      <ProtectedRoute requireAdmin={false}>
+                        <Members />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="/install" element={<Install />} />
+                  <Route
+                    path="/audit"
+                    element={
+                      <ProtectedRoute requireAdmin>
+                        <Audit />
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </ItemCatalogProvider>
+            </ServerPermissionsProvider>
           </AppSettingsProvider>
         </AuthProvider>
       </BrowserRouter>

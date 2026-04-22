@@ -167,6 +167,94 @@ export type Database = {
         }
         Relationships: []
       }
+      server_invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          email: string
+          expires_at: string
+          id: string
+          invited_at: string
+          invited_by: string
+          permissions: Json
+          role: Database["public"]["Enums"]["server_role"]
+          status: Database["public"]["Enums"]["invite_status"]
+          tenant_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          email: string
+          expires_at?: string
+          id?: string
+          invited_at?: string
+          invited_by: string
+          permissions?: Json
+          role?: Database["public"]["Enums"]["server_role"]
+          status?: Database["public"]["Enums"]["invite_status"]
+          tenant_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_at?: string
+          invited_by?: string
+          permissions?: Json
+          role?: Database["public"]["Enums"]["server_role"]
+          status?: Database["public"]["Enums"]["invite_status"]
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_invites_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      server_members: {
+        Row: {
+          created_at: string
+          id: string
+          permissions: Json
+          role: Database["public"]["Enums"]["server_role"]
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          permissions?: Json
+          role?: Database["public"]["Enums"]["server_role"]
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          permissions?: Json
+          role?: Database["public"]["Enums"]["server_role"]
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_members_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscriptions: {
         Row: {
           cancel_at_period_end: boolean | null
@@ -295,6 +383,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_server_invite: { Args: { _invite_id: string }; Returns: string }
       admin_grant_admin: {
         Args: { target_user_id: string }
         Returns: undefined
@@ -316,6 +405,19 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: undefined
       }
+      create_server_invite: {
+        Args: {
+          _email: string
+          _role: Database["public"]["Enums"]["server_role"]
+          _tenant_id: string
+        }
+        Returns: string
+      }
+      default_permissions_for_role: {
+        Args: { _role: Database["public"]["Enums"]["server_role"] }
+        Returns: Json
+      }
+      get_my_server_permissions: { Args: { _tenant_id: string }; Returns: Json }
       get_my_tenant_secret: { Args: never; Returns: string }
       get_public_branding: {
         Args: never
@@ -336,6 +438,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_server_permission: {
+        Args: { _permission: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_server_member: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
       set_active_tenant: {
         Args: { target_tenant_id: string }
         Returns: undefined
@@ -343,6 +453,8 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user" | "superadmin"
+      invite_status: "pending" | "accepted" | "revoked" | "expired"
+      server_role: "owner" | "admin" | "editor" | "readonly"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -471,6 +583,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user", "superadmin"],
+      invite_status: ["pending", "accepted", "revoked", "expired"],
+      server_role: ["owner", "admin", "editor", "readonly"],
     },
   },
 } as const

@@ -19,20 +19,42 @@ export interface ItemCatalogResponse {
   error?: string;
 }
 
+/** Tipo de backup retornado pela VPS. `export_log` é o log do exportClsconfig. */
+export type BackupKind = "role_json" | "clsconfig_file" | "export_log";
+
 export interface BackupRecord {
-  roleid: number;
-  type: "role_json" | "clsconfig_file";
+  /** roleid pode não vir em alguns logs de export — opcional. */
+  roleid?: number;
+  type: BackupKind;
   file: string;
   /** epoch seconds */
   created_at?: number;
   size?: number;
 }
 
+/**
+ * Resposta REAL do endpoint na VPS:
+ * {
+ *   success: true,
+ *   backups: {
+ *     role_json: BackupRecord[],
+ *     clsconfig_files: BackupRecord[],
+ *     export_logs: BackupRecord[],
+ *     all: BackupRecord[]   // união ordenada por created_at desc
+ *   }
+ * }
+ */
 export interface ListBackupsResponse {
   success: boolean;
-  backups: BackupRecord[];
+  backups: {
+    role_json?: BackupRecord[];
+    clsconfig_files?: BackupRecord[];
+    export_logs?: BackupRecord[];
+    all?: BackupRecord[];
+  };
   error?: string;
 }
+
 
 export interface RestoreBackupResponse {
   success: boolean;

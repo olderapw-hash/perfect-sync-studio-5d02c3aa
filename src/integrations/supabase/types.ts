@@ -128,6 +128,96 @@ export type Database = {
         }
         Relationships: []
       }
+      subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean | null
+          created_at: string | null
+          current_period_end: string | null
+          current_period_start: string | null
+          environment: string
+          id: string
+          paddle_customer_id: string
+          paddle_subscription_id: string
+          price_id: string
+          product_id: string
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean | null
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          environment?: string
+          id?: string
+          paddle_customer_id: string
+          paddle_subscription_id: string
+          price_id: string
+          product_id: string
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          cancel_at_period_end?: boolean | null
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          environment?: string
+          id?: string
+          paddle_customer_id?: string
+          paddle_subscription_id?: string
+          price_id?: string
+          product_id?: string
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tenants: {
+        Row: {
+          created_at: string
+          icon_base_url: string | null
+          id: string
+          logo_url: string | null
+          onboarding_completed: boolean
+          owner_id: string
+          primary_color: string | null
+          pw_api_base_url: string | null
+          pw_api_secret: string | null
+          server_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          icon_base_url?: string | null
+          id?: string
+          logo_url?: string | null
+          onboarding_completed?: boolean
+          owner_id: string
+          primary_color?: string | null
+          pw_api_base_url?: string | null
+          pw_api_secret?: string | null
+          server_name?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          icon_base_url?: string | null
+          id?: string
+          logo_url?: string | null
+          onboarding_completed?: boolean
+          owner_id?: string
+          primary_color?: string | null
+          pw_api_base_url?: string | null
+          pw_api_secret?: string | null
+          server_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -161,6 +251,10 @@ export type Database = {
           primary_color: string
           server_name: string
         }[]
+      }
+      has_active_subscription: {
+        Args: { check_env?: string; user_uuid: string }
+        Returns: boolean
       }
       has_role: {
         Args: {

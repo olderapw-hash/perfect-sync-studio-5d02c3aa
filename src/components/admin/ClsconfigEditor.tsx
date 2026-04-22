@@ -659,7 +659,8 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
             </button>
             <button
               onClick={handleSave}
-              disabled={saving || !dirty}
+              disabled={saving || !dirty || !canSave}
+              title={canSave ? undefined : permDeniedTitle}
               className={cn(
                 "inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold shadow-glow transition-smooth hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50",
                 isRoleMode

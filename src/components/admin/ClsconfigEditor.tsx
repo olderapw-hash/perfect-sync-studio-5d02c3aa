@@ -609,18 +609,18 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
                 </button>
                 <button
                   onClick={() => setCompareOpen(true)}
-                  disabled={allEntries.length < 2}
+                  disabled={allEntries.length < 2 || !canCompare}
                   className="inline-flex items-center gap-2 rounded-md border border-border bg-card/60 px-3 py-2 text-xs transition-smooth hover:border-primary/50 disabled:opacity-50"
-                  title="Comparar com outro CLS"
+                  title={canCompare ? "Comparar com outro CLS" : permDeniedTitle}
                 >
                   <ArrowRightLeft className="h-3.5 w-3.5" />
                   Comparar
                 </button>
                 <button
                   onClick={() => setBulkOpen(true)}
-                  disabled={!dirty || allEntries.length < 2}
+                  disabled={!dirty || allEntries.length < 2 || !canBulkApply}
                   className="inline-flex items-center gap-2 rounded-md border border-border bg-card/60 px-3 py-2 text-xs transition-smooth hover:border-primary/50 disabled:opacity-50"
-                  title="Aplicar mudanças em outros roleids"
+                  title={canBulkApply ? "Aplicar mudanças em outros roleids" : permDeniedTitle}
                 >
                   <Send className="h-3.5 w-3.5" />
                   Aplicar em massa

@@ -771,6 +771,15 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
         </>
       )}
 
+      <InitialKitsDialog
+        open={kitsOpen}
+        onOpenChange={setKitsOpen}
+        currentTemplate={template}
+        canApply={canSave}
+        applyDeniedTitle={permDeniedTitle}
+        onApply={(next) => setTemplate(next)}
+      />
+
       {/* Confirmação forte ANTES do save em personagem real. */}
       <AlertDialog
         open={roleConfirmOpen}

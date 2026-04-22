@@ -489,9 +489,9 @@ export const EquipmentTab = ({ template, onChange }: Props) => {
                       boxShadow: `inset 0 0 0 2px hsl(${classInfo.color} / 0.5), inset 0 0 24px hsl(0 0% 0% / 0.7)`,
                     }}
                   >
-                    {classIconUrl ? (
+                    {photo.url ? (
                       <img
-                        src={classIconUrl}
+                        src={photo.url}
                         alt={className}
                         loading="lazy"
                         className="h-full w-full object-cover object-top"

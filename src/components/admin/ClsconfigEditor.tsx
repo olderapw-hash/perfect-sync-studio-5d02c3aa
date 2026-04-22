@@ -619,6 +619,14 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
               </label>
             )}
             <button
+              onClick={() => setHistoryOpen(true)}
+              className="inline-flex items-center gap-2 rounded-md border border-border bg-card/60 px-3 py-2 text-xs transition-smooth hover:border-primary/50"
+              title="Histórico de backups role_json para este roleid"
+            >
+              <History className="h-3.5 w-3.5" />
+              Histórico
+            </button>
+            <button
               onClick={handleReset}
               disabled={!dirty}
               className="inline-flex items-center gap-2 rounded-md border border-border bg-card/60 px-3 py-2 text-sm transition-smooth hover:border-primary/50 disabled:opacity-50"

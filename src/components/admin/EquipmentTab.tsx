@@ -42,40 +42,21 @@ const NORMAL_BOTTOM: { pos: number; label: string }[] = [
   { pos: 7,  label: "Anel D" },
 ];
 
-// Roupas: grid 4 linhas × 3 colunas de cada lado da silhueta (estilo cliente PW BR).
-// Pos seguem a convenção fashion do cliente (equipPos + 16) + acessórios extras.
-const FASHION_LEFT: { pos: number; label: string }[] = [
-  // linha 1
-  { pos: 16, label: "Capacete (R)" }, { pos: 32, label: "Slot" }, { pos: 33, label: "Asa (R)" },
-  // linha 2
-  { pos: 34, label: "Brinco" }, { pos: 35, label: "Pulseira" }, { pos: 18, label: "Armadura (R)" },
-  // linha 3
-  { pos: 19, label: "Cinto (R)" }, { pos: 36, label: "Anel (R)" }, { pos: 37, label: "Acess." },
-  // linha 4
-  { pos: 38, label: "Carta E" }, { pos: 39, label: "Carta D" }, { pos: 40, label: "Marca" },
-];
-const FASHION_RIGHT: { pos: number; label: string }[] = [
-  // linha 1
-  { pos: 26, label: "Capa (R)" }, { pos: 41, label: "Slot" }, { pos: 42, label: "Aura" },
-  // linha 2
-  { pos: 43, label: "Pet (R)" }, { pos: 24, label: "Arma (R)" }, { pos: 44, label: "Acess." },
-  // linha 3
-  { pos: 45, label: "Acess." }, { pos: 20, label: "Calça (R)" }, { pos: 21, label: "Botas (R)" },
-  // linha 4
-  { pos: 46, label: "Carta" }, { pos: 47, label: "Slot" }, { pos: 48, label: "Selo" },
-];
-const FASHION_BOTTOM: { pos: number; label: string }[] = [];
+// Roupas (fashion) — vêm de template.storehouse.dress.
+// O cliente PW BR mostra um grid 4×3 de cada lado da silhueta (24 slots).
+// Aqui só definimos QUANTOS slots renderizar de cada lado; cada slot mapeia
+// para o índice correspondente do array `dress`.
+const FASHION_LEFT_COUNT = 12;   // 4 linhas × 3 colunas
+const FASHION_RIGHT_COUNT = 12;  // 4 linhas × 3 colunas
+const FASHION_TOTAL = FASHION_LEFT_COUNT + FASHION_RIGHT_COUNT;
 
-
-// Mantido para compatibilidade com lógica de "extras" / editingLabel.
+// Mantido para compatibilidade com lógica de "extras" / editingLabel do equipamento real.
 const SLOTS = [
   ...NORMAL_LEFT,
   ...NORMAL_RIGHT,
   ...NORMAL_BOTTOM,
-  ...FASHION_LEFT,
-  ...FASHION_RIGHT,
-  ...FASHION_BOTTOM,
 ];
+
 
 
 type InvTab = "normal" | "roupas" | "provador";

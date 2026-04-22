@@ -82,6 +82,18 @@ export const InventoryGrid = ({
     upsertAt(nextPos, newEmptyItem(nextPos));
   };
 
+  const handleClearConfirmed = ({ clearMoney }: { clearMoney: boolean }) => {
+    onChange(clearItems(items));
+    if (clearMoney && onClearMoney) onClearMoney();
+    toast.success(`${title} limpo${clearMoney ? " (incluindo dinheiro)" : ""}`);
+  };
+
+  const preview = summarizeSection(items, {
+    capacity,
+    money,
+    hasMoney: money != null && !!onClearMoney,
+  });
+
   return (
     <section>
       <header className="mb-3 flex items-center justify-between gap-2">
@@ -91,15 +103,39 @@ export const InventoryGrid = ({
             {filledCount}/{totalSlots}
           </span>
         </div>
-        <button
-          type="button"
-          onClick={addSlot}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card/60 px-2.5 py-1.5 text-xs font-semibold text-foreground transition-smooth hover:border-primary/50 hover:text-primary"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Slot
-        </button>
+        <div className="flex items-center gap-1.5">
+          {sectionKey && (
+            <button
+              type="button"
+              onClick={() => setClearOpen(true)}
+              disabled={filledCount === 0 && (money ?? 0) === 0}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card/60 px-2.5 py-1.5 text-xs font-semibold text-destructive transition-smooth hover:border-destructive/50 disabled:opacity-40 disabled:hover:border-border"
+              title="Esvazia todos os slots desta seção"
+            >
+              <Eraser className="h-3.5 w-3.5" />
+              Limpar seção
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={addSlot}
+            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card/60 px-2.5 py-1.5 text-xs font-semibold text-foreground transition-smooth hover:border-primary/50 hover:text-primary"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Slot
+          </button>
+        </div>
       </header>
+
+      {sectionKey && (
+        <ClearSectionDialog
+          open={clearOpen}
+          onOpenChange={setClearOpen}
+          section={sectionKey}
+          preview={preview}
+          onConfirm={handleClearConfirmed}
+        />
+      )}
 
       <div
         className="grid grid-cols-8 gap-[3px] rounded-sm p-2"

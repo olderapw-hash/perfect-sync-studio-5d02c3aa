@@ -392,7 +392,7 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
       }
 
       // Recarrega o clsconfig completo da VPS para validar persistência real.
-      const reread = await supabase.functions.invoke("clsconfig-proxy/clsconfig", { method: "GET" });
+      const reread = await invokeClsconfigProxy("clsconfig-proxy/clsconfig", { method: "GET" });
       if (reread.error) {
         throw new Error("A VPS respondeu ao save, mas falhou na confirmação de leitura");
       }

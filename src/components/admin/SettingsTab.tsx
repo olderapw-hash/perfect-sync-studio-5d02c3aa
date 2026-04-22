@@ -277,6 +277,36 @@ export const SettingsTab = () => {
               Mesmo valor da variável <code className="font-mono">$SECRET</code> dentro do <code className="font-mono">api_cls.php</code> da sua VPS.
             </p>
           </div>
+
+          {editingTenant && (
+            <div className="rounded-md border border-primary/30 bg-primary/5 p-4">
+              <h4 className="mb-1 flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-foreground">
+                <Download className="h-3.5 w-3.5 text-primary" /> Baixar api_cls.php
+              </h4>
+              <p className="mb-3 text-[11px] text-muted-foreground">
+                Gera o arquivo já com o <strong>seu secret embutido</strong> — é só subir pra sua VPS,
+                sem precisar editar nada por dentro.
+              </p>
+              <button
+                type="button"
+                onClick={downloadApiCls}
+                disabled={downloading || !originalSecret}
+                className="inline-flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 px-4 py-2 text-xs font-semibold text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {downloading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Download className="h-3.5 w-3.5" />
+                )}
+                Baixar api_cls.php personalizado
+              </button>
+              {!originalSecret && (
+                <p className="mt-2 text-[11px] text-destructive">
+                  Defina e salve o secret antes de baixar.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </section>
 

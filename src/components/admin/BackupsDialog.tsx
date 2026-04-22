@@ -69,11 +69,13 @@ export const BackupsDialog = ({ open, onOpenChange }: Props) => {
       const role_json = tag(b.role_json, "role_json");
       const clsconfig_files = tag(b.clsconfig_files, "clsconfig_file");
       const export_logs = tag(b.export_logs, "export_log");
+      // Ordena por mtime desc (fallback para created_at parseado).
+      const sortKey = (r: BackupRecord) =>
+        r.mtime ?? (r.created_at ? Date.parse(r.created_at) / 1000 : 0);
+      const sortDesc = (arr: BackupRecord[]) => [...arr].sort((x, y) => sortKey(y) - sortKey(x));
       const all = Array.isArray(b.all) && b.all.length > 0
-        ? b.all.map((r) => ({ ...r }))
-        : [...role_json, ...clsconfig_files, ...export_logs].sort(
-            (x, y) => (y.created_at ?? 0) - (x.created_at ?? 0),
-          );
+        ? sortDesc(b.all)
+        : sortDesc([...role_json, ...clsconfig_files, ...export_logs]);
       setVps({ all, role_json, clsconfig_files, export_logs });
       setEndpointMissing(false);
     } catch (e) {

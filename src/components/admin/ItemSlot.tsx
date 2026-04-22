@@ -23,10 +23,17 @@ interface Props {
  */
 export const ItemSlot = ({ item, onClick, size = 44, emptyLabel }: Props) => {
   const { iconUrlFor, metaFor, catalog } = useItemCatalog();
-  const [iconBroken, setIconBroken] = useState(false);
+  // Tenta .jpg primeiro; em erro, tenta .png; em segundo erro, mostra id.
+  const [iconStage, setIconStage] = useState<"jpg" | "png" | "broken">("jpg");
   const empty = item.id <= 0;
   const meta = empty ? undefined : metaFor(item.id);
-  const iconUrl = empty || !catalog ? "" : iconUrlFor(item.id);
+  const baseIconUrl = empty || !catalog ? "" : iconUrlFor(item.id);
+  const iconBroken = iconStage === "broken";
+  const iconUrl = iconBroken
+    ? ""
+    : iconStage === "png"
+      ? baseIconUrl.replace(/\.jpg$/i, ".png")
+      : baseIconUrl;
 
   // Cor da qualidade (vinda do catálogo .tab) define a borda quando preenchido.
   const qualityColor = meta?.color ?? undefined;

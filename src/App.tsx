@@ -24,15 +24,8 @@ const App = () => (
               <Toaster />
               <Sonner />
               <Routes>
+                <Route path="/" element={<Landing />} />
                 <Route path="/auth" element={<Auth />} />
-                <Route
-                  path="/"
-                  element={
-                    <ProtectedRoute requireAdmin>
-                      <Admin />
-                    </ProtectedRoute>
-                  }
-                />
                 <Route
                   path="/admin"
                   element={

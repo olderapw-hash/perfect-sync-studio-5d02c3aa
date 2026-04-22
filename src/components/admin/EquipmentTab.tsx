@@ -42,40 +42,21 @@ const NORMAL_BOTTOM: { pos: number; label: string }[] = [
   { pos: 7,  label: "Anel D" },
 ];
 
-// Roupas: grid 4 linhas × 3 colunas de cada lado da silhueta (estilo cliente PW BR).
-// Pos seguem a convenção fashion do cliente (equipPos + 16) + acessórios extras.
-const FASHION_LEFT: { pos: number; label: string }[] = [
-  // linha 1
-  { pos: 16, label: "Capacete (R)" }, { pos: 32, label: "Slot" }, { pos: 33, label: "Asa (R)" },
-  // linha 2
-  { pos: 34, label: "Brinco" }, { pos: 35, label: "Pulseira" }, { pos: 18, label: "Armadura (R)" },
-  // linha 3
-  { pos: 19, label: "Cinto (R)" }, { pos: 36, label: "Anel (R)" }, { pos: 37, label: "Acess." },
-  // linha 4
-  { pos: 38, label: "Carta E" }, { pos: 39, label: "Carta D" }, { pos: 40, label: "Marca" },
-];
-const FASHION_RIGHT: { pos: number; label: string }[] = [
-  // linha 1
-  { pos: 26, label: "Capa (R)" }, { pos: 41, label: "Slot" }, { pos: 42, label: "Aura" },
-  // linha 2
-  { pos: 43, label: "Pet (R)" }, { pos: 24, label: "Arma (R)" }, { pos: 44, label: "Acess." },
-  // linha 3
-  { pos: 45, label: "Acess." }, { pos: 20, label: "Calça (R)" }, { pos: 21, label: "Botas (R)" },
-  // linha 4
-  { pos: 46, label: "Carta" }, { pos: 47, label: "Slot" }, { pos: 48, label: "Selo" },
-];
-const FASHION_BOTTOM: { pos: number; label: string }[] = [];
+// Roupas (fashion) — vêm de template.storehouse.dress.
+// O cliente PW BR mostra um grid 4×3 de cada lado da silhueta (24 slots).
+// Aqui só definimos QUANTOS slots renderizar de cada lado; cada slot mapeia
+// para o índice correspondente do array `dress`.
+const FASHION_LEFT_COUNT = 12;   // 4 linhas × 3 colunas
+const FASHION_RIGHT_COUNT = 12;  // 4 linhas × 3 colunas
+const FASHION_TOTAL = FASHION_LEFT_COUNT + FASHION_RIGHT_COUNT;
 
-
-// Mantido para compatibilidade com lógica de "extras" / editingLabel.
+// Mantido para compatibilidade com lógica de "extras" / editingLabel do equipamento real.
 const SLOTS = [
   ...NORMAL_LEFT,
   ...NORMAL_RIGHT,
   ...NORMAL_BOTTOM,
-  ...FASHION_LEFT,
-  ...FASHION_RIGHT,
-  ...FASHION_BOTTOM,
 ];
+
 
 
 type InvTab = "normal" | "roupas" | "provador";
@@ -100,6 +81,7 @@ export const EquipmentTab = ({ template, onChange }: Props) => {
   const [leadersNeeded, setLeadersNeeded] = useState<number>(10);
   const [sBonus, setSBonus] = useState<boolean>(false);
   const [invTab, setInvTab] = useState<InvTab>("normal");
+  const [dressEditingIdx, setDressEditingIdx] = useState<number | null>(null);
 
   const byPos = new Map<number, ClsItem>();
   items.forEach((it) => byPos.set(it.pos, it));
@@ -159,9 +141,30 @@ export const EquipmentTab = ({ template, onChange }: Props) => {
   extras.forEach((it) => extrasByPos.set(it.pos, it));
 
   // Slots ativos conforme a aba. "Provador" usa as roupas para preview.
-  const activeLeft   = invTab === "normal" ? NORMAL_LEFT   : FASHION_LEFT;
-  const activeRight  = invTab === "normal" ? NORMAL_RIGHT  : FASHION_RIGHT;
-  const activeBottom = invTab === "normal" ? NORMAL_BOTTOM : FASHION_BOTTOM;
+  const activeLeft   = invTab === "normal" ? NORMAL_LEFT   : [];
+  const activeRight  = invTab === "normal" ? NORMAL_RIGHT  : [];
+  const activeBottom = invTab === "normal" ? NORMAL_BOTTOM : [];
+
+  // Roupas: lê direto do storehouse.dress (array de fashion do servidor PW).
+  // Garante pelo menos FASHION_TOTAL slots renderizados (vazios viram placeholders).
+  const dress = template.storehouse?.dress ?? [];
+  const dressSlots: ClsItem[] = Array.from({ length: FASHION_TOTAL }, (_, i) =>
+    dress[i] ?? newEmptyItem(i),
+  );
+  const dressLeft  = dressSlots.slice(0, FASHION_LEFT_COUNT);
+  const dressRight = dressSlots.slice(FASHION_LEFT_COUNT, FASHION_TOTAL);
+
+  const updateDressAt = (idx: number, next: ClsItem) => {
+    const arr = dressSlots.map((it, i) => (i === idx ? next : it));
+    onChange({
+      ...template,
+      storehouse: { ...template.storehouse, dress: arr },
+    });
+  };
+  const removeDressAt = (idx: number) => {
+    updateDressAt(idx, newEmptyItem(idx));
+    setDressEditingIdx(null);
+  };
 
   return (
     <div className="space-y-3">
@@ -265,18 +268,28 @@ export const EquipmentTab = ({ template, onChange }: Props) => {
                     : "grid grid-cols-3 gap-1.5"
                 }
               >
-                {activeLeft.map((s) => {
-                  const it = byPos.get(s.pos) ?? newEmptyItem(s.pos);
-                  return (
-                    <ItemSlot
-                      key={s.pos}
-                      item={it}
-                      onClick={() => openSlot(s.pos)}
-                      size={invTab === "normal" ? 48 : 40}
-                      emptyLabel={s.label}
-                    />
-                  );
-                })}
+                {invTab === "normal"
+                  ? activeLeft.map((s) => {
+                      const it = byPos.get(s.pos) ?? newEmptyItem(s.pos);
+                      return (
+                        <ItemSlot
+                          key={s.pos}
+                          item={it}
+                          onClick={() => openSlot(s.pos)}
+                          size={48}
+                          emptyLabel={s.label}
+                        />
+                      );
+                    })
+                  : dressLeft.map((it, i) => (
+                      <ItemSlot
+                        key={`dl-${i}`}
+                        item={it}
+                        onClick={() => setDressEditingIdx(i)}
+                        size={40}
+                        emptyLabel="Roupa"
+                      />
+                    ))}
               </div>
 
               {/* Silhueta central */}
@@ -305,18 +318,28 @@ export const EquipmentTab = ({ template, onChange }: Props) => {
                     : "grid grid-cols-3 gap-1.5"
                 }
               >
-                {activeRight.map((s) => {
-                  const it = byPos.get(s.pos) ?? newEmptyItem(s.pos);
-                  return (
-                    <ItemSlot
-                      key={s.pos}
-                      item={it}
-                      onClick={() => openSlot(s.pos)}
-                      size={invTab === "normal" ? 48 : 40}
-                      emptyLabel={s.label}
-                    />
-                  );
-                })}
+                {invTab === "normal"
+                  ? activeRight.map((s) => {
+                      const it = byPos.get(s.pos) ?? newEmptyItem(s.pos);
+                      return (
+                        <ItemSlot
+                          key={s.pos}
+                          item={it}
+                          onClick={() => openSlot(s.pos)}
+                          size={48}
+                          emptyLabel={s.label}
+                        />
+                      );
+                    })
+                  : dressRight.map((it, i) => (
+                      <ItemSlot
+                        key={`dr-${i}`}
+                        item={it}
+                        onClick={() => setDressEditingIdx(FASHION_LEFT_COUNT + i)}
+                        size={40}
+                        emptyLabel="Roupa"
+                      />
+                    ))}
               </div>
             </div>
 
@@ -465,6 +488,51 @@ export const EquipmentTab = ({ template, onChange }: Props) => {
               className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-glow transition-smooth hover:brightness-110"
             >
               Salvar
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Editor para slot de Roupa (storehouse.dress) */}
+      <Dialog
+        open={dressEditingIdx != null}
+        onOpenChange={(o) => !o && setDressEditingIdx(null)}
+      >
+        <DialogContent className="max-w-xl border-border bg-card">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between gap-2">
+              <span>
+                Editar roupa — slot {dressEditingIdx}
+                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                  (storehouse.dress)
+                </span>
+              </span>
+              {dressEditingIdx != null && (dressSlots[dressEditingIdx]?.id ?? 0) > 0 && (
+                <button
+                  type="button"
+                  onClick={() => removeDressAt(dressEditingIdx)}
+                  className="inline-flex items-center gap-1 rounded-md border border-border bg-card/60 px-2 py-1 text-xs text-destructive transition-smooth hover:border-destructive/50"
+                >
+                  <X className="h-3 w-3" />
+                  Esvaziar
+                </button>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          {dressEditingIdx != null && (
+            <ItemEditor
+              item={dressSlots[dressEditingIdx]}
+              onChange={(next) => updateDressAt(dressEditingIdx, next)}
+              onRemove={() => removeDressAt(dressEditingIdx)}
+            />
+          )}
+          <div className="flex justify-end gap-2 border-t border-border pt-3">
+            <button
+              type="button"
+              onClick={() => setDressEditingIdx(null)}
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-glow transition-smooth hover:brightness-110"
+            >
+              Fechar
             </button>
           </div>
         </DialogContent>

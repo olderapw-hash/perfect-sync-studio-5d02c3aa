@@ -311,12 +311,13 @@ const VpsList = ({
                 </span>
               </td>
               <td className="px-3 py-2 font-mono">{b.roleid ?? "—"}</td>
-              <td className="px-3 py-2 text-muted-foreground">{fmtEpochS(b.created_at)}</td>
-              <td className="px-3 py-2 text-muted-foreground">
-                {b.size != null ? `${(b.size / 1024).toFixed(1)} KB` : "—"}
-              </td>
-              <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground" title={b.file}>
-                …{b.file.slice(-50)}
+              <td className="px-3 py-2 text-muted-foreground">{fmtCreated(b)}</td>
+              <td className="px-3 py-2 text-muted-foreground">{fmtBytes(b.bytes)}</td>
+              <td
+                className="px-3 py-2 font-mono text-[10px] text-muted-foreground"
+                title={b.file}
+              >
+                {fileLabel(b)}
               </td>
               {!hideRestore && (
                 <td className="px-3 py-2 text-right">

@@ -43,6 +43,7 @@ export function useClsconfig() {
         if (!cancelled) setState({ data: normalized, raw: data, loading: false, error: null });
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Falha ao carregar clsconfig";
+        handleMaybeAuthError(e);
         if (!cancelled) setState({ data: null, raw: null, loading: false, error: msg });
       }
     })();

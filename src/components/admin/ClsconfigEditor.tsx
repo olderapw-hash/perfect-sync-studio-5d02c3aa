@@ -11,7 +11,19 @@ import {
   Bookmark,
   Send,
   ArrowRightLeft,
+  AlertTriangle,
+  UserCog,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { ClsEntry, ClsItem, ClsTemplate } from "@/types/clsconfig";
 import {
   buildInventoryPayload,
@@ -29,6 +41,7 @@ import { saveHistory } from "@/lib/saveHistory";
 import { seenBackups } from "@/lib/seenBackups";
 import { buildClassIconUrl } from "@/lib/pwIcons";
 import { supabase } from "@/integrations/supabase/client";
+import { pwApi, EndpointMissingError } from "@/lib/pwApiActions";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { BaseTab } from "./BaseTab";
@@ -42,10 +55,21 @@ import { PresetsDialog } from "./PresetsDialog";
 import { BulkApplyDialog } from "./BulkApplyDialog";
 import { CompareClsDialog } from "./CompareClsDialog";
 
+/**
+ * Modo de operação:
+ *  - "template" → editor original do CLS (saveClsconfigTemplate, exportclsconfig automático).
+ *  - "role"     → personagem real existente (saveRoleEditable, sem export por padrão).
+ */
+export type ClsconfigEditorMode = "template" | "role";
+
 interface Props {
   entry: ClsEntry;
   /** Todas as entries carregadas — necessário para "Aplicar em massa" e "Comparar". */
   allEntries?: ClsEntry[];
+  /** Modo de save. Default: "template". */
+  mode?: ClsconfigEditorMode;
+  /** Callback chamado após save bem-sucedido com o template recém-persistido. */
+  onSaved?: (template: ClsTemplate) => void;
 }
 
 type TabKey = "base" | "status" | "inventory" | "equipment" | "storehouse";
@@ -84,7 +108,7 @@ const extractAny = (obj: unknown, path: string[]): unknown => {
   return cur;
 };
 
-export const ClsconfigEditor = ({ entry, allEntries = [] }: Props) => {
+export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onSaved }: Props) => {
   const [template, setTemplate] = useState<ClsTemplate>(entry.template);
   const [tab, setTab] = useState<TabKey>("base");
   const [saving, setSaving] = useState(false);
@@ -93,6 +117,12 @@ export const ClsconfigEditor = ({ entry, allEntries = [] }: Props) => {
   const [presetsOpen, setPresetsOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
+  /** Apenas modo "role": opt-in para disparar exportclsconfig após o save. */
+  const [exportClsconfigForRole, setExportClsconfigForRole] = useState(false);
+  /** Apenas modo "role": confirmação forte ANTES de chamar runSave. */
+  const [roleConfirmOpen, setRoleConfirmOpen] = useState(false);
+
+  const isRoleMode = mode === "role";
 
   // Reset when switching entry
   useEffect(() => {
@@ -119,12 +149,167 @@ export const ClsconfigEditor = ({ entry, allEntries = [] }: Props) => {
       console.warn("[clsconfig] validação de itens →", errs);
       return;
     }
+    if (isRoleMode) {
+      // Modo personagem real → confirmação forte ANTES do preview.
+      setRoleConfirmOpen(true);
+      return;
+    }
     setPreviewOpen(true);
+  };
+
+  /** Disparado pelo modal de confirmação do modo "role" — abre o preview real. */
+  const confirmRoleEdit = () => {
+    setRoleConfirmOpen(false);
+    setPreviewOpen(true);
+  };
+
+  /**
+   * Salva no modo "role" (personagem real existente).
+   *
+   * - Endpoint: pwApi.saveRoleEditable (NÃO clsconfig).
+   * - Payload: template completo via buildSavePayload (sem cultivation/decoded/npc_relation).
+   * - Verificação: getRoleEditable do mesmo roleid (NÃO getClsconfig).
+   * - exportclsconfig: opt-in via `exportClsconfigForRole`.
+   * - Restrição clsconfig_template_roleids NÃO se aplica aqui.
+   */
+  const runSaveRoleEditable = async () => {
+    const className =
+      template.summary.class_name ?? `Roleid real ${entry.template.roleid}`;
+    setSaving(true);
+    let lastResponse: Record<string, unknown> | null = null;
+
+    try {
+      const payload = buildSavePayload(entry, template);
+      const savedRoleid = payload.roleid;
+
+      const res = await pwApi.saveRoleEditable({
+        roleid: savedRoleid,
+        template: payload.template,
+        export: exportClsconfigForRole,
+      });
+      lastResponse = res as unknown as Record<string, unknown>;
+
+      if (res?.online) {
+        toast.error(
+          "Personagem está ONLINE — peça kick antes de salvar (mudanças podem ser sobrescritas no logout)",
+          { duration: 9000 },
+        );
+        setPreviewOpen(false);
+        setChecklistResult({
+          saved: false,
+          verified: false,
+          error: "Personagem online — operação recusada pelo servidor",
+        });
+        return;
+      }
+      if (!res?.success) {
+        throw new Error(res?.error || "saveRoleEditable falhou");
+      }
+
+      // Releitura para verificar persistência real (não usa getClsconfig).
+      let freshTemplate: ClsTemplate | null = null;
+      try {
+        const reread = await pwApi.getRoleEditable(savedRoleid);
+        const rawTpl = (reread?.template ?? (reread as unknown as { role?: unknown })?.role) as unknown;
+        if (rawTpl && typeof rawTpl === "object") {
+          freshTemplate = rawTpl as ClsTemplate;
+        }
+      } catch (e) {
+        console.warn("[role] getRoleEditable releitura falhou:", e);
+      }
+
+      // Histórico — registra um snapshot do save bem-sucedido.
+      saveHistory.pushDiff({
+        roleid: savedRoleid,
+        className,
+        field: `roleEditable.${tab}`,
+        oldValue: "(antes)",
+        newValue: "(template completo aplicado)",
+        status: "ok",
+      });
+
+      toast.success(
+        `Personagem real ${savedRoleid} atualizado${
+          res.applied?.length ? ` (${res.applied.length} campo(s))` : ""
+        }`,
+      );
+
+      if (freshTemplate) {
+        entry.template = freshTemplate;
+        setTemplate(freshTemplate);
+        onSaved?.(freshTemplate);
+      } else {
+        // Sem releitura disponível — mantém o template editado como referência.
+        onSaved?.(template);
+      }
+
+      const verifiedFromBody =
+        extractAny(lastResponse, ["saved", "verified"]) === true ||
+        extractAny(lastResponse, ["verified"]) === true ||
+        Boolean(freshTemplate);
+      const backupRoleJson =
+        extractPath(lastResponse, ["saved", "backup", "file"]) ??
+        extractPath(lastResponse, ["saved", "backups", "role_json", "file"]) ??
+        extractPath(lastResponse, ["backups", "role_json", "file"]);
+      const exportLogFile = extractPath(lastResponse, ["saved", "export", "log_file"]);
+      const exportScheduled =
+        extractAny(lastResponse, ["saved", "export", "scheduled"]) === true ||
+        Boolean(exportLogFile);
+
+      if (backupRoleJson) {
+        seenBackups.add(savedRoleid, "role_json", backupRoleJson);
+      }
+
+      setPreviewOpen(false);
+      setChecklistResult({
+        saved: true,
+        verified: verifiedFromBody,
+        backupRoleJson,
+        // Em modo role NÃO geramos clsconfig_file; deixamos undefined
+        // para o checklist mostrar como "não aplicável".
+        backupClsconfigFile: undefined,
+        exportLogFile,
+        // Se o usuário não marcou export, marcamos como "não solicitado".
+        exportScheduled: exportClsconfigForRole ? exportScheduled : true,
+      });
+    } catch (e) {
+      const msg =
+        e instanceof EndpointMissingError
+          ? "Endpoint saveRoleEditable ainda não implementado na VPS"
+          : e instanceof Error
+            ? e.message
+            : "Erro desconhecido ao salvar personagem";
+      console.error("[role] save error →", e);
+      toast.error(msg);
+      saveHistory.pushDiff({
+        roleid: entry.template.roleid,
+        className,
+        field: `roleEditable.${tab}`,
+        oldValue: "(antes)",
+        newValue: "(falha)",
+        status: "error",
+        error: msg,
+      });
+      setPreviewOpen(false);
+      setChecklistResult({ saved: false, verified: false, error: msg });
+    } finally {
+      setSaving(false);
+    }
   };
 
   /** Salva de fato (chamado pelo botão "Confirmar e salvar" do preview). */
   const runSave = async () => {
     if (saving) return;
+
+    // ─────────────── Modo "role" (personagem real) ───────────────
+    // Não usa supabase.functions.invoke("clsconfig-proxy/clsconfig").
+    // Envia o template completo via pwApi.saveRoleEditable. Releitura
+    // de verificação usa pwApi.getRoleEditable (mesmo roleid). Não
+    // dispara exportclsconfig a menos que o usuário tenha marcado.
+    if (isRoleMode) {
+      await runSaveRoleEditable();
+      return;
+    }
 
     const className = template.summary.class_name ?? `Classe ${template.summary.cls}`;
     const statusDiff = diffSimpleStatus(entry.template, template);
@@ -352,7 +537,13 @@ export const ClsconfigEditor = ({ entry, allEntries = [] }: Props) => {
               <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                 <span className="font-semibold text-foreground/80">{className}</span>
                 <span>·</span>
-                <span className="font-mono">key {entry.key_hex.slice(0, 12)}…</span>
+                {isRoleMode ? (
+                  <span className="font-mono text-destructive">
+                    Personagem REAL · roleid {entry.template.roleid}
+                  </span>
+                ) : (
+                  <span className="font-mono">key {entry.key_hex.slice(0, 12)}…</span>
+                )}
                 <span>·</span>
                 <span>cls {template.summary.cls}</span>
                 <span>·</span>
@@ -374,32 +565,56 @@ export const ClsconfigEditor = ({ entry, allEntries = [] }: Props) => {
                 Alterações não salvas
               </span>
             )}
-            <button
-              onClick={() => setPresetsOpen(true)}
-              className="inline-flex items-center gap-2 rounded-md border border-border bg-card/60 px-3 py-2 text-xs transition-smooth hover:border-primary/50"
-              title="Salvar/aplicar presets locais"
-            >
-              <Bookmark className="h-3.5 w-3.5" />
-              Presets
-            </button>
-            <button
-              onClick={() => setCompareOpen(true)}
-              disabled={allEntries.length < 2}
-              className="inline-flex items-center gap-2 rounded-md border border-border bg-card/60 px-3 py-2 text-xs transition-smooth hover:border-primary/50 disabled:opacity-50"
-              title="Comparar com outro CLS"
-            >
-              <ArrowRightLeft className="h-3.5 w-3.5" />
-              Comparar
-            </button>
-            <button
-              onClick={() => setBulkOpen(true)}
-              disabled={!dirty || allEntries.length < 2}
-              className="inline-flex items-center gap-2 rounded-md border border-border bg-card/60 px-3 py-2 text-xs transition-smooth hover:border-primary/50 disabled:opacity-50"
-              title="Aplicar mudanças em outros roleids"
-            >
-              <Send className="h-3.5 w-3.5" />
-              Aplicar em massa
-            </button>
+            {isRoleMode && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-destructive/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-destructive">
+                <UserCog className="h-3 w-3" />
+                Modo personagem real
+              </span>
+            )}
+            {!isRoleMode && (
+              <>
+                <button
+                  onClick={() => setPresetsOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-md border border-border bg-card/60 px-3 py-2 text-xs transition-smooth hover:border-primary/50"
+                  title="Salvar/aplicar presets locais"
+                >
+                  <Bookmark className="h-3.5 w-3.5" />
+                  Presets
+                </button>
+                <button
+                  onClick={() => setCompareOpen(true)}
+                  disabled={allEntries.length < 2}
+                  className="inline-flex items-center gap-2 rounded-md border border-border bg-card/60 px-3 py-2 text-xs transition-smooth hover:border-primary/50 disabled:opacity-50"
+                  title="Comparar com outro CLS"
+                >
+                  <ArrowRightLeft className="h-3.5 w-3.5" />
+                  Comparar
+                </button>
+                <button
+                  onClick={() => setBulkOpen(true)}
+                  disabled={!dirty || allEntries.length < 2}
+                  className="inline-flex items-center gap-2 rounded-md border border-border bg-card/60 px-3 py-2 text-xs transition-smooth hover:border-primary/50 disabled:opacity-50"
+                  title="Aplicar mudanças em outros roleids"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                  Aplicar em massa
+                </button>
+              </>
+            )}
+            {isRoleMode && (
+              <label
+                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card/60 px-3 py-2 text-[11px] text-muted-foreground"
+                title="Por padrão NÃO disparamos exportclsconfig em personagem real."
+              >
+                <input
+                  type="checkbox"
+                  checked={exportClsconfigForRole}
+                  onChange={(e) => setExportClsconfigForRole(e.target.checked)}
+                  className="h-3.5 w-3.5 accent-destructive"
+                />
+                Disparar exportclsconfig (avançado)
+              </label>
+            )}
             <button
               onClick={handleReset}
               disabled={!dirty}
@@ -411,10 +626,15 @@ export const ClsconfigEditor = ({ entry, allEntries = [] }: Props) => {
             <button
               onClick={handleSave}
               disabled={saving || !dirty}
-              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-glow transition-smooth hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+              className={cn(
+                "inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold shadow-glow transition-smooth hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50",
+                isRoleMode
+                  ? "bg-destructive text-destructive-foreground"
+                  : "bg-primary text-primary-foreground",
+              )}
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {saving ? "Salvando..." : "Salvar"}
+              {saving ? "Salvando..." : isRoleMode ? "Salvar no personagem real" : "Salvar"}
             </button>
           </div>
         </div>
@@ -475,29 +695,83 @@ export const ClsconfigEditor = ({ entry, allEntries = [] }: Props) => {
         onClose={() => setChecklistResult(null)}
       />
 
-      <PresetsDialog
-        open={presetsOpen}
-        onOpenChange={setPresetsOpen}
-        currentTemplate={template}
-        currentRoleid={entry.template.roleid}
-        currentClassName={template.summary.class_name}
-        onApply={setTemplate}
-      />
+      {!isRoleMode && (
+        <>
+          <PresetsDialog
+            open={presetsOpen}
+            onOpenChange={setPresetsOpen}
+            currentTemplate={template}
+            currentRoleid={entry.template.roleid}
+            currentClassName={template.summary.class_name}
+            onApply={setTemplate}
+          />
 
-      <BulkApplyDialog
-        open={bulkOpen}
-        onOpenChange={setBulkOpen}
-        sourceEntry={entry}
-        currentTemplate={template}
-        allEntries={allEntries}
-      />
+          <BulkApplyDialog
+            open={bulkOpen}
+            onOpenChange={setBulkOpen}
+            sourceEntry={entry}
+            currentTemplate={template}
+            allEntries={allEntries}
+          />
 
-      <CompareClsDialog
-        open={compareOpen}
-        onOpenChange={setCompareOpen}
-        entries={allEntries}
-        initialKey={entry.key_hex}
-      />
+          <CompareClsDialog
+            open={compareOpen}
+            onOpenChange={setCompareOpen}
+            entries={allEntries}
+            initialKey={entry.key_hex}
+          />
+        </>
+      )}
+
+      {/* Confirmação forte ANTES do save em personagem real. */}
+      <AlertDialog
+        open={roleConfirmOpen}
+        onOpenChange={(o) => !saving && setRoleConfirmOpen(o)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Salvar no personagem REAL roleid {entry.template.roleid}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm">
+                <p className="font-semibold text-foreground">
+                  Personagem deve estar offline. Se estiver online, o servidor
+                  pode sobrescrever as alterações no logout.
+                </p>
+                <ul className="ml-4 list-disc space-y-1 text-xs text-muted-foreground">
+                  <li>
+                    Endpoint usado: <code className="font-mono">saveRoleEditable</code>{" "}
+                    (NÃO <code className="font-mono">saveClsconfigTemplate</code>).
+                  </li>
+                  <li>
+                    Backup automático do <code className="font-mono">role_json</code> é
+                    gerado pela VPS antes de aplicar.
+                  </li>
+                  <li>
+                    {exportClsconfigForRole
+                      ? "exportclsconfig SERÁ disparado (você marcou a opção avançada)."
+                      : "exportclsconfig NÃO será disparado (padrão para personagem real)."}
+                  </li>
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                confirmRoleEdit();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Sim, abrir preview
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

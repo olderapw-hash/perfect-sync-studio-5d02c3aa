@@ -261,16 +261,29 @@ export const EquipmentTab = ({ template, onChange }: Props) => {
           }}
         >
           {/* Cabeçalho "TELA DE EQUIPAMENTO / INVENTÁRIO" */}
-          <div className="mb-2 text-center">
-            <div className="text-[9px] font-bold uppercase tracking-[0.25em] text-amber-200/70">
-              Tela de Equipamento
+          <div className="mb-2 flex items-center justify-between">
+            <div className="w-20" />
+            <div className="text-center">
+              <div className="text-[9px] font-bold uppercase tracking-[0.25em] text-amber-200/70">
+                Tela de Equipamento
+              </div>
+              <div
+                className="text-[22px] font-bold tracking-[0.2em] text-amber-100"
+                style={{ fontFamily: "'Cinzel', 'Trajan Pro', serif", textShadow: "0 2px 4px hsl(0 0% 0% / 0.6)" }}
+              >
+                INVENTÁRIO
+              </div>
             </div>
-            <div
-              className="text-[22px] font-bold tracking-[0.2em] text-amber-100"
-              style={{ fontFamily: "'Cinzel', 'Trajan Pro', serif", textShadow: "0 2px 4px hsl(0 0% 0% / 0.6)" }}
+            <button
+              type="button"
+              onClick={() => setClearOpen(true)}
+              disabled={equippedCount === 0 && extras.length === 0}
+              className="inline-flex items-center gap-1 rounded border border-destructive/40 bg-black/40 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-destructive transition-smooth hover:border-destructive disabled:opacity-40"
+              title="Esvazia todos os slots de equipamento"
             >
-              INVENTÁRIO
-            </div>
+              <Eraser className="h-3 w-3" />
+              Limpar
+            </button>
           </div>
 
           {/* Abas Normal/Roupas/Provador (estilo "EQUIPADOS / ARQUEIRO" da ref) */}

@@ -556,14 +556,27 @@ const VpsList = ({
                 </td>
                 {!hideRestore && (
                   <td className="px-3 py-2 text-right">
-                    <RestoreButton
-                      onClick={() =>
-                        isRoleJson ? onRestore(b) : onUnsupported(b.type)
-                      }
-                      disabled={!isRoleJson}
-                      loading={isLoading}
-                      title={tip}
-                    />
+                    <div className="flex items-center justify-end gap-1.5">
+                      {isRoleJson && b.roleid != null && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => onCompare(b)}
+                          title="Comparar com estado atual e restaurar por seção"
+                        >
+                          <GitCompareArrows className="h-3 w-3" />
+                          Comparar
+                        </Button>
+                      )}
+                      <RestoreButton
+                        onClick={() =>
+                          isRoleJson ? onRestore(b) : onUnsupported(b.type)
+                        }
+                        disabled={!isRoleJson}
+                        loading={isLoading}
+                        title={tip}
+                      />
+                    </div>
                   </td>
                 )}
               </tr>

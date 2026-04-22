@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, FolderUp, Loader2, Package, Upload } from "lucide-react";
+import { CheckCircle2, FileArchive, FolderUp, Loader2, Package, Upload } from "lucide-react";
+import JSZip from "jszip";
 import { supabase } from "@/integrations/supabase/client";
 import { useItemCatalog } from "@/context/ItemCatalogContext";
 import { parseItemTab } from "@/lib/itemTab";
@@ -12,6 +13,56 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+
+const ICON_EXT_RE = /\.(jpe?g|png)$/i;
+const MIME_FOR = (name: string): string => {
+  const ext = name.toLowerCase().split(".").pop();
+  if (ext === "png") return "image/png";
+  return "image/jpeg";
+};
+
+/**
+ * Lê um File ZIP e devolve uma lista de pseudo-File com os ícones contidos.
+ * - Ignora pastas, arquivos ocultos (`.DS_Store`, `__MACOSX`) e não-imagens.
+ * - Achata o caminho: `pasta/sub/12345.jpg` vira `12345.jpg`.
+ * - Em colisão de nome (mesmo basename em pastas diferentes), mantém o primeiro
+ *   e descarta os demais para não sobrescrever ícones válidos.
+ */
+async function extractIconsFromZip(
+  zipFile: File,
+  onProgress?: (done: number, total: number) => void,
+): Promise<{ files: File[]; skipped: number; duplicates: number }> {
+  const zip = await JSZip.loadAsync(zipFile);
+  const candidates = Object.values(zip.files).filter(
+    (e) =>
+      !e.dir &&
+      ICON_EXT_RE.test(e.name) &&
+      !e.name.split("/").some((p) => p.startsWith(".") || p === "__MACOSX"),
+  );
+  const total = candidates.length;
+  const seen = new Set<string>();
+  const files: File[] = [];
+  let duplicates = 0;
+  let done = 0;
+  for (const entry of candidates) {
+    const basename = entry.name.split("/").pop() || entry.name;
+    if (seen.has(basename)) {
+      duplicates += 1;
+      done += 1;
+      onProgress?.(done, total);
+      continue;
+    }
+    seen.add(basename);
+    const blob = await entry.async("blob");
+    files.push(new File([blob], basename, { type: MIME_FOR(basename) }));
+    done += 1;
+    onProgress?.(done, total);
+  }
+  const skipped = Object.values(zip.files).filter(
+    (e) => !e.dir && !ICON_EXT_RE.test(e.name) && !e.name.includes("__MACOSX"),
+  ).length;
+  return { files, skipped, duplicates };
+}
 
 interface CatalogRow {
   id: string;
@@ -31,8 +82,39 @@ export const ItemCatalogManager = () => {
   const [iconFiles, setIconFiles] = useState<File[]>([]);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [progress, setProgress] = useState<{ label?: string; done: number; total: number } | null>(null);
   const iconsInputRef = useRef<HTMLInputElement>(null);
+  const zipInputRef = useRef<HTMLInputElement>(null);
+
+  const handleZipPicked = async (file: File | null) => {
+    if (!file) return;
+    setBusy(true);
+    setProgress({ label: `Descompactando ${file.name}`, done: 0, total: 1 });
+    try {
+      const { files, skipped, duplicates } = await extractIconsFromZip(file, (done, total) =>
+        setProgress({ label: `Descompactando ${file.name}`, done, total: Math.max(total, 1) }),
+      );
+      if (files.length === 0) {
+        toast.error("Nenhum .jpg/.png encontrado no ZIP");
+        return;
+      }
+      setIconFiles((prev) => {
+        const seen = new Set(prev.map((f) => f.name));
+        return [...prev, ...files.filter((f) => !seen.has(f.name))];
+      });
+      const msgs = [`${files.length} ícone(s) prontos para envio`];
+      if (duplicates) msgs.push(`${duplicates} duplicado(s) ignorado(s)`);
+      if (skipped) msgs.push(`${skipped} arquivo(s) não-imagem ignorado(s)`);
+      toast.success(msgs.join(" · "));
+    } catch (e) {
+      console.error("[catalog] zip extract error", e);
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+      setProgress(null);
+      if (zipInputRef.current) zipInputRef.current.value = "";
+    }
+  };
 
   const fetchList = async () => {
     const { data } = await supabase
@@ -94,7 +176,7 @@ export const ItemCatalogManager = () => {
       let failed = 0;
       if (iconFiles.length > 0) {
         const prefix = iconsPrefix.replace(/\/+$/, "") + "/";
-        setProgress({ done: 0, total: iconFiles.length });
+        setProgress({ label: "Enviando ícones", done: 0, total: iconFiles.length });
         const concurrency = 6;
         let done = 0;
         const queue = [...iconFiles];
@@ -112,7 +194,7 @@ export const ItemCatalogManager = () => {
                 failed += 1;
               }
               done += 1;
-              setProgress({ done, total: iconFiles.length });
+              setProgress({ label: "Enviando ícones", done, total: iconFiles.length });
             }
           }),
         );
@@ -281,13 +363,34 @@ export const ItemCatalogManager = () => {
             </label>
           </div>
 
+          {/* Upload via ZIP — descompacta no browser e adiciona à fila */}
+          <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3">
+            <div className="mb-1 flex items-center gap-2">
+              <FileArchive className="h-4 w-4 text-primary" />
+              <span className="uppercase-label">Importar pasta de ícones via ZIP</span>
+            </div>
+            <p className="mb-2 text-[11px] text-muted-foreground">
+              Compacte a pasta de ícones em <code className="font-mono">.zip</code> e mande aqui.
+              O painel descompacta localmente, achata as subpastas e adiciona cada{" "}
+              <code className="font-mono">.jpg</code>/<code className="font-mono">.png</code> à fila acima.
+            </p>
+            <input
+              ref={zipInputRef}
+              type="file"
+              accept=".zip,application/zip,application/x-zip-compressed"
+              disabled={busy}
+              onChange={(e) => void handleZipPicked(e.target.files?.[0] ?? null)}
+              className="block w-full text-xs file:mr-2 file:rounded file:border-0 file:bg-primary file:px-2 file:py-1 file:text-primary-foreground"
+            />
+          </div>
+
           {progress && (
             <div className="rounded-md border border-border bg-background/60 p-2 font-mono text-[11px]">
-              Enviando ícones: {progress.done}/{progress.total}
+              {progress.label ?? "Enviando ícones"}: {progress.done}/{progress.total}
               <div className="mt-1 h-1.5 overflow-hidden rounded bg-muted/40">
                 <div
                   className="h-full bg-primary transition-all"
-                  style={{ width: `${(progress.done / progress.total) * 100}%` }}
+                  style={{ width: `${(progress.done / Math.max(progress.total, 1)) * 100}%` }}
                 />
               </div>
             </div>

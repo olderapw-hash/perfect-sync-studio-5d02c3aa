@@ -29,6 +29,27 @@ export const StatusTab = ({ template, onChange }: Props) => {
       </Section>
 
       <Section title="Posição e mundo">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() =>
+              onChange(
+                setStatus(template, {
+                  posx: 1250.386 as unknown as number,
+                  posy: 219.618 as unknown as number,
+                  posz: 1145.902 as unknown as number,
+                }),
+              )
+            }
+            className="inline-flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-smooth hover:bg-primary/20"
+            title="Define posx/posy/posz para a cidade inicial (1250.386, 219.618, 1145.902)"
+          >
+            🏙️ Teleportar para Cidade Inicial
+          </button>
+          <span className="font-mono text-[11px] text-muted-foreground">
+            1250.386, 219.618, 1145.902
+          </span>
+        </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <NumField label="World tag" value={s.worldtag} onChange={(v) => onChange(setStatus(template, { worldtag: v }))} />
           <NumField label="Pos X" value={s.posx} onChange={(v) => onChange(setStatus(template, { posx: v }))} />

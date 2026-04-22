@@ -82,8 +82,39 @@ export const ItemCatalogManager = () => {
   const [iconFiles, setIconFiles] = useState<File[]>([]);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [progress, setProgress] = useState<{ label?: string; done: number; total: number } | null>(null);
   const iconsInputRef = useRef<HTMLInputElement>(null);
+  const zipInputRef = useRef<HTMLInputElement>(null);
+
+  const handleZipPicked = async (file: File | null) => {
+    if (!file) return;
+    setBusy(true);
+    setProgress({ label: `Descompactando ${file.name}`, done: 0, total: 1 });
+    try {
+      const { files, skipped, duplicates } = await extractIconsFromZip(file, (done, total) =>
+        setProgress({ label: `Descompactando ${file.name}`, done, total: Math.max(total, 1) }),
+      );
+      if (files.length === 0) {
+        toast.error("Nenhum .jpg/.png encontrado no ZIP");
+        return;
+      }
+      setIconFiles((prev) => {
+        const seen = new Set(prev.map((f) => f.name));
+        return [...prev, ...files.filter((f) => !seen.has(f.name))];
+      });
+      const msgs = [`${files.length} ícone(s) prontos para envio`];
+      if (duplicates) msgs.push(`${duplicates} duplicado(s) ignorado(s)`);
+      if (skipped) msgs.push(`${skipped} arquivo(s) não-imagem ignorado(s)`);
+      toast.success(msgs.join(" · "));
+    } catch (e) {
+      console.error("[catalog] zip extract error", e);
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+      setProgress(null);
+      if (zipInputRef.current) zipInputRef.current.value = "";
+    }
+  };
 
   const fetchList = async () => {
     const { data } = await supabase

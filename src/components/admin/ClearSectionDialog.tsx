@@ -84,6 +84,13 @@ export const ClearSectionDialog = ({
           </DialogDescription>
         </DialogHeader>
 
+        {!canClear && (
+          <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
+            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{NO_CLEAR_TIP}</span>
+          </div>
+        )}
+
         {/* Preview do impacto */}
         <div className="space-y-2 rounded-md border border-border bg-background/40 p-3 text-xs">
           <Row label="Seção alvo" value={label} mono={false} />
@@ -152,7 +159,8 @@ export const ClearSectionDialog = ({
           <Button
             variant="destructive"
             onClick={handleConfirm}
-            disabled={!matches || submitting}
+            disabled={!matches || submitting || !canClear}
+            title={!canClear ? NO_CLEAR_TIP : undefined}
           >
             {submitting ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

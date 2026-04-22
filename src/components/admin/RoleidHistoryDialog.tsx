@@ -523,6 +523,7 @@ export const RoleidHistoryDialog = ({
                   <DetailPanel
                     backup={selectedBackup}
                     detail={detail}
+                    canRestore={canRestore}
                     onCompare={() => setCompareTarget(selectedBackup)}
                     onFullRestore={() => setConfirmFullRestore(selectedBackup)}
                     onSectionRestore={(section) =>
@@ -666,12 +667,14 @@ export const RoleidHistoryDialog = ({
 const DetailPanel = ({
   backup,
   detail,
+  canRestore,
   onCompare,
   onFullRestore,
   onSectionRestore,
 }: {
   backup: BackupRecord;
   detail: DetailState;
+  canRestore: boolean;
   onCompare: () => void;
   onFullRestore: () => void;
   onSectionRestore: (section: "status" | "inventory" | "equipment" | "storehouse") => void;
@@ -679,6 +682,12 @@ const DetailPanel = ({
   const s = detail.summary;
   if (!s) return null;
   const changed = new Set(s.changedSections);
+  const restoreDisabled = detail.online || !canRestore;
+  const restoreTip = !canRestore
+    ? NO_RESTORE_TIP
+    : detail.online
+      ? "Personagem online — bloqueado"
+      : "Restaurar backup inteiro";
   return (
     <div className="space-y-3">
       <div className="rounded-md border border-border bg-card/40 p-3 text-xs">

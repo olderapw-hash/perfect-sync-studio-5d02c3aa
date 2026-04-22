@@ -13,27 +13,42 @@ interface Props {
 }
 
 /**
- * Layout paper-doll do PW (versão BR — bate com o cliente nacional).
- * Cada entrada define a `pos` do slot no array equipment.items e onde aparece
- * no grid 5x6. Rótulos em PT-BR.
+ * Layout paper-doll do PW BR — duas colunas laterais (4 linhas) com a silhueta
+ * do personagem no meio. Bate com a tela "Inventário" do cliente nacional.
+ *
+ *   Col esquerda            silhueta            Col direita
+ *   row 1 → Capacete                            Voadora
+ *   row 2 → Colar                               Capa
+ *   row 3 → Armadura                            Talismã
+ *   row 4 → Cinto                               Calça
+ *   (linha inferior centralizada: Arma · Botas · Sub-arma · Anel E · Pet · Anel D)
  */
-const SLOTS: { pos: number; label: string; col: number; row: number }[] = [
-  { pos: 12, label: "Voadora",  col: 1, row: 1 }, // canto sup. esquerdo
-  { pos: 0,  label: "Capacete", col: 3, row: 1 }, // topo central
-  { pos: 10, label: "Capa",     col: 5, row: 1 }, // canto sup. direito
-  { pos: 1,  label: "Colar",    col: 1, row: 2 },
-  { pos: 2,  label: "Armadura", col: 3, row: 3 }, // peito central
-  { pos: 13, label: "Talismã",  col: 5, row: 2 },
-  { pos: 8,  label: "Arma",     col: 1, row: 3 },
-  { pos: 9,  label: "Sub-arma", col: 5, row: 3 },
-  { pos: 6,  label: "Anel E",   col: 1, row: 4 },
-  { pos: 3,  label: "Cinto",    col: 3, row: 4 },
-  { pos: 7,  label: "Anel D",   col: 5, row: 4 },
-  { pos: 11, label: "Pet",      col: 1, row: 5 },
-  { pos: 4,  label: "Calça",    col: 3, row: 5 },
-  { pos: 14, label: "Marca",    col: 5, row: 5 }, // extra (se existir)
-  { pos: 5,  label: "Botas",    col: 3, row: 6 },
+const LEFT_SLOTS: { pos: number; label: string; row: number }[] = [
+  { pos: 0,  label: "Capacete", row: 1 },
+  { pos: 1,  label: "Colar",    row: 2 },
+  { pos: 2,  label: "Armadura", row: 3 },
+  { pos: 3,  label: "Cinto",    row: 4 },
 ];
+
+const RIGHT_SLOTS: { pos: number; label: string; row: number }[] = [
+  { pos: 12, label: "Voadora",  row: 1 },
+  { pos: 10, label: "Capa",     row: 2 },
+  { pos: 13, label: "Talismã",  row: 3 },
+  { pos: 4,  label: "Calça",    row: 4 },
+];
+
+const BOTTOM_SLOTS: { pos: number; label: string }[] = [
+  { pos: 8,  label: "Arma" },
+  { pos: 5,  label: "Botas" },
+  { pos: 9,  label: "Sub-arma" },
+  { pos: 6,  label: "Anel E" },
+  { pos: 11, label: "Pet" },
+  { pos: 7,  label: "Anel D" },
+];
+
+const SLOTS = [...LEFT_SLOTS, ...RIGHT_SLOTS, ...BOTTOM_SLOTS.map((s) => ({ ...s, row: 0 }))];
+
+type InvTab = "normal" | "roupas" | "provador";
 
 /** Slots dos "Líderes" (cards de facção/contribuição) — estilo PW BR. */
 const LEADER_SLOTS: { pos: number; idx: number }[] = [

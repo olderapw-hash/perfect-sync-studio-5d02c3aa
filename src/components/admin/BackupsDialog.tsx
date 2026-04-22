@@ -10,6 +10,7 @@ import {
   Lock,
   RotateCcw,
   ShieldAlert,
+  GitCompareArrows,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ import {
   type RestoreBackupResponse,
 } from "@/lib/pwApiActions";
 import { toast } from "sonner";
+import { CompareBackupDialog } from "./CompareBackupDialog";
 
 interface Props {
   open: boolean;

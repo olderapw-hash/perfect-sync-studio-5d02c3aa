@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, FolderUp, Loader2, Package, Upload } from "lucide-react";
+import { CheckCircle2, FileArchive, FolderUp, Loader2, Package, Upload } from "lucide-react";
+import JSZip from "jszip";
 import { supabase } from "@/integrations/supabase/client";
 import { useItemCatalog } from "@/context/ItemCatalogContext";
 import { parseItemTab } from "@/lib/itemTab";
@@ -12,6 +13,56 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+
+const ICON_EXT_RE = /\.(jpe?g|png)$/i;
+const MIME_FOR = (name: string): string => {
+  const ext = name.toLowerCase().split(".").pop();
+  if (ext === "png") return "image/png";
+  return "image/jpeg";
+};
+
+/**
+ * Lê um File ZIP e devolve uma lista de pseudo-File com os ícones contidos.
+ * - Ignora pastas, arquivos ocultos (`.DS_Store`, `__MACOSX`) e não-imagens.
+ * - Achata o caminho: `pasta/sub/12345.jpg` vira `12345.jpg`.
+ * - Em colisão de nome (mesmo basename em pastas diferentes), mantém o primeiro
+ *   e descarta os demais para não sobrescrever ícones válidos.
+ */
+async function extractIconsFromZip(
+  zipFile: File,
+  onProgress?: (done: number, total: number) => void,
+): Promise<{ files: File[]; skipped: number; duplicates: number }> {
+  const zip = await JSZip.loadAsync(zipFile);
+  const candidates = Object.values(zip.files).filter(
+    (e) =>
+      !e.dir &&
+      ICON_EXT_RE.test(e.name) &&
+      !e.name.split("/").some((p) => p.startsWith(".") || p === "__MACOSX"),
+  );
+  const total = candidates.length;
+  const seen = new Set<string>();
+  const files: File[] = [];
+  let duplicates = 0;
+  let done = 0;
+  for (const entry of candidates) {
+    const basename = entry.name.split("/").pop() || entry.name;
+    if (seen.has(basename)) {
+      duplicates += 1;
+      done += 1;
+      onProgress?.(done, total);
+      continue;
+    }
+    seen.add(basename);
+    const blob = await entry.async("blob");
+    files.push(new File([blob], basename, { type: MIME_FOR(basename) }));
+    done += 1;
+    onProgress?.(done, total);
+  }
+  const skipped = Object.values(zip.files).filter(
+    (e) => !e.dir && !ICON_EXT_RE.test(e.name) && !e.name.includes("__MACOSX"),
+  ).length;
+  return { files, skipped, duplicates };
+}
 
 interface CatalogRow {
   id: string;

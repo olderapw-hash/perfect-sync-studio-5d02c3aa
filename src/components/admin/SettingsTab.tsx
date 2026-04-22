@@ -64,7 +64,7 @@ export const SettingsTab = () => {
       }
       setLoading(false);
     })();
-  }, []);
+  }, [isSuperadmin]);
 
   const onSave = async () => {
     if (!isSuperadmin) {

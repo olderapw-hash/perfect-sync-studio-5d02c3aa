@@ -13,8 +13,33 @@ interface Props {
 }
 
 const fmtDate = (ts: number) => new Date(ts).toLocaleString("pt-BR");
-const fmtEpochS = (s?: number) =>
-  s != null && Number.isFinite(s) ? new Date(s * 1000).toLocaleString("pt-BR") : "—";
+
+/** Resolve a melhor data possível de um BackupRecord (created_at ISO ou mtime epoch s). */
+const resolveCreatedMs = (b: BackupRecord): number | null => {
+  if (b.created_at) {
+    const t = Date.parse(b.created_at);
+    if (!Number.isNaN(t)) return t;
+  }
+  if (b.mtime != null && Number.isFinite(b.mtime)) return b.mtime * 1000;
+  return null;
+};
+const fmtCreated = (b: BackupRecord) => {
+  const ms = resolveCreatedMs(b);
+  return ms != null ? new Date(ms).toLocaleString("pt-BR") : "—";
+};
+
+const fmtBytes = (n?: number) => {
+  if (n == null || !Number.isFinite(n)) return "—";
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(2)} MB`;
+};
+
+const basename = (p: string) => {
+  const i = Math.max(p.lastIndexOf("/"), p.lastIndexOf("\\"));
+  return i >= 0 ? p.slice(i + 1) : p;
+};
+const fileLabel = (b: BackupRecord) => b.name || basename(b.file);
 
 interface VpsBuckets {
   all: BackupRecord[];
@@ -44,11 +69,13 @@ export const BackupsDialog = ({ open, onOpenChange }: Props) => {
       const role_json = tag(b.role_json, "role_json");
       const clsconfig_files = tag(b.clsconfig_files, "clsconfig_file");
       const export_logs = tag(b.export_logs, "export_log");
+      // Ordena por mtime desc (fallback para created_at parseado).
+      const sortKey = (r: BackupRecord) =>
+        r.mtime ?? (r.created_at ? Date.parse(r.created_at) / 1000 : 0);
+      const sortDesc = (arr: BackupRecord[]) => [...arr].sort((x, y) => sortKey(y) - sortKey(x));
       const all = Array.isArray(b.all) && b.all.length > 0
-        ? b.all.map((r) => ({ ...r }))
-        : [...role_json, ...clsconfig_files, ...export_logs].sort(
-            (x, y) => (y.created_at ?? 0) - (x.created_at ?? 0),
-          );
+        ? sortDesc(b.all)
+        : sortDesc([...role_json, ...clsconfig_files, ...export_logs]);
       setVps({ all, role_json, clsconfig_files, export_logs });
       setEndpointMissing(false);
     } catch (e) {
@@ -179,7 +206,7 @@ const RestoreButton = ({ onClick }: { onClick: () => void }) => (
     variant="outline"
     disabled
     onClick={onClick}
-    title="Endpoint restoreBackup ainda não implementado"
+    title="Endpoint restoreBackup ainda não habilitado"
     className="cursor-not-allowed"
   >
     <Lock className="h-3 w-3" />
@@ -284,12 +311,13 @@ const VpsList = ({
                 </span>
               </td>
               <td className="px-3 py-2 font-mono">{b.roleid ?? "—"}</td>
-              <td className="px-3 py-2 text-muted-foreground">{fmtEpochS(b.created_at)}</td>
-              <td className="px-3 py-2 text-muted-foreground">
-                {b.size != null ? `${(b.size / 1024).toFixed(1)} KB` : "—"}
-              </td>
-              <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground" title={b.file}>
-                …{b.file.slice(-50)}
+              <td className="px-3 py-2 text-muted-foreground">{fmtCreated(b)}</td>
+              <td className="px-3 py-2 text-muted-foreground">{fmtBytes(b.bytes)}</td>
+              <td
+                className="px-3 py-2 font-mono text-[10px] text-muted-foreground"
+                title={b.file}
+              >
+                {fileLabel(b)}
               </td>
               {!hideRestore && (
                 <td className="px-3 py-2 text-right">

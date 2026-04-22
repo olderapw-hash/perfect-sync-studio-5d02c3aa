@@ -258,7 +258,13 @@ export const EquipmentTab = ({ template, onChange }: Props) => {
               style={{ gridTemplateColumns: "auto 1fr auto" }}
             >
               {/* Col esquerda */}
-              <div className="flex flex-col gap-2">
+              <div
+                className={
+                  invTab === "normal"
+                    ? "flex flex-col gap-2"
+                    : "grid grid-cols-3 gap-1.5"
+                }
+              >
                 {activeLeft.map((s) => {
                   const it = byPos.get(s.pos) ?? newEmptyItem(s.pos);
                   return (
@@ -266,7 +272,7 @@ export const EquipmentTab = ({ template, onChange }: Props) => {
                       key={s.pos}
                       item={it}
                       onClick={() => openSlot(s.pos)}
-                      size={48}
+                      size={invTab === "normal" ? 48 : 40}
                       emptyLabel={s.label}
                     />
                   );
@@ -274,10 +280,10 @@ export const EquipmentTab = ({ template, onChange }: Props) => {
               </div>
 
               {/* Silhueta central */}
-              <div className="relative flex items-center justify-center self-stretch">
+              <div className="relative flex items-center justify-center self-stretch px-1">
                 <svg
                   viewBox="0 0 100 200"
-                  className="h-full max-h-[230px] w-auto opacity-40"
+                  className="h-full max-h-[260px] w-auto opacity-40"
                   fill="none"
                   stroke="hsl(40 60% 55%)"
                   strokeWidth="1.5"
@@ -292,7 +298,13 @@ export const EquipmentTab = ({ template, onChange }: Props) => {
               </div>
 
               {/* Col direita */}
-              <div className="flex flex-col gap-2">
+              <div
+                className={
+                  invTab === "normal"
+                    ? "flex flex-col gap-2"
+                    : "grid grid-cols-3 gap-1.5"
+                }
+              >
                 {activeRight.map((s) => {
                   const it = byPos.get(s.pos) ?? newEmptyItem(s.pos);
                   return (
@@ -300,7 +312,7 @@ export const EquipmentTab = ({ template, onChange }: Props) => {
                       key={s.pos}
                       item={it}
                       onClick={() => openSlot(s.pos)}
-                      size={48}
+                      size={invTab === "normal" ? 48 : 40}
                       emptyLabel={s.label}
                     />
                   );

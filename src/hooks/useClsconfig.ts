@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { normalizeClsconfigResponse } from "@/lib/clsconfig";
+import { handleMaybeAuthError } from "@/lib/authErrors";
 import type { ClsconfigResponse } from "@/types/clsconfig";
 
 interface State {

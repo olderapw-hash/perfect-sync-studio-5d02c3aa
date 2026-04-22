@@ -37,6 +37,8 @@ import { toast } from "sonner";
 import { useServerPermissions } from "@/hooks/useServerPermissions";
 import { CompareBackupDialog } from "./CompareBackupDialog";
 
+const NO_RESTORE_TIP = "Seu acesso não permite restaurar backups.";
+
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;

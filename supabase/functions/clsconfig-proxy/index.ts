@@ -40,9 +40,9 @@ function jsonError(message: string, status: number): Response {
 
 /**
  * Valida o JWT do chamador e exige `admin` em `public.user_roles`.
- * Retorna `null` se autorizado, ou uma `Response` de erro caso contrário.
+ * Retorna `{ userId }` se autorizado, ou uma `Response` de erro caso contrário.
  */
-async function requireAdmin(req: Request): Promise<Response | null> {
+async function requireAdmin(req: Request): Promise<Response | { userId: string }> {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     return jsonError("Unauthorized", 401);
@@ -56,9 +56,6 @@ async function requireAdmin(req: Request): Promise<Response | null> {
     return jsonError("Auth misconfigured", 500);
   }
 
-  // Cliente atado ao token do usuário — RLS de `user_roles` garante que
-  // só veja a própria linha (ou todas, se já for admin). Em qualquer caso,
-  // se houver linha com role='admin' para o user.id, o acesso é liberado.
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: authHeader } },
     auth: { persistSession: false, autoRefreshToken: false },
@@ -81,7 +78,7 @@ async function requireAdmin(req: Request): Promise<Response | null> {
   }
   if (!roleRow) return jsonError("Forbidden: admin role required", 403);
 
-  return null;
+  return { userId: userRes.user.id };
 }
 
 Deno.serve(async (req: Request) => {

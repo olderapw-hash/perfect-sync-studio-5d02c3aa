@@ -4,9 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { useTenant, fetchTenantSecret } from "@/hooks/useTenant";
+import { useServerPermissions } from "@/hooks/useServerPermissions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
+
+const NO_EXPORT_TIP = "Seu acesso não permite exportar/baixar o api_cls.php.";
 
 interface SettingsForm {
   server_name: string;

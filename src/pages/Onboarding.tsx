@@ -186,6 +186,12 @@ const Onboarding = () => {
               ela, ninguém consegue acessar a API mesmo sabendo a URL.
             </p>
 
+            <div className="mt-4 rounded-md border border-primary/30 bg-primary/5 p-3 text-xs text-foreground">
+              🔒 <strong>Dica de segurança:</strong> gere um secret <em>novo</em> agora (192 bits
+              aleatórios). Ele fica salvo só na sua conta e na sua VPS — nem outros clientes do
+              painel nem a equipe do PW Admin conseguem ler. Se desconfiar de vazamento, é só voltar
+              aqui, gerar outro e atualizar no <code className="rounded bg-muted px-1">api_cls.php</code>.
+            </div>
             <div className="mt-6 space-y-3">
               <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Secret da API

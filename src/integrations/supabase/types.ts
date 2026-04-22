@@ -244,6 +244,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_grant_admin: {
+        Args: { target_user_id: string }
+        Returns: undefined
+      }
+      admin_list_users: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          has_subscription: boolean
+          is_admin: boolean
+          is_superadmin: boolean
+          onboarding_completed: boolean
+          tenant_server_name: string
+          user_id: string
+        }[]
+      }
+      admin_revoke_admin: {
+        Args: { target_user_id: string }
+        Returns: undefined
+      }
       get_public_branding: {
         Args: never
         Returns: {

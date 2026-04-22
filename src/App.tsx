@@ -7,7 +7,9 @@ import { ItemCatalogProvider } from "@/context/ItemCatalogContext";
 import { AuthProvider } from "@/hooks/useAuth";
 import { AppSettingsProvider } from "@/hooks/useAppSettings";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { SuperadminRoute } from "@/components/SuperadminRoute";
 import Admin from "./pages/Admin.tsx";
+import AdminUsers from "./pages/AdminUsers.tsx";
 import Auth from "./pages/Auth.tsx";
 import Landing from "./pages/Landing.tsx";
 import Pricing from "./pages/Pricing.tsx";
@@ -45,6 +47,14 @@ const App = () => (
                     <ProtectedRoute requireAdmin requireSubscription>
                       <Admin />
                     </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/users"
+                  element={
+                    <SuperadminRoute>
+                      <AdminUsers />
+                    </SuperadminRoute>
                   }
                 />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

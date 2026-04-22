@@ -71,12 +71,12 @@ const Landing = () => {
                 >
                   Entrar
                 </Link>
-                <a
-                  href="#preco"
+                <Link
+                  to="/pricing"
                   className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-glow transition-smooth hover:brightness-110"
                 >
                   Começar
-                </a>
+                </Link>
               </>
             )}
           </div>
@@ -112,12 +112,12 @@ const Landing = () => {
             </p>
 
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <a
-                href="#preco"
+              <Link
+                to="/pricing"
                 className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-bold text-primary-foreground shadow-glow transition-smooth hover:brightness-110"
               >
                 Começar por R$ 47/mês <ArrowRight className="h-4 w-4" />
-              </a>
+              </Link>
               <a
                 href="#como-funciona"
                 className="inline-flex items-center gap-2 rounded-md border border-border bg-card/40 px-6 py-3 text-sm font-semibold text-foreground transition-smooth hover:border-primary/50"
@@ -251,7 +251,7 @@ const Landing = () => {
                 </ul>
 
                 <Link
-                  to="/auth"
+                  to="/pricing"
                   className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-6 py-3.5 text-sm font-bold text-primary-foreground shadow-glow transition-smooth hover:brightness-110"
                 >
                   Criar minha conta agora <ArrowRight className="h-4 w-4" />
@@ -305,7 +305,7 @@ const Landing = () => {
             </p>
             <div className="mt-8">
               <Link
-                to="/auth"
+                to="/pricing"
                 className="inline-flex items-center gap-2 rounded-md bg-primary px-8 py-4 text-base font-bold text-primary-foreground shadow-glow transition-smooth hover:brightness-110"
               >
                 Começar agora — R$ 47/mês <ArrowRight className="h-5 w-5" />

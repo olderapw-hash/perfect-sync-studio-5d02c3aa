@@ -734,6 +734,17 @@ export const EquipmentTab = ({ template, onChange }: Props) => {
           upsertAt(pickerPos, { ...existing, id: meta.id, count: Math.max(1, existing.count) });
         }}
       />
+
+      <ClearSectionDialog
+        open={clearOpen}
+        onOpenChange={setClearOpen}
+        section="equipment.items"
+        preview={summarizeSection(items, { hasMoney: false })}
+        onConfirm={() => {
+          onChange({ ...template, equipment: { items: clearItems(items) } });
+          toast.success("Equipamentos limpos");
+        }}
+      />
     </div>
   );
 };

@@ -113,6 +113,22 @@ export const InventoryGrid = ({ title, items, onChange, gridSize }: Props) => {
               onRemove={() => removeAt(editing.pos)}
             />
           )}
+          <div className="flex justify-end gap-2 border-t border-border pt-3">
+            <button
+              type="button"
+              onClick={() => setEditingPos(null)}
+              className="inline-flex items-center gap-2 rounded-md border border-border bg-card/60 px-4 py-2 text-sm transition-smooth hover:border-primary/50"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditingPos(null)}
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-glow transition-smooth hover:brightness-110"
+            >
+              Salvar
+            </button>
+          </div>
         </DialogContent>
       </Dialog>
     </section>

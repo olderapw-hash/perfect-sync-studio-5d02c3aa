@@ -438,6 +438,30 @@ export const ClsconfigEditor = ({ entry, allEntries = [] }: Props) => {
         result={checklistResult}
         onClose={() => setChecklistResult(null)}
       />
+
+      <PresetsDialog
+        open={presetsOpen}
+        onOpenChange={setPresetsOpen}
+        currentTemplate={template}
+        currentRoleid={entry.template.roleid}
+        currentClassName={template.summary.class_name}
+        onApply={setTemplate}
+      />
+
+      <BulkApplyDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        sourceEntry={entry}
+        currentTemplate={template}
+        allEntries={allEntries}
+      />
+
+      <CompareClsDialog
+        open={compareOpen}
+        onOpenChange={setCompareOpen}
+        entries={allEntries}
+        initialKey={entry.key_hex}
+      />
     </div>
   );
 };

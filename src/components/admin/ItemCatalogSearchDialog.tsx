@@ -34,7 +34,13 @@ export const ItemCatalogSearchDialog = ({ open, onOpenChange, onPick }: Props) =
   useEffect(() => {
     if (!open || endpointMissing) return;
     const q = query.trim();
-    if (q.length < 2) {
+    if (q.length < 1) {
+      setItems([]);
+      return;
+    }
+    // ID puro → busca exata por id; senão busca textual (mín. 2 chars).
+    const isIdOnly = /^\d+$/.test(q);
+    if (!isIdOnly && q.length < 2) {
       setItems([]);
       return;
     }
@@ -42,7 +48,9 @@ export const ItemCatalogSearchDialog = ({ open, onOpenChange, onPick }: Props) =
       setLoading(true);
       setError(null);
       try {
-        const res = await pwApi.getItemCatalog({ q, limit: 50 });
+        const res = isIdOnly
+          ? await pwApi.getItemCatalog({ id: q, limit: 1 })
+          : await pwApi.getItemCatalog({ q, limit: 20 });
         setItems(Array.isArray(res?.items) ? res.items : []);
       } catch (e) {
         if (e instanceof EndpointMissingError) {
@@ -60,7 +68,13 @@ export const ItemCatalogSearchDialog = ({ open, onOpenChange, onPick }: Props) =
 
   const handlePick = (item: CatalogItem) => {
     onPick?.(item);
-    toast.success(`Item selecionado: ${item.name} (id ${item.id})`);
+    if (item.source === "fallback_id") {
+      toast.warning(
+        `Item ${item.id} encontrado por fallback; nome/dados avançados não vieram do catálogo.`,
+      );
+    } else {
+      toast.success(`Item selecionado: ${item.name} (id ${item.id})`);
+    }
     onOpenChange(false);
   };
 

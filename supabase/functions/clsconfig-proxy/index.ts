@@ -8,6 +8,13 @@
 //
 // Whitelist de actions extras (Lote 3): getItemCatalog, listBackups,
 // restoreBackup, saveRoleEditable. Tudo fora da whitelist é rejeitado.
+//
+// AUTH: o config.toml ainda usa verify_jwt = false porque precisamos
+// devolver erros customizados (CORS, JSON), então validamos o JWT em
+// código + checamos o papel `admin` em `user_roles` antes de qualquer
+// chamada upstream. Sem admin → 401/403, sem segredo vazado.
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,10 +31,67 @@ const ALLOWED_ACTIONS = new Set([
   "saveRoleEditable",
 ]);
 
+function jsonError(message: string, status: number): Response {
+  return new Response(
+    JSON.stringify({ success: false, error: message }),
+    { status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+  );
+}
+
+/**
+ * Valida o JWT do chamador e exige `admin` em `public.user_roles`.
+ * Retorna `null` se autorizado, ou uma `Response` de erro caso contrário.
+ */
+async function requireAdmin(req: Request): Promise<Response | null> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return jsonError("Unauthorized", 401);
+  }
+  const token = authHeader.slice("Bearer ".length).trim();
+  if (!token) return jsonError("Unauthorized", 401);
+
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+  const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    return jsonError("Auth misconfigured", 500);
+  }
+
+  // Cliente atado ao token do usuário — RLS de `user_roles` garante que
+  // só veja a própria linha (ou todas, se já for admin). Em qualquer caso,
+  // se houver linha com role='admin' para o user.id, o acesso é liberado.
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: authHeader } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const { data: userRes, error: userErr } = await supabase.auth.getUser(token);
+  if (userErr || !userRes?.user) {
+    return jsonError("Unauthorized", 401);
+  }
+
+  const { data: roleRow, error: roleErr } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userRes.user.id)
+    .eq("role", "admin")
+    .maybeSingle();
+  if (roleErr) {
+    console.error("[clsconfig-proxy] role lookup error", roleErr.message);
+    return jsonError("Forbidden", 403);
+  }
+  if (!roleRow) return jsonError("Forbidden: admin role required", 403);
+
+  return null;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
+
+  // ⚠️ Auth GLOBAL: nenhuma rota desta função pode rodar sem admin.
+  const denied = await requireAdmin(req);
+  if (denied) return denied;
 
   const url = new URL(req.url);
   const segments = url.pathname.split("/").filter(Boolean);

@@ -52,9 +52,9 @@ export const StatusTab = ({ template, onChange }: Props) => {
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <NumField label="World tag" value={s.worldtag} onChange={(v) => onChange(setStatus(template, { worldtag: v }))} />
-          <NumField label="Pos X" value={s.posx} onChange={(v) => onChange(setStatus(template, { posx: v }))} />
-          <NumField label="Pos Y" value={s.posy} onChange={(v) => onChange(setStatus(template, { posy: v }))} />
-          <NumField label="Pos Z" value={s.posz} onChange={(v) => onChange(setStatus(template, { posz: v }))} />
+          <NumField label="Pos X" value={s.posx} step="any" onChange={(v) => onChange(setStatus(template, { posx: v }))} />
+          <NumField label="Pos Y" value={s.posy} step="any" onChange={(v) => onChange(setStatus(template, { posy: v }))} />
+          <NumField label="Pos Z" value={s.posz} step="any" onChange={(v) => onChange(setStatus(template, { posz: v }))} />
           <NumField label="Storesize" value={s.storesize} onChange={(v) => onChange(setStatus(template, { storesize: v }))} />
           <NumField label="Charactermode" value={s.charactermode} onChange={(v) => onChange(setStatus(template, { charactermode: v }))} />
         </div>

@@ -23,27 +23,6 @@ interface Props {
  * As pos do fashion seguem a mesma ordem do equipamento equivalente
  * (cliente PW armazena roupa em pos = equipPos + 16).
  */
-const NORMAL_LEFT: { pos: number; label: string }[] = [
-  { pos: 0, label: "Capacete" },
-  { pos: 1, label: "Colar" },
-  { pos: 2, label: "Armadura" },
-  { pos: 3, label: "Cinto" },
-];
-const NORMAL_RIGHT: { pos: number; label: string }[] = [
-  { pos: 12, label: "Voadora" },
-  { pos: 10, label: "Capa" },
-  { pos: 13, label: "Talismã" },
-  { pos: 4,  label: "Calça" },
-];
-const NORMAL_BOTTOM: { pos: number; label: string }[] = [
-  { pos: 8,  label: "Arma" },
-  { pos: 5,  label: "Botas" },
-  { pos: 9,  label: "Sub-arma" },
-  { pos: 6,  label: "Anel E" },
-  { pos: 11, label: "Pet" },
-  { pos: 7,  label: "Anel D" },
-];
-
 // Layout PW BR — slots dispostos em duas colunas duplas ao redor do retrato.
 // Topo: capacete centralizado.
 const NORMAL_TOP: { pos: number; label: string } = { pos: 0, label: "ELMO" };

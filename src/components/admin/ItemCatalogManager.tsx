@@ -363,13 +363,34 @@ export const ItemCatalogManager = () => {
             </label>
           </div>
 
+          {/* Upload via ZIP — descompacta no browser e adiciona à fila */}
+          <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3">
+            <div className="mb-1 flex items-center gap-2">
+              <FileArchive className="h-4 w-4 text-primary" />
+              <span className="uppercase-label">Importar pasta de ícones via ZIP</span>
+            </div>
+            <p className="mb-2 text-[11px] text-muted-foreground">
+              Compacte a pasta de ícones em <code className="font-mono">.zip</code> e mande aqui.
+              O painel descompacta localmente, achata as subpastas e adiciona cada{" "}
+              <code className="font-mono">.jpg</code>/<code className="font-mono">.png</code> à fila acima.
+            </p>
+            <input
+              ref={zipInputRef}
+              type="file"
+              accept=".zip,application/zip,application/x-zip-compressed"
+              disabled={busy}
+              onChange={(e) => void handleZipPicked(e.target.files?.[0] ?? null)}
+              className="block w-full text-xs file:mr-2 file:rounded file:border-0 file:bg-primary file:px-2 file:py-1 file:text-primary-foreground"
+            />
+          </div>
+
           {progress && (
             <div className="rounded-md border border-border bg-background/60 p-2 font-mono text-[11px]">
-              Enviando ícones: {progress.done}/{progress.total}
+              {progress.label ?? "Enviando ícones"}: {progress.done}/{progress.total}
               <div className="mt-1 h-1.5 overflow-hidden rounded bg-muted/40">
                 <div
                   className="h-full bg-primary transition-all"
-                  style={{ width: `${(progress.done / progress.total) * 100}%` }}
+                  style={{ width: `${(progress.done / Math.max(progress.total, 1)) * 100}%` }}
                 />
               </div>
             </div>

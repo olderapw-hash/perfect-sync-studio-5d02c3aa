@@ -40,6 +40,7 @@ const Admin = () => {
   const { data, raw, loading, error, reload } = useClsconfig();
   const { user, signOut, isSuperadmin } = useAuth();
   const { settings } = useAppSettings();
+  const { can } = useServerPermissions();
   const [selected, setSelected] = useState<string | null>(null);
   const [mode, setMode] = useState<AdminMode>("template");
   const [backupsOpen, setBackupsOpen] = useState(false);

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   AlertCircle,
   Database,
@@ -11,6 +12,7 @@ import {
   Search,
   UserCog,
   FileCog,
+  Users as UsersIcon,
   Settings as SettingsIcon,
 } from "lucide-react";
 import { useClsconfig } from "@/hooks/useClsconfig";
@@ -140,6 +142,16 @@ const Admin = () => {
                   {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
                   Recarregar
                 </button>
+              )}
+              {isSuperadmin && (
+                <Link
+                  to="/admin/users"
+                  className="inline-flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-500 transition-smooth hover:bg-amber-500/20"
+                  title="Gestão de usuários (superadmin)"
+                >
+                  <UsersIcon className="h-3.5 w-3.5" />
+                  Usuários
+                </Link>
               )}
               {user && (
                 <span className="hidden text-[11px] text-muted-foreground sm:inline" title={user.email ?? ""}>

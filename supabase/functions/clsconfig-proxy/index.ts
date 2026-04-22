@@ -20,6 +20,7 @@ const ALLOWED_ACTIONS = new Set([
   "getItemCatalog",
   "listBackups",
   "restoreBackup",
+  "getRoleEditable",
   "saveRoleEditable",
 ]);
 

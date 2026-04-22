@@ -94,46 +94,63 @@ em segundos. `size` em bytes (best-effort).
 
 ---
 
-## 2. `POST ?action=restoreBackup` — feature 5 (Restaurar)
+## 2. `POST ?action=restoreBackup` — feature 5 (Restaurar) ✅ implementado
 
+Restaura um backup `role_json` previamente gerado. Apenas `type=role_json` é
+restaurável no momento (`clsconfig_file` e `export_log` ficam desabilitados
+no frontend).
 
-Restaura um backup criado por `saveClsconfigTemplate`. O endpoint atual já
-gera os arquivos em `backups/clsconfig/...` — esta rota faz o caminho inverso.
-
-**Request body:**
+**Request body — dry_run (validação prévia):**
 
 ```json
 {
-  "roleid": 31,
-  "backup_role_json": "/var/www/html/apicls/backups/clsconfig/roleid-31-20260422-002129-2d3bea53.json",
-  "backup_clsconfig_file": "/var/www/html/apicls/backups/clsconfig/files/clsconfig-roleid-31-20260422-002129-34ced325"
+  "type": "role_json",
+  "name": "roleid-31-20260422-002129-2d3bea53.json",
+  "dry_run": true
 }
 ```
 
-Pelo menos UM dos dois caminhos é obrigatório. Se vierem os dois, restaurar
-ambos atomicamente (ou nenhum).
+**Request body — restore real (exige confirm string):**
 
-**Response 200 (sucesso):**
+```json
+{
+  "type": "role_json",
+  "name": "roleid-31-20260422-002129-2d3bea53.json",
+  "confirm": "RESTORE_ROLE_JSON"
+}
+```
+
+**Response 200 (dry_run):**
+
+```json
+{ "success": true, "dry_run": true, "roleid": 31, "source": {}, "target": {} }
+```
+
+**Response 200 (real):**
 
 ```json
 {
   "success": true,
   "roleid": 31,
   "restored": {
-    "role_json": true,
-    "clsconfig_file": true
-  },
-  "verified": true
+    "saved": {
+      "verified": true,
+      "backups": {
+        "role_json": { "file": "/var/www/.../backups/clsconfig/roleid-31-...json" },
+        "clsconfig_file": { "file": "/var/www/.../backups/clsconfig/files/clsconfig-roleid-31-..." }
+      },
+      "export": { "log_file": "/var/www/.../backups/clsconfig/exports/exportclsconfig-...log" }
+    }
+  }
 }
 ```
 
-**Response 4xx (erro):** `{ "success": false, "error": "Backup inexistente" }`.
+**Response 4xx:** `{ "success": false, "error": "Backup inexistente" }`.
 
-Regras:
+Regras (server-side):
 
-- Validar que `roleid` ∈ `{16,17,18,19,20,21,22,23,24,27,28,31}`.
-- Antes de aplicar o restore, **gerar um novo backup** do estado atual e
-  retornar os caminhos em `pre_restore_backups` (mesmo shape de `saveClsconfigTemplate`).
+- Antes de aplicar, gerar novo backup do estado atual (aparece em `restored.saved.backups`).
+- Disparar `exportclsconfig` automaticamente após o write no `gamedbd`.
 - `verified: true` apenas se a releitura do `gamedbd` bater com o conteúdo do backup.
 
 ---

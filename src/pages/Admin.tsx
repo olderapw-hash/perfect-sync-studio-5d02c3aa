@@ -192,7 +192,7 @@ const Admin = () => {
         </div>
       </div>
 
-      <BackupsDialog open={backupsOpen} onOpenChange={setBackupsOpen} />
+      <BackupsDialog open={backupsOpen} onOpenChange={setBackupsOpen} onRestored={reload} />
       <ItemCatalogSearchDialog open={searchItemOpen} onOpenChange={setSearchItemOpen} />
     </SidebarProvider>
   );

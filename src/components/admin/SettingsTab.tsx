@@ -33,6 +33,8 @@ export const SettingsTab = () => {
   const { isSuperadmin, user } = useAuth();
   const { reload: reloadSettings } = useAppSettings();
   const { tenant, refetch: refetchTenant } = useTenant();
+  const { can } = useServerPermissions();
+  const canExport = can("manage_servers") || isSuperadmin;
   const [form, setForm] = useState<SettingsForm>(EMPTY);
   const [originalSecret, setOriginalSecret] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -147,6 +149,10 @@ export const SettingsTab = () => {
   };
 
   const downloadApiCls = async () => {
+    if (!canExport) {
+      toast({ title: "Acesso negado", description: NO_EXPORT_TIP, variant: "destructive" });
+      return;
+    }
     if (!form.pw_api_secret.trim()) {
       toast({
         title: "Defina o secret primeiro",

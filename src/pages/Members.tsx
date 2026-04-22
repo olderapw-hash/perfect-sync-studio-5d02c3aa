@@ -133,10 +133,10 @@ const Members = () => {
     const defaults = await supabase.rpc("default_permissions_for_role" as never, {
       _role: newRole,
     } as never);
-    const newPerms = (defaults.data as object | null) ?? m.permissions;
+    const newPerms = (defaults.data ?? m.permissions) as Record<string, boolean>;
     const { error } = await supabase
       .from("server_members")
-      .update({ role: newRole, permissions: newPerms })
+      .update({ role: newRole, permissions: newPerms as unknown as never })
       .eq("id", m.id);
     if (error) {
       toast.error("Erro ao atualizar: " + error.message);

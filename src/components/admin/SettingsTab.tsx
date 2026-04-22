@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, Save, Server, Shield, AlertTriangle, Eye, EyeOff } from "lucide-react";
+import { Loader2, Save, Server, Shield, AlertTriangle, Eye, EyeOff, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
@@ -35,6 +35,7 @@ export const SettingsTab = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   // Superadmin edits the global app_settings; everyone else edits their own tenant row.
   const editingTenant = !isSuperadmin;
@@ -142,6 +143,53 @@ export const SettingsTab = () => {
     await reloadSettings();
   };
 
+  const downloadApiCls = async () => {
+    if (!form.pw_api_secret.trim()) {
+      toast({
+        title: "Defina o secret primeiro",
+        description: "Gere ou cole um secret e salve antes de baixar o arquivo.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (form.pw_api_secret.trim() !== originalSecret) {
+      toast({
+        title: "Salve as alterações primeiro",
+        description: "O download usa o secret salvo no banco. Clique em Salvar antes.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setDownloading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("download-api-cls", {
+        method: "GET",
+      });
+      if (error) throw error;
+      // Edge function returns raw PHP text. supabase-js parses it as Blob/text.
+      const phpText =
+        typeof data === "string" ? data : data instanceof Blob ? await data.text() : String(data);
+      const blob = new Blob([phpText], { type: "application/x-httpd-php" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "api_cls.php";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast({
+        title: "Download iniciado",
+        description: "Suba o arquivo pra sua VPS — o secret já vem embutido.",
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Falha ao gerar arquivo";
+      toast({ title: "Erro no download", description: msg, variant: "destructive" });
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-12">
@@ -229,6 +277,36 @@ export const SettingsTab = () => {
               Mesmo valor da variável <code className="font-mono">$SECRET</code> dentro do <code className="font-mono">api_cls.php</code> da sua VPS.
             </p>
           </div>
+
+          {editingTenant && (
+            <div className="rounded-md border border-primary/30 bg-primary/5 p-4">
+              <h4 className="mb-1 flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-foreground">
+                <Download className="h-3.5 w-3.5 text-primary" /> Baixar api_cls.php
+              </h4>
+              <p className="mb-3 text-[11px] text-muted-foreground">
+                Gera o arquivo já com o <strong>seu secret embutido</strong> — é só subir pra sua VPS,
+                sem precisar editar nada por dentro.
+              </p>
+              <button
+                type="button"
+                onClick={downloadApiCls}
+                disabled={downloading || !originalSecret}
+                className="inline-flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 px-4 py-2 text-xs font-semibold text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {downloading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Download className="h-3.5 w-3.5" />
+                )}
+                Baixar api_cls.php personalizado
+              </button>
+              {!originalSecret && (
+                <p className="mt-2 text-[11px] text-destructive">
+                  Defina e salve o secret antes de baixar.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </section>
 

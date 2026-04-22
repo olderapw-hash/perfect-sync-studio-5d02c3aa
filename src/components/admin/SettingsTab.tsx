@@ -36,6 +36,11 @@ export const SettingsTab = () => {
 
   useEffect(() => {
     (async () => {
+      // Only superadmin can read app_settings (RLS-enforced — table contains the API secret).
+      if (!isSuperadmin) {
+        setLoading(false);
+        return;
+      }
       const { data, error } = await supabase
         .from("app_settings")
         .select("*")
@@ -59,7 +64,7 @@ export const SettingsTab = () => {
       }
       setLoading(false);
     })();
-  }, []);
+  }, [isSuperadmin]);
 
   const onSave = async () => {
     if (!isSuperadmin) {

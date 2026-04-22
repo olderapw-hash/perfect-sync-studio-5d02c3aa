@@ -70,6 +70,19 @@ const extractPath = (obj: unknown, path: string[]): string | undefined => {
   return typeof cur === "string" ? cur : undefined;
 };
 
+/** Lê um caminho aninhado e retorna o valor bruto (não força string). */
+const extractAny = (obj: unknown, path: string[]): unknown => {
+  let cur: unknown = obj;
+  for (const key of path) {
+    if (cur && typeof cur === "object" && key in (cur as Record<string, unknown>)) {
+      cur = (cur as Record<string, unknown>)[key];
+    } else {
+      return undefined;
+    }
+  }
+  return cur;
+};
+
 export const ClsconfigEditor = ({ entry, allEntries = [] }: Props) => {
   const [template, setTemplate] = useState<ClsTemplate>(entry.template);
   const [tab, setTab] = useState<TabKey>("base");
@@ -251,17 +264,31 @@ export const ClsconfigEditor = ({ entry, allEntries = [] }: Props) => {
       entry.template = freshEntry.template;
       setTemplate(freshEntry.template);
 
-      // Checklist pós-save — extrai caminhos de backup/export da response do save.
+      // Checklist pós-save — lê de response.saved.* (estrutura real da API).
+      // Aceita tanto saved.backup.file quanto saved.backups.role_json.file.
+      const savedOk = Boolean(extractAny(lastResponse, ["success"]));
+      const verifiedOk =
+        extractAny(lastResponse, ["saved", "verified"]) === true ||
+        extractAny(lastResponse, ["saved", "role"]) != null;
+      const backupRoleJson =
+        extractPath(lastResponse, ["saved", "backup", "file"]) ??
+        extractPath(lastResponse, ["saved", "backups", "role_json", "file"]);
+      const backupClsconfigFile =
+        extractPath(lastResponse, ["saved", "clsconfig_file_backup", "file"]) ??
+        extractPath(lastResponse, ["saved", "backups", "clsconfig_file", "file"]);
+      const exportLogFile = extractPath(lastResponse, ["saved", "export", "log_file"]);
+      const exportScheduled =
+        extractAny(lastResponse, ["saved", "export", "scheduled"]) === true ||
+        Boolean(exportLogFile);
+
       setPreviewOpen(false);
       setChecklistResult({
-        saved: true,
-        verified: true,
-        backupRoleJson: extractPath(lastResponse, ["backups", "role_json", "file"]) ??
-          extractPath(lastResponse, ["backup_role_json"]),
-        backupClsconfigFile: extractPath(lastResponse, ["backups", "clsconfig_file", "file"]) ??
-          extractPath(lastResponse, ["backup_clsconfig_file"]),
-        exportLogFile: extractPath(lastResponse, ["export", "log_file"]) ??
-          extractPath(lastResponse, ["export_log_file"]),
+        saved: savedOk,
+        verified: verifiedOk,
+        backupRoleJson,
+        backupClsconfigFile,
+        exportLogFile,
+        exportScheduled,
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Erro desconhecido ao salvar";
@@ -281,8 +308,12 @@ export const ClsconfigEditor = ({ entry, allEntries = [] }: Props) => {
         saved: false,
         verified: false,
         error: msg,
-        backupRoleJson: extractPath(lastResponse, ["backups", "role_json", "file"]) ?? undefined,
-        backupClsconfigFile: extractPath(lastResponse, ["backups", "clsconfig_file", "file"]) ?? undefined,
+        backupRoleJson:
+          extractPath(lastResponse, ["saved", "backup", "file"]) ??
+          extractPath(lastResponse, ["saved", "backups", "role_json", "file"]),
+        backupClsconfigFile:
+          extractPath(lastResponse, ["saved", "clsconfig_file_backup", "file"]) ??
+          extractPath(lastResponse, ["saved", "backups", "clsconfig_file", "file"]),
       });
     } finally {
       setSaving(false);

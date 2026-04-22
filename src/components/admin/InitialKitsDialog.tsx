@@ -662,7 +662,7 @@ const KitApplyView = ({
       </div>
 
       {classMismatch && (
-        <div className="flex items-start gap-2 rounded-md border border-yellow-500/40 bg-yellow-500/5 p-2 text-xs text-yellow-700 dark:text-yellow-400">
+        <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/5 p-2 text-xs text-warning">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <span>
             Classe alvo do kit (cls {kit.target_cls}) é diferente da classe atual (cls{" "}

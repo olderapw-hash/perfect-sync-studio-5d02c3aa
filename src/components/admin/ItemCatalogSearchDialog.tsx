@@ -34,7 +34,13 @@ export const ItemCatalogSearchDialog = ({ open, onOpenChange, onPick }: Props) =
   useEffect(() => {
     if (!open || endpointMissing) return;
     const q = query.trim();
-    if (q.length < 2) {
+    if (q.length < 1) {
+      setItems([]);
+      return;
+    }
+    // ID puro → busca exata por id; senão busca textual (mín. 2 chars).
+    const isIdOnly = /^\d+$/.test(q);
+    if (!isIdOnly && q.length < 2) {
       setItems([]);
       return;
     }
@@ -42,7 +48,9 @@ export const ItemCatalogSearchDialog = ({ open, onOpenChange, onPick }: Props) =
       setLoading(true);
       setError(null);
       try {
-        const res = await pwApi.getItemCatalog({ q, limit: 50 });
+        const res = isIdOnly
+          ? await pwApi.getItemCatalog({ id: q, limit: 1 })
+          : await pwApi.getItemCatalog({ q, limit: 20 });
         setItems(Array.isArray(res?.items) ? res.items : []);
       } catch (e) {
         if (e instanceof EndpointMissingError) {
@@ -60,12 +68,18 @@ export const ItemCatalogSearchDialog = ({ open, onOpenChange, onPick }: Props) =
 
   const handlePick = (item: CatalogItem) => {
     onPick?.(item);
-    toast.success(`Item selecionado: ${item.name} (id ${item.id})`);
+    if (item.source === "fallback_id") {
+      toast.warning(
+        `Item ${item.id} encontrado por fallback; nome/dados avançados não vieram do catálogo.`,
+      );
+    } else {
+      toast.success(`Item selecionado: ${item.name} (id ${item.id})`);
+    }
     onOpenChange(false);
   };
 
   const placeholder = useMemo(
-    () => (endpointMissing ? "Catálogo desabilitado" : "Digite ID exato ou parte do nome (mín. 2 chars)"),
+    () => (endpointMissing ? "Catálogo desabilitado" : "Digite ID exato (números) ou nome (mín. 2 chars)"),
     [endpointMissing],
   );
 
@@ -120,9 +134,11 @@ export const ItemCatalogSearchDialog = ({ open, onOpenChange, onPick }: Props) =
             <div className="max-h-[50vh] overflow-y-auto rounded-md border border-border">
               {items.length === 0 && !loading ? (
                 <p className="p-4 text-center text-xs text-muted-foreground">
-                  {query.trim().length < 2
-                    ? "Digite pelo menos 2 caracteres."
-                    : "Nenhum item encontrado."}
+                  {query.trim().length === 0
+                    ? "Digite um ID ou parte do nome."
+                    : !/^\d+$/.test(query.trim()) && query.trim().length < 2
+                      ? "Digite pelo menos 2 caracteres."
+                      : "Nenhum item encontrado."}
                 </p>
               ) : (
                 <ul className="divide-y divide-border">
@@ -137,6 +153,14 @@ export const ItemCatalogSearchDialog = ({ open, onOpenChange, onPick }: Props) =
                           {it.id}
                         </span>
                         <span className="flex-1 truncate">{it.name}</span>
+                        {it.source === "fallback_id" && (
+                          <span
+                            title="ID encontrado por fallback; nome/dados avançados não vieram do catálogo."
+                            className="rounded border border-warning/40 bg-warning/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-warning"
+                          >
+                            fallback
+                          </span>
+                        )}
                         {it.tier != null && it.tier > 0 && (
                           <span className="text-[11px] text-muted-foreground">tier {it.tier}</span>
                         )}

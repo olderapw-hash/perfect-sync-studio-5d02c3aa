@@ -3,13 +3,29 @@
 // Cada action tem o contrato documentado em docs/api-contract.md.
 import { supabase } from "@/integrations/supabase/client";
 
+export interface CatalogItemDefaults {
+  count?: number;
+  max_count?: number;
+  proctype?: number;
+  expire_date?: number;
+  guid1?: number;
+  guid2?: number;
+  mask?: number;
+  data?: string;
+  [k: string]: unknown;
+}
+
 export interface CatalogItem {
   id: number;
   name: string;
   icon_path?: string;
   tier?: number;
   stack_max?: number;
+  max_count?: number;
   type?: string;
+  /** Marca quando o PHP devolveu o item via fallback de ID (sem metadados completos). */
+  source?: "catalog" | "fallback_id" | string;
+  defaults?: CatalogItemDefaults;
 }
 
 export interface ItemCatalogResponse {
@@ -190,8 +206,9 @@ async function callAction<T>(
 }
 
 export const pwApi = {
-  getItemCatalog(params: { q?: string; limit?: number; offset?: number } = {}) {
+  getItemCatalog(params: { q?: string; id?: number | string; limit?: number; offset?: number } = {}) {
     const query: Record<string, string | number> = {};
+    if (params.id != null && params.id !== "") query.id = params.id;
     if (params.q) query.q = params.q;
     if (params.limit != null) query.limit = params.limit;
     if (params.offset != null) query.offset = params.offset;

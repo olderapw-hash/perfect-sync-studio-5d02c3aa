@@ -378,6 +378,20 @@ export const ClsconfigEditor = ({ entry }: Props) => {
         {tab === "equipment" && <EquipmentTab template={template} onChange={setTemplate} />}
         {tab === "storehouse" && <StorehouseTab template={template} onChange={setTemplate} />}
       </div>
+
+      <SavePreviewDialog
+        open={previewOpen}
+        template={template}
+        saving={saving}
+        onCancel={() => setPreviewOpen(false)}
+        onConfirm={runSave}
+      />
+
+      <SaveChecklistDialog
+        open={checklistResult != null}
+        result={checklistResult}
+        onClose={() => setChecklistResult(null)}
+      />
     </div>
   );
 };

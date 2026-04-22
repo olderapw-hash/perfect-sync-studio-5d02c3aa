@@ -8,6 +8,9 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { buildClassIconUrl } from "@/lib/pwIcons";
 import { getClassInfo, getInitials } from "@/lib/pwClasses";
+import { useCharacterPhoto } from "@/hooks/useCharacterPhoto";
+import { uploadCharacterPhoto, uploadClassPhoto, removeCharacterPhoto } from "@/lib/photos";
+import { PhotoUploadButton } from "./PhotoUploadButton";
 
 interface Props {
   template: ClsTemplate;

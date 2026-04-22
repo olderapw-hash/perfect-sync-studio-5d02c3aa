@@ -92,6 +92,8 @@ type RestoreStage =
 
 export const BackupsDialog = ({ open, onOpenChange, onRestored }: Props) => {
   const seen = useSeenBackups();
+  const { can } = useServerPermissions();
+  const canRestore = can("restore_backup");
   const [vps, setVps] = useState<VpsBuckets>(emptyBuckets);
   const [loading, setLoading] = useState(false);
   const [endpointMissing, setEndpointMissing] = useState(false);
@@ -157,6 +159,10 @@ export const BackupsDialog = ({ open, onOpenChange, onRestored }: Props) => {
 
   // ----- Restore real (apenas role_json) -----
   const beginRestore = async (backup: BackupRecord) => {
+    if (!canRestore) {
+      toast.error("Acesso negado", { description: NO_RESTORE_TIP });
+      return;
+    }
     if (backup.type !== "role_json") {
       handleRestoreUnsupported(backup.type);
       return;

@@ -273,6 +273,26 @@ export const InventoryTab = ({ template, onChange }: Props) => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Limpar seção (preview + confirmação forte) */}
+      <ClearSectionDialog
+        open={clearOpen}
+        onOpenChange={setClearOpen}
+        section="inventory.items"
+        preview={summarizeSection(inv.items, {
+          capacity: inv.capacity,
+          money: inv.money,
+          hasMoney: true,
+        })}
+        onConfirm={({ clearMoney }) => {
+          const cleared = clearItems(inv.items);
+          onChange({
+            ...template,
+            inventory: { ...inv, items: cleared, money: clearMoney ? 0 : inv.money },
+          });
+          toast.success(`Inventário limpo${clearMoney ? " (incluindo dinheiro)" : ""}`);
+        }}
+      />
     </div>
   );
 };

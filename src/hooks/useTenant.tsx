@@ -36,10 +36,16 @@ export function useTenant() {
       return;
     }
     setLoading(true);
+    // Multi-server: pode existir mais de um tenant por owner. Pegamos o ativo;
+    // se nenhum estiver ativo, caímos no mais recente para não quebrar guards
+    // legados que esperam um único tenant.
     const { data } = await supabase
       .from("tenants")
       .select(TENANT_COLUMNS)
       .eq("owner_id", session.user.id)
+      .order("is_active", { ascending: false })
+      .order("updated_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
     setTenant(data as Tenant | null);
     setLoading(false);

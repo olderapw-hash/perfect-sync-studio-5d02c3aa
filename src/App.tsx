@@ -17,6 +17,7 @@ import CheckoutSuccess from "./pages/CheckoutSuccess.tsx";
 import Onboarding from "./pages/Onboarding.tsx";
 import Servers from "./pages/Servers.tsx";
 import Install from "./pages/Install.tsx";
+import Audit from "./pages/Audit.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -68,6 +69,14 @@ const App = () => (
                   }
                 />
                 <Route path="/install" element={<Install />} />
+                <Route
+                  path="/audit"
+                  element={
+                    <ProtectedRoute requireAdmin>
+                      <Audit />
+                    </ProtectedRoute>
+                  }
+                />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

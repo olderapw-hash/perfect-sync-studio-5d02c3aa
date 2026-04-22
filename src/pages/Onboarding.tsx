@@ -1,102 +1,175 @@
-import { useEffect, useState } from "react";
+// Onboarding multi-servidor.
+//
+// Fluxo:
+//   1) Usuário cria/loga (já tratado fora — chega aqui logado).
+//   2) Se já tem servidor ATIVO -> manda direto pro /admin.
+//   3) Se tem servidores mas nenhum ativo -> pede para escolher qual ativar.
+//   4) Se NÃO tem servidor -> wizard:
+//        a) preenche nome + URL + secret (gera/cole)
+//        b) abre /install com esse servidor já selecionado
+//        c) clica "Já instalei, testar conexão"
+//        d) sucesso -> set_active_tenant e vai pro /admin
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, CheckCircle2, Copy, Download, Loader2, Server, Shield } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Copy,
+  ExternalLink,
+  Loader2,
+  Power,
+  Server,
+  Shield,
+  Wifi,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
-import { useTenant, fetchTenantSecret } from "@/hooks/useTenant";
+import { useServers } from "@/hooks/useServers";
+import { testServerConnection } from "@/lib/serverConnection";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
+
+type Step = "form" | "install" | "test";
 
 const Onboarding = () => {
   const navigate = useNavigate();
   const { session, loading: authLoading, isAdmin, isSuperadmin } = useAuth();
   const { isActive, loading: subLoading } = useSubscription();
-  const { tenant, loading: tenantLoading, refetch } = useTenant();
-  // Manually-approved admins (and the superadmin) skip the paid-subscription gate.
+  const { servers, active, loading: serversLoading, refetch, setActive } = useServers();
   const bypassPayment = isAdmin || isSuperadmin;
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  // Estado do wizard de criação.
+  const [step, setStep] = useState<Step>("form");
   const [serverName, setServerName] = useState("");
   const [apiUrl, setApiUrl] = useState("");
   const [apiSecret, setApiSecret] = useState("");
   const [iconBase, setIconBase] = useState("");
+  const [createdId, setCreatedId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [activatingId, setActivatingId] = useState<string | null>(null);
 
+  // Redirects de fluxo.
   useEffect(() => {
-    if (tenant) {
-      setServerName(tenant.server_name || "");
-      setApiUrl(tenant.pw_api_base_url || "");
-      setIconBase(tenant.icon_base_url || "");
-    }
-  }, [tenant]);
-
-  // Fetch the API secret separately and only when needed (not stored in shared state).
-  useEffect(() => {
-    if (!session?.user?.id || !tenant) return;
-    fetchTenantSecret(session.user.id).then((secret) => {
-      if (secret) setApiSecret(secret);
-    });
-  }, [session?.user?.id, tenant]);
-
-  // Redirect rules
-  useEffect(() => {
-    if (authLoading || subLoading) return;
+    if (authLoading || subLoading || serversLoading) return;
     if (!session) {
       navigate("/auth", { replace: true });
       return;
     }
     if (!isActive && !bypassPayment) {
       navigate("/pricing", { replace: true });
+      return;
     }
-  }, [authLoading, subLoading, session, isActive, bypassPayment, navigate]);
+    // Já tem ativo -> nada a fazer aqui.
+    if (active) {
+      navigate("/admin", { replace: true });
+    }
+  }, [
+    authLoading,
+    subLoading,
+    serversLoading,
+    session,
+    isActive,
+    bypassPayment,
+    active,
+    navigate,
+  ]);
 
   const generateSecret = () => {
     const arr = new Uint8Array(24);
     crypto.getRandomValues(arr);
-    const secret = Array.from(arr)
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-    setApiSecret(secret);
-    toast.success("Secret gerado! Copia e cola no api_cls.php depois.");
+    setApiSecret(
+      Array.from(arr)
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join(""),
+    );
+    toast.success("Secret gerado");
   };
 
-  const copySecret = () => {
+  const copySecret = async () => {
     if (!apiSecret) return;
-    navigator.clipboard.writeText(apiSecret);
+    await navigator.clipboard.writeText(apiSecret);
     toast.success("Secret copiado");
   };
 
-  const saveAndFinish = async () => {
+  // ===== Caso A: tem servidores mas nenhum ativo =====
+  const needsActivation = !active && servers.length > 0;
+
+  const handleActivate = async (id: string) => {
+    setActivatingId(id);
+    try {
+      await setActive(id);
+      toast.success("Servidor ativo definido");
+      navigate("/admin", { replace: true });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao ativar");
+    } finally {
+      setActivatingId(null);
+    }
+  };
+
+  // ===== Caso B: zero servidores -> wizard =====
+  const handleCreateServer = async () => {
     if (!session?.user) return;
     if (!apiUrl || !apiSecret) {
-      toast.error("Preencha URL da API e Secret antes de finalizar.");
+      toast.error("Preencha URL e secret");
       return;
     }
     setSaving(true);
-    const payload = {
-      owner_id: session.user.id,
-      server_name: serverName || "Meu Servidor PW",
-      pw_api_base_url: apiUrl.replace(/\/+$/, ""),
-      pw_api_secret: apiSecret,
-      icon_base_url: iconBase ? iconBase.replace(/\/+$/, "/") : null,
-      onboarding_completed: true,
-    };
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("tenants")
-      .upsert(payload, { onConflict: "owner_id" });
+      .insert({
+        owner_id: session.user.id,
+        server_name: serverName || "Meu Servidor PW",
+        pw_api_base_url: apiUrl.replace(/\/+$/, ""),
+        pw_api_secret: apiSecret,
+        icon_base_url: iconBase ? iconBase.replace(/\/+$/, "/") : null,
+        onboarding_completed: false,
+        is_active: true,
+      })
+      .select("id")
+      .single();
     setSaving(false);
-    if (error) {
-      toast.error("Erro ao salvar: " + error.message);
+    if (error || !data) {
+      toast.error("Erro ao criar servidor: " + (error?.message ?? "desconhecido"));
       return;
     }
+    setCreatedId(data.id);
     await refetch();
-    toast.success("Tudo certo! Bem-vindo ao seu painel.");
-    // Hard reload so every hook instance (ProtectedRoute's useTenant included)
-    // re-reads the now-completed tenant row instead of using stale state.
+    setStep("install");
+    toast.success("Servidor criado! Agora instale o api_cls.php na sua VPS.");
+  };
+
+  const handleTestAndFinish = async () => {
+    if (!createdId) return;
+    setTesting(true);
+    const r = await testServerConnection({ tenant_id: createdId });
+    setTesting(false);
+    if (!r.success) {
+      toast.error(`Falha na conexão: ${r.error ?? "erro"}`);
+      return;
+    }
+    toast.success(`Conexão OK · ${r.elapsed_ms}ms`);
+    // Marca onboarding como completo + ativa.
+    await supabase
+      .from("tenants")
+      .update({ onboarding_completed: true })
+      .eq("id", createdId);
+    try {
+      await setActive(createdId);
+    } catch {
+      /* ignore — RPC já valida ownership */
+    }
     window.location.assign("/admin");
   };
 
-  if (authLoading || subLoading || tenantLoading) {
+  const installUrl = useMemo(() => "/install", []);
+
+  if (authLoading || subLoading || serversLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -119,224 +192,253 @@ const Onboarding = () => {
       </header>
 
       <main className="mx-auto max-w-3xl px-4 py-10">
-        {/* Stepper */}
-        <div className="mb-8 flex items-center justify-between">
-          {[1, 2, 3].map((n) => (
-            <div key={n} className="flex flex-1 items-center">
-              <div
-                className={`flex h-8 w-8 items-center justify-center rounded-full border text-xs font-bold transition-smooth ${
-                  step >= n
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-card text-muted-foreground"
-                }`}
-              >
-                {step > n ? <CheckCircle2 className="h-4 w-4" /> : n}
-              </div>
-              {n < 3 && (
-                <div
-                  className={`mx-2 h-0.5 flex-1 transition-smooth ${
-                    step > n ? "bg-primary" : "bg-border"
-                  }`}
-                />
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Step 1: Welcome + download */}
-        {step === 1 && (
-          <section className="rounded-2xl border border-border bg-card/40 p-8">
-            <h1 className="text-2xl font-extrabold">Bem-vindo ao PW Admin! 🎮</h1>
-            <p className="mt-3 text-sm text-muted-foreground">
-              Em 3 passos seu painel tá rodando conectado na sua VPS. O primeiro é instalar o
-              arquivo de ponte (<code className="rounded bg-muted px-1 py-0.5">api_cls.php</code>) na
-              sua VPS — ele que faz a conexão segura entre o painel e o banco do seu servidor.
-            </p>
-
-            <div className="mt-6 rounded-xl border border-border bg-card/60 p-5">
-              <h2 className="mb-3 flex items-center gap-2 text-sm font-bold">
-                <Download className="h-4 w-4 text-primary" /> Baixe o arquivo de instalação
-              </h2>
-              <p className="mb-4 text-xs text-muted-foreground">
-                Após baixar, suba o arquivo pra uma pasta acessível via web na sua VPS (ex:
-                <code className="mx-1 rounded bg-muted px-1">/var/www/html/</code>) e abra o
-                arquivo pra colar o secret que você vai gerar no próximo passo.
-              </p>
-              <a
-                href="/api_cls.php.txt"
-                download="api_cls.php"
-                className="inline-flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 px-4 py-2 text-xs font-semibold text-primary hover:bg-primary/20"
-                onClick={(e) => {
-                  // If file doesn't exist yet, show a tip instead
-                  // Real file should be uploaded to /public/api_cls.php.txt
-                  e.preventDefault();
-                  toast.info(
-                    "Vamos te enviar o arquivo por aqui em breve. Por ora, você pode usar o api_cls.php que já está na sua VPS atual.",
-                  );
-                }}
-              >
-                <Download className="h-3.5 w-3.5" /> Baixar api_cls.php
-              </a>
-            </div>
-
-            <button
-              onClick={() => setStep(2)}
-              className="mt-6 inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-glow hover:brightness-110"
-            >
-              Próximo: gerar secret <ArrowRight className="h-4 w-4" />
-            </button>
-          </section>
-        )}
-
-        {/* Step 2: Generate secret */}
-        {step === 2 && (
-          <section className="rounded-2xl border border-border bg-card/40 p-8">
-            <h1 className="text-2xl font-extrabold">Gerar secret de acesso</h1>
-            <p className="mt-3 text-sm text-muted-foreground">
-              O secret é uma chave única que protege a comunicação entre o painel e sua VPS. Sem
-              ela, ninguém consegue acessar a API mesmo sabendo a URL.
-            </p>
-
-            <div className="mt-4 rounded-md border border-primary/30 bg-primary/5 p-3 text-xs text-foreground">
-              🔒 <strong>Dica de segurança:</strong> gere um secret <em>novo</em> agora (192 bits
-              aleatórios). Ele fica salvo só na sua conta e na sua VPS — nem outros clientes do
-              painel nem a equipe do PW Admin conseguem ler. Se desconfiar de vazamento, é só voltar
-              aqui, gerar outro e atualizar no <code className="rounded bg-muted px-1">api_cls.php</code>.
-            </div>
-            <div className="mt-6 space-y-3">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Secret da API
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={apiSecret}
-                  onChange={(e) => setApiSecret(e.target.value)}
-                  placeholder="Clique em 'Gerar' ou cole um secret existente"
-                  className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-xs font-mono"
-                />
-                <button
-                  onClick={generateSecret}
-                  className="rounded-md border border-border bg-card/60 px-3 py-2 text-xs font-semibold hover:border-primary/50"
-                >
-                  Gerar
-                </button>
-                <button
-                  onClick={copySecret}
-                  disabled={!apiSecret}
-                  className="rounded-md border border-border bg-card/60 px-3 py-2 text-xs font-semibold hover:border-primary/50 disabled:opacity-50"
-                >
-                  <Copy className="h-3.5 w-3.5" />
-                </button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Cole o mesmo valor na variável <code className="rounded bg-muted px-1">$SECRET</code>{" "}
-                dentro do <code className="rounded bg-muted px-1">api_cls.php</code> da sua VPS.
-              </p>
-            </div>
-
-            <div className="mt-6 flex justify-between">
-              <button
-                onClick={() => setStep(1)}
-                className="rounded-md border border-border bg-card/60 px-4 py-2 text-xs font-semibold"
-              >
-                Voltar
-              </button>
-              <button
-                onClick={() => setStep(3)}
-                disabled={!apiSecret}
-                className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-glow hover:brightness-110 disabled:opacity-50"
-              >
-                Próximo <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
-          </section>
-        )}
-
-        {/* Step 3: Connect */}
-        {step === 3 && (
+        {/* ============== CASO A: ativar servidor existente ============== */}
+        {needsActivation && (
           <section className="rounded-2xl border border-border bg-card/40 p-8">
             <h1 className="flex items-center gap-2 text-2xl font-extrabold">
-              <Server className="h-6 w-6 text-primary" /> Conectar sua VPS
+              <Power className="h-6 w-6 text-primary" /> Escolha o servidor ativo
             </h1>
             <p className="mt-3 text-sm text-muted-foreground">
-              Cole abaixo a URL onde você instalou o <code className="rounded bg-muted px-1">api_cls.php</code>.
+              Você tem {servers.length} servidor(es) cadastrado(s), mas nenhum está marcado como
+              ativo. O servidor ativo é o que o painel vai administrar.
             </p>
 
-            <div className="mt-6 space-y-4">
-              <div>
-                <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Nome do seu servidor
-                </label>
-                <input
-                  type="text"
-                  value={serverName}
-                  onChange={(e) => setServerName(e.target.value)}
-                  placeholder="Ex: Perfect World Brasil"
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  URL da API (com http:// e porta)
-                </label>
-                <input
-                  type="url"
-                  value={apiUrl}
-                  onChange={(e) => setApiUrl(e.target.value)}
-                  placeholder="http://93.127.143.77/api_cls.php"
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Secret da API
-                </label>
-                <input
-                  type="text"
-                  value={apiSecret}
-                  onChange={(e) => setApiSecret(e.target.value)}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  URL base dos ícones (opcional)
-                </label>
-                <input
-                  type="url"
-                  value={iconBase}
-                  onChange={(e) => setIconBase(e.target.value)}
-                  placeholder="http://93.127.143.77/"
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-mono"
-                />
-              </div>
+            <div className="mt-6 space-y-2">
+              {servers.map((s) => (
+                <div
+                  key={s.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card/60 p-4"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold">{s.server_name}</p>
+                    <p className="truncate font-mono text-xs text-muted-foreground">
+                      {s.pw_api_base_url ?? "(sem URL)"}
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => handleActivate(s.id)}
+                    disabled={activatingId === s.id}
+                  >
+                    {activatingId === s.id ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Power className="mr-2 h-4 w-4" />
+                    )}
+                    Ativar e abrir painel
+                  </Button>
+                </div>
+              ))}
             </div>
 
-            <div className="mt-8 flex justify-between">
-              <button
-                onClick={() => setStep(2)}
-                className="rounded-md border border-border bg-card/60 px-4 py-2 text-xs font-semibold"
-              >
-                Voltar
-              </button>
-              <button
-                onClick={saveAndFinish}
-                disabled={saving || !apiUrl || !apiSecret}
-                className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-2.5 text-sm font-bold text-primary-foreground shadow-glow hover:brightness-110 disabled:opacity-50"
-              >
-                {saving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="h-4 w-4" />
-                )}
-                Finalizar e abrir painel
-              </button>
+            <div className="mt-6 flex justify-end">
+              <Button variant="outline" onClick={() => navigate("/servers")}>
+                Gerenciar servidores
+              </Button>
             </div>
           </section>
+        )}
+
+        {/* ============== CASO B: wizard novo servidor ============== */}
+        {!needsActivation && (
+          <>
+            {/* Stepper */}
+            <div className="mb-8 flex items-center justify-between">
+              {(["form", "install", "test"] as Step[]).map((s, i) => {
+                const idx = ["form", "install", "test"].indexOf(step);
+                const reached = idx >= i;
+                return (
+                  <div key={s} className="flex flex-1 items-center">
+                    <div
+                      className={cn(
+                        "flex h-8 w-8 items-center justify-center rounded-full border text-xs font-bold transition-smooth",
+                        reached
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-card text-muted-foreground",
+                      )}
+                    >
+                      {idx > i ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
+                    </div>
+                    {i < 2 && (
+                      <div
+                        className={cn(
+                          "mx-2 h-0.5 flex-1 transition-smooth",
+                          idx > i ? "bg-primary" : "bg-border",
+                        )}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {step === "form" && (
+              <section className="rounded-2xl border border-border bg-card/40 p-8">
+                <h1 className="flex items-center gap-2 text-2xl font-extrabold">
+                  <Server className="h-6 w-6 text-primary" /> Cadastre seu primeiro servidor
+                </h1>
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Em 3 passos seu painel está conectado: cadastro → instalação na VPS → teste.
+                  Você pode adicionar mais servidores depois em <strong>Meus Servidores</strong>.
+                </p>
+
+                <div className="mt-6 space-y-4">
+                  <div>
+                    <Label htmlFor="ob-name">Nome do servidor</Label>
+                    <Input
+                      id="ob-name"
+                      value={serverName}
+                      onChange={(e) => setServerName(e.target.value)}
+                      placeholder="Ex: Perfect World Brasil"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="ob-url">URL da API (com http:// e porta)</Label>
+                    <Input
+                      id="ob-url"
+                      value={apiUrl}
+                      onChange={(e) => setApiUrl(e.target.value)}
+                      placeholder="http://SEU_IP/apicls/api_cls.php"
+                      className="font-mono text-xs"
+                    />
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      Endereço do <code className="font-mono">api_cls.php</code> que você vai
+                      instalar.
+                    </p>
+                  </div>
+                  <div>
+                    <Label htmlFor="ob-secret">Secret</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="ob-secret"
+                        value={apiSecret}
+                        onChange={(e) => setApiSecret(e.target.value)}
+                        className="font-mono text-xs"
+                        placeholder="Gere ou cole um secret de 48 caracteres"
+                      />
+                      <Button type="button" variant="outline" onClick={generateSecret}>
+                        Gerar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={copySecret}
+                        disabled={!apiSecret}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="ob-icons">URL base dos ícones (opcional)</Label>
+                    <Input
+                      id="ob-icons"
+                      value={iconBase}
+                      onChange={(e) => setIconBase(e.target.value)}
+                      placeholder="http://SEU_IP/"
+                      className="font-mono text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-8 flex justify-end">
+                  <Button
+                    onClick={handleCreateServer}
+                    disabled={saving || !apiUrl || !apiSecret}
+                  >
+                    {saving ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <ArrowRight className="mr-2 h-4 w-4" />
+                    )}
+                    Próximo: instalar na VPS
+                  </Button>
+                </div>
+              </section>
+            )}
+
+            {step === "install" && (
+              <section className="rounded-2xl border border-border bg-card/40 p-8">
+                <h1 className="text-2xl font-extrabold">Instale na sua VPS</h1>
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Abra a página de instalação — ela já mostra a <strong>URL esperada</strong> e o{" "}
+                  <strong>secret</strong> deste servidor prontos para colar no{" "}
+                  <code className="rounded bg-muted px-1 font-mono">api_cls.php</code>.
+                </p>
+
+                <div className="mt-6 rounded-md border border-primary/40 bg-primary/5 p-4 text-sm">
+                  <p>📋 Passo a passo resumido:</p>
+                  <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs text-muted-foreground">
+                    <li>Baixe ou copie o <code className="font-mono">api_cls.php</code></li>
+                    <li>Suba para <code className="font-mono">/var/www/html/apicls/</code></li>
+                    <li>O botão "Copiar" da página /install já embute o secret</li>
+                    <li>Crie a pasta de backups e instale o script de export</li>
+                    <li>Volte aqui e clique em "Já instalei, testar conexão"</li>
+                  </ol>
+                </div>
+
+                <div className="mt-6 flex flex-wrap gap-2">
+                  <Button asChild>
+                    <a href={installUrl} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="mr-2 h-4 w-4" /> Abrir página /install
+                    </a>
+                  </Button>
+                  <Button variant="outline" onClick={() => setStep("test")}>
+                    Já instalei, testar conexão
+                  </Button>
+                </div>
+
+                <div className="mt-8 flex justify-between">
+                  <Button variant="ghost" onClick={() => setStep("form")}>
+                    Voltar
+                  </Button>
+                </div>
+              </section>
+            )}
+
+            {step === "test" && (
+              <section className="rounded-2xl border border-border bg-card/40 p-8">
+                <h1 className="flex items-center gap-2 text-2xl font-extrabold">
+                  <Wifi className="h-6 w-6 text-primary" /> Testar conexão
+                </h1>
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Vamos chamar o seu <code className="font-mono">api_cls.php</code> via edge
+                  function autenticada. Se responder OK, marcamos o onboarding como concluído e
+                  abrimos o painel.
+                </p>
+
+                <div className="mt-6 rounded-md border border-border bg-card/60 p-4 text-xs">
+                  <p>
+                    <strong className="text-foreground">URL:</strong>{" "}
+                    <code className="font-mono">{apiUrl}</code>
+                  </p>
+                  <p className="mt-1">
+                    <strong className="text-foreground">Servidor:</strong>{" "}
+                    {serverName || "Meu Servidor PW"}
+                  </p>
+                </div>
+
+                <div className="mt-6 flex flex-wrap gap-2">
+                  <Button onClick={handleTestAndFinish} disabled={testing}>
+                    {testing ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Wifi className="mr-2 h-4 w-4" />
+                    )}
+                    Testar e abrir painel
+                  </Button>
+                  <Button variant="outline" onClick={() => setStep("install")}>
+                    Voltar para instalação
+                  </Button>
+                </div>
+
+                <p className="mt-4 text-[11px] text-muted-foreground">
+                  Falhou? Confirme que o secret no <code className="font-mono">api_cls.php</code>{" "}
+                  é igual ao cadastrado, que a URL é acessível e que não há firewall bloqueando.
+                </p>
+              </section>
+            )}
+          </>
         )}
       </main>
     </div>

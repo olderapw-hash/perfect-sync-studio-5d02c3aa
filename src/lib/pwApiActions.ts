@@ -278,13 +278,17 @@ export const pwApi = {
   },
   /**
    * Lê o conteúdo bruto de um backup role_json.
-   * Endpoint dedicado (preferencial). Se a VPS ainda não implementou,
-   * lança EndpointMissingError — o caller deve tentar dry_run como fallback.
+   * Endpoint dedicado (preferencial). VPS espera POST JSON:
+   *   { type: "role_json", name: "<basename>" }
+   * Resposta:
+   *   { success: true, backup: { template, requested_payload, ... } }
+   * Se a VPS ainda não implementou, lança EndpointMissingError —
+   * o caller pode tentar dry_run como fallback.
    */
-  getBackupContent(name: string) {
+  getBackupContent(name: string, type: BackupKind = "role_json") {
     return callAction<GetBackupContentResponse>("getBackupContent", {
-      method: "GET",
-      query: { type: "role_json", name },
+      method: "POST",
+      body: { type, name },
     });
   },
 };
@@ -293,14 +297,38 @@ export const pwApi = {
  * Resposta de `getBackupContent` — devolve o template completo do role
  * que foi salvo no backup, no mesmo shape de ClsTemplate (porém vinda
  * do snapshot do gamedbd no momento do save, não do clsconfig).
+ *
+ * Shape REAL retornado pela VPS (abr/2026):
+ *   {
+ *     success: true,
+ *     backup: {
+ *       template: {...},            // shape de ClsTemplate
+ *       requested_payload: {...},   // payload enviado no saveRoleEditable que originou o backup
+ *       roleid?: number,
+ *       name?: string,
+ *       ...
+ *     }
+ *   }
+ *
+ * Campos legados `template`/`role` no nível raiz são mantidos para
+ * compatibilidade com versões antigas do PHP.
  */
-export interface GetBackupContentResponse {
-  success: boolean;
+export interface BackupContent {
+  template?: unknown;
+  requested_payload?: unknown;
   roleid?: number;
   name?: string;
-  /** Template completo serializado (mesmo shape de ClsTemplate). */
+  [k: string]: unknown;
+}
+
+export interface GetBackupContentResponse {
+  success: boolean;
+  /** Wrapper preferencial (PHP atual). */
+  backup?: BackupContent;
+  /** Legado: alguns deploys antigos devolviam estes campos no topo. */
+  roleid?: number;
+  name?: string;
   template?: unknown;
-  /** Wrapper opcional usado em algumas versões do PHP. */
   role?: unknown;
   error?: string;
 }

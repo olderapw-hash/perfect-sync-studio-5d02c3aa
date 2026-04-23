@@ -371,6 +371,23 @@ const KitListView = ({
                       <Upload className="h-3.5 w-3.5" />
                       Aplicar
                     </Button>
+                    {bulkAvailable && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onBulkApply(kit)}
+                        disabled={!canBulkApply}
+                        title={
+                          canBulkApply
+                            ? "Aplicar este kit em todos os CLS carregados"
+                            : bulkDeniedTitle
+                        }
+                        className="gap-1"
+                      >
+                        <Send className="h-3.5 w-3.5" />
+                        Aplicar em todos os CLS
+                      </Button>
+                    )}
                     <Button
                       size="icon"
                       variant="ghost"

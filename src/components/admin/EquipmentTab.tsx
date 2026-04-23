@@ -14,6 +14,7 @@ import { uploadCharacterPhoto, uploadClassPhoto, removeCharacterPhoto } from "@/
 import { PhotoUploadButton } from "./PhotoUploadButton";
 import { clearItems, summarizeSection } from "@/lib/clearSection";
 import { ClearSectionDialog } from "./ClearSectionDialog";
+import { getEquipmentSlotLabel } from "@/lib/equipmentSlots";
 
 interface Props {
   template: ClsTemplate;
@@ -30,41 +31,45 @@ interface Props {
  * (cliente PW armazena roupa em pos = equipPos + 16).
  */
 // Layout PW BR — slots dispostos em duas colunas duplas ao redor do retrato.
-// Topo: capacete centralizado.
-const NORMAL_TOP: { pos: number; label: string } = { pos: 0, label: "ELMO" };
+// Os labels vêm da fonte única `equipmentSlots.ts` (getEquipmentSlotLabel) —
+// aqui declaramos só a posição visual de cada slot no paper-doll.
+const slot = (pos: number) => ({ pos, label: getEquipmentSlotLabel(pos).toUpperCase() });
+
+// Topo: capacete (Elmo, pos 1) centralizado
+const NORMAL_TOP = slot(1);
 
 // Coluna esquerda — duas sub-colunas (externa, interna)
-const NORMAL_LEFT_OUTER: { pos: number; label: string }[] = [
-  { pos: 10, label: "MANTO" },
-  { pos: 6,  label: "ANEL ESQ." },
-  { pos: 3,  label: "CINTO" },
+const NORMAL_LEFT_OUTER = [
+  slot(2),  // Manto
+  slot(9),  // Anel Esq.
+  slot(5),  // Cinto
 ];
-const NORMAL_LEFT_INNER: { pos: number; label: string }[] = [
-  { pos: 2,  label: "ARMADURA" },
-  { pos: 14, label: "BRAÇADEIRAS" },
-  { pos: 4,  label: "CALÇAS" },
-  { pos: 5,  label: "BOTAS" },
+const NORMAL_LEFT_INNER = [
+  slot(4),  // Armadura
+  slot(8),  // Braçadeiras
+  slot(6),  // Calças
+  slot(7),  // Botas
 ];
 
 // Coluna direita — duas sub-colunas (interna, externa)
-const NORMAL_RIGHT_INNER: { pos: number; label: string }[] = [
-  { pos: 1,  label: "COLAR" },
-  { pos: 15, label: "RUNA" },
-  { pos: 13, label: "AMULETO" },
-  { pos: 11, label: "HIERO" },
+const NORMAL_RIGHT_INNER = [
+  slot(3),  // Colar
+  slot(16), // Runa
+  slot(18), // Amuleto
+  slot(13), // Hierograma HP
 ];
-const NORMAL_RIGHT_OUTER: { pos: number; label: string }[] = [
-  { pos: 8,  label: "ARMA" },
-  { pos: 17, label: "TOMO" },
-  { pos: 18, label: "MUNIÇÃO" },
-  { pos: 12, label: "VOO" },
+const NORMAL_RIGHT_OUTER = [
+  slot(0),  // Arma
+  slot(15), // Tomo
+  slot(11), // Munição
+  slot(12), // Voo/Montaria
 ];
 
-// Linha inferior (loja · espírito · anel dir)
-const NORMAL_BOTTOM_ROW: { pos: number; label: string }[] = [
-  { pos: 19, label: "LOJA" },
-  { pos: 9,  label: "ESPÍRITO" },
-  { pos: 7,  label: "ANEL DIR." },
+// Linha inferior (classe · hiero MP · anel dir)
+const NORMAL_BOTTOM_ROW = [
+  slot(17), // Classe
+  slot(14), // Hierograma MP
+  slot(10), // Anel Dir.
 ];
 
 // Roupas (fashion) — vêm de template.storehouse.dress.

@@ -19,7 +19,7 @@
 // Saída inclui severidade ("error" | "critical" | "warning") e contexto
 // suficiente para o painel de validação abrir o slot correspondente.
 import type { ClsItem, ClsTemplate } from "@/types/clsconfig";
-import { getEquipmentSlotLabel } from "@/lib/equipmentSlots";
+import { getEquipmentSlotLabel, isUnknownEquipmentPos } from "@/lib/equipmentSlots";
 
 /** Identifica em qual lista o erro foi gerado. Usado pela UI pra abrir a tab certa. */
 export type ItemSection =
@@ -192,6 +192,27 @@ export function validateItems(
       } else {
         seenPos.set(pos, idx);
       }
+    }
+
+    // Equipamento: pos desconhecida com item válido → AVISO (não erro).
+    // Slot é preservado; só sinaliza pra UX que o painel não tem layout pra ele.
+    if (
+      opts.section === "equipment.items" &&
+      isFiniteNumber(pos) &&
+      pos >= 0 &&
+      isFiniteNumber(id) &&
+      id > 0 &&
+      isUnknownEquipmentPos(pos)
+    ) {
+      issues.push({
+        section: opts.section,
+        tab: opts.tab,
+        index: idx,
+        pos,
+        field: "pos",
+        severity: "warning",
+        message: `Slot especial/desconhecido detectado (pos ${pos}). Será preservado.`,
+      });
     }
 
     // Regra 7: data hex par

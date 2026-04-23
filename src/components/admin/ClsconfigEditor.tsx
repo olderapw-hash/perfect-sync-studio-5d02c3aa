@@ -65,6 +65,7 @@ import { CompareClsDialog } from "./CompareClsDialog";
 import { RoleidHistoryDialog } from "./RoleidHistoryDialog";
 import { InitialKitsDialog } from "./InitialKitsDialog";
 import { useTenant } from "@/hooks/useTenant";
+import { useCharacterPhoto } from "@/hooks/useCharacterPhoto";
 
 /**
  * Modo de operação:
@@ -547,8 +548,13 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
     }
   };
 
-  const iconUrl = buildClassIconUrl(template.summary.class_icon_path);
+  const fallbackIconUrl = buildClassIconUrl(template.summary.class_icon_path);
   const className = template.summary.class_name ?? `Classe ${template.summary.cls}`;
+  const { url: iconUrl } = useCharacterPhoto({
+    roleid: entry.template.roleid ?? 0,
+    cls: template.summary.cls,
+    fallbackUrl: fallbackIconUrl,
+  });
 
   const activeTabMeta = TABS.find((t) => t.key === tab) ?? TABS[0];
   const ActiveTabIcon = activeTabMeta.icon;

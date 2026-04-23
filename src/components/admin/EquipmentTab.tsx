@@ -14,7 +14,11 @@ import { uploadCharacterPhoto, uploadClassPhoto, removeCharacterPhoto } from "@/
 import { PhotoUploadButton } from "./PhotoUploadButton";
 import { clearItems, summarizeSection } from "@/lib/clearSection";
 import { ClearSectionDialog } from "./ClearSectionDialog";
-import { getEquipmentSlotLabel } from "@/lib/equipmentSlots";
+import {
+  getEquipmentSlotLabel,
+  isKnownEquipmentPos,
+  PW_EQUIPMENT_SLOTS,
+} from "@/lib/equipmentSlots";
 
 interface Props {
   template: ClsTemplate;
@@ -25,22 +29,27 @@ interface Props {
  * Layout paper-doll do PW BR — duas colunas laterais com silhueta no meio.
  *
  * Aba "Normal"  → equipamento real (pos 0..15) — armadura/arma/anéis/etc.
- * Aba "Roupas"  → fashion/cosmético (pos 16..31) — visual sobreposto.
+ * Aba "Roupas"  → fashion/cosmético — visual sobreposto (storehouse.dress).
  *
- * As pos do fashion seguem a mesma ordem do equipamento equivalente
- * (cliente PW armazena roupa em pos = equipPos + 16).
+ * Slots conhecidos vêm de `PW_EQUIPMENT_SLOTS` (fonte única). Slots
+ * especiais altos (26, 29, 32, 33, ...) e qualquer pos desconhecida com
+ * item são renderizados numa seção "Slots especiais detectados" — nunca
+ * são apagados/ocultos, mesmo que a UI não saiba o nome canônico.
  */
-// Layout PW BR — slots dispostos em duas colunas duplas ao redor do retrato.
-// Os labels vêm da fonte única `equipmentSlots.ts` (getEquipmentSlotLabel) —
-// aqui declaramos só a posição visual de cada slot no paper-doll.
-const slot = (pos: number) => ({ pos, label: getEquipmentSlotLabel(pos).toUpperCase() });
 
-// Topo: capacete (Elmo, pos 1) centralizado
+// Layout do paper-doll: cada slot é referenciado SOMENTE pela `pos` real.
+// Nada de índice de array → o item é sempre buscado por `item.pos === slot.pos`.
+const slot = (pos: number) => ({
+  pos,
+  label: getEquipmentSlotLabel(pos).toUpperCase(),
+});
+
+// Topo: ELMO (pos 1) centralizado
 const NORMAL_TOP = slot(1);
 
 // Coluna esquerda — duas sub-colunas (externa, interna)
 const NORMAL_LEFT_OUTER = [
-  slot(2),  // Manto
+  slot(3),  // Manto
   slot(9),  // Anel Esq.
   slot(5),  // Cinto
 ];
@@ -53,24 +62,23 @@ const NORMAL_LEFT_INNER = [
 
 // Coluna direita — duas sub-colunas (interna, externa)
 const NORMAL_RIGHT_INNER = [
-  slot(3),  // Colar
-  slot(16), // Runa
-  slot(18), // Amuleto
+  slot(2),  // Colar
   slot(13), // Hierograma HP
+  slot(14), // Hierograma MP
+  slot(10), // Anel Dir.
 ];
 const NORMAL_RIGHT_OUTER = [
   slot(0),  // Arma
   slot(15), // Tomo
   slot(11), // Munição
-  slot(12), // Voo/Montaria
+  slot(12), // Voo / Montaria
 ];
 
-// Linha inferior (classe · hiero MP · anel dir)
-const NORMAL_BOTTOM_ROW = [
-  slot(17), // Classe
-  slot(14), // Hierograma MP
-  slot(10), // Anel Dir.
-];
+// Linha inferior reservada para slots especiais (pos 26, 29, 32, 33).
+const SPECIAL_BOTTOM_ROW = PW_EQUIPMENT_SLOTS
+  .filter((s) => s.pos >= 16)
+  .sort((a, b) => a.visualOrder - b.visualOrder)
+  .map((s) => slot(s.pos));
 
 // Roupas (fashion) — vêm de template.storehouse.dress.
 const FASHION_LEFT_COUNT = 12;
@@ -84,7 +92,7 @@ const SLOTS = [
   ...NORMAL_LEFT_INNER,
   ...NORMAL_RIGHT_INNER,
   ...NORMAL_RIGHT_OUTER,
-  ...NORMAL_BOTTOM_ROW,
+  ...SPECIAL_BOTTOM_ROW,
 ];
 
 
@@ -471,12 +479,19 @@ export const EquipmentTab = ({ template, onChange }: Props) => {
                   </div>
                 </div>
 
-                {/* Linha inferior */}
-                <div className="mt-3 flex items-start justify-center gap-6">
-                  {NORMAL_BOTTOM_ROW.map((s) => (
-                    <LabeledSlot key={s.pos} pos={s.pos} label={s.label} />
-                  ))}
-                </div>
+                {/* Linha inferior — slots especiais (26, 29, 32, 33). */}
+                {SPECIAL_BOTTOM_ROW.length > 0 && (
+                  <div className="mt-3 border-t border-amber-700/30 pt-3">
+                    <div className="mb-1.5 text-center text-[9px] font-bold uppercase tracking-[0.2em] text-amber-200/70">
+                      Slots especiais
+                    </div>
+                    <div className="flex items-start justify-center gap-3">
+                      {SPECIAL_BOTTOM_ROW.map((s) => (
+                        <LabeledSlot key={s.pos} pos={s.pos} label={s.label} />
+                      ))}
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
               /* Aba Roupas / Provador — grid 4×3 de cada lado do retrato */
@@ -596,6 +611,34 @@ export const EquipmentTab = ({ template, onChange }: Props) => {
               </label>
             </div>
           </section>
+
+          {/* Slots especiais detectados — items com pos fora do mapeamento canônico
+              (e fora dos líderes). Nunca são apagados, mesmo sem nome canônico. */}
+          {extras.some((it) => !isKnownEquipmentPos(it.pos)) && (
+            <section className="mt-3">
+              <div className="mb-1.5 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-amber-200/80">
+                <span>Slots especiais detectados</span>
+                <span className="font-mono opacity-70">
+                  {extras.filter((it) => !isKnownEquipmentPos(it.pos)).length} item(ns)
+                </span>
+              </div>
+              <div className="grid grid-cols-6 gap-1.5">
+                {extras
+                  .filter((it) => !isKnownEquipmentPos(it.pos))
+                  .map((it) => (
+                    <div key={it.pos} className="flex flex-col items-center gap-0.5">
+                      <span
+                        className="text-[9px] font-bold uppercase tracking-wider"
+                        style={{ color: "hsl(40 45% 65%)" }}
+                      >
+                        pos {it.pos}
+                      </span>
+                      <ItemSlot item={it} onClick={() => openSlot(it.pos)} size={40} />
+                    </div>
+                  ))}
+              </div>
+            </section>
+          )}
 
           {/* Slots extras — grid 8x4 estilo bag do cliente */}
           <section className="mt-3">

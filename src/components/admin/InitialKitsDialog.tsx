@@ -123,12 +123,35 @@ export const InitialKitsDialog = ({
 }: Props) => {
   const isTemplateMode = mode === "template";
   const bulkAvailable = isTemplateMode && allEntries.length > 0;
+  const { tenantId, can } = useServerPermissions();
+  const canManageCloud = can("save_templates");
+  const {
+    cloudKits,
+    localKits,
+    loading: cloudLoading,
+    refetch: refetchCloud,
+    createKit: createCloudKit,
+    deleteKit: deleteCloudKit,
+    duplicateKit: duplicateCloudKit,
+    importKit: importCloudKit,
+    migrateLocalStorageKitsToCloud,
+    clearLocal,
+  } = useInitialKits({ tenantId });
+
   const [view, setView] = useState<View>("list");
-  const [kits, setKits] = useState<InitialKit[]>(() => kitStore.list());
   const [selectedKit, setSelectedKit] = useState<InitialKit | null>(null);
+  const [migrating, setMigrating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const refresh = () => setKits(kitStore.list());
+  // Lista unificada: nuvem primeiro, locais por último.
+  const kits = useMemo<InitialKit[]>(
+    () => [...cloudKits, ...localKits],
+    [cloudKits, localKits],
+  );
+
+  useEffect(() => {
+    if (open) void refetchCloud();
+  }, [open, refetchCloud]);
 
   const reset = () => {
     setView("list");
@@ -145,14 +168,23 @@ export const InitialKitsDialog = ({
 
   const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    e.target.value = ""; // permite reimportar mesmo arquivo
+    e.target.value = "";
     if (!file) return;
     try {
       const text = await file.text();
       const kit = parseKitFromJson(text);
-      kitStore.save(kit);
-      refresh();
-      toast.success(`Kit "${kit.name}" importado`);
+      // Se há tenant ativo + permissão, importa para nuvem; senão localStorage.
+      if (tenantId && canManageCloud) {
+        const r = await importCloudKit(kit, "server");
+        if (r) toast.success(`Kit "${r.name}" importado para o servidor`);
+        else toast.error("Falha ao importar para a nuvem");
+      } else {
+        kitStore.save(kit);
+        toast.success(`Kit "${kit.name}" importado (local)`);
+        // força refresh do estado local
+        setSelectedKit(null);
+        await refetchCloud();
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro ao importar";
       toast.error(`Falha na importação: ${msg}`);
@@ -160,24 +192,62 @@ export const InitialKitsDialog = ({
   };
 
   // ─────────── Duplicar / excluir / exportar ───────────
-  const handleDuplicate = (id: string) => {
-    const copy = kitStore.duplicate(id);
-    if (copy) {
-      refresh();
-      toast.success(`Kit duplicado como "${copy.name}"`);
+  const handleDuplicate = async (kit: InitialKit) => {
+    if (kit.source === "cloud") {
+      const copy = await duplicateCloudKit(kit.id);
+      if (copy) toast.success(`Kit duplicado como "${copy.name}"`);
+      else toast.error("Falha ao duplicar");
+    } else {
+      const copy = kitStore.duplicate(kit.id);
+      if (copy) {
+        toast.success(`Kit duplicado como "${copy.name}"`);
+        await refetchCloud();
+      }
     }
   };
 
-  const handleRemove = (kit: InitialKit) => {
+  const handleRemove = async (kit: InitialKit) => {
     if (!confirm(`Excluir o kit "${kit.name}"? Esta ação não pode ser desfeita.`)) return;
-    kitStore.remove(kit.id);
-    refresh();
-    toast.info(`Kit "${kit.name}" excluído`);
+    if (kit.source === "cloud") {
+      const ok = await deleteCloudKit(kit.id);
+      if (ok) toast.info(`Kit "${kit.name}" excluído`);
+      else toast.error("Sem permissão para excluir este kit");
+    } else {
+      kitStore.remove(kit.id);
+      toast.info(`Kit "${kit.name}" excluído (local)`);
+      await refetchCloud();
+    }
   };
 
   const handleExport = (kit: InitialKit) => {
     downloadKitJson(kit);
     toast.success(`Kit "${kit.name}" exportado`);
+  };
+
+  // ─────────── Migrar locais ───────────
+  const handleMigrateLocals = async () => {
+    if (!tenantId || !canManageCloud) return;
+    setMigrating(true);
+    const { migrated, failed } = await migrateLocalStorageKitsToCloud("server");
+    setMigrating(false);
+    if (failed === 0 && migrated > 0) {
+      toast.success(`${migrated} kit(s) migrado(s) para o servidor`);
+    } else if (migrated > 0) {
+      toast.warning(`${migrated} migrado(s) · ${failed} falha(s)`);
+    } else {
+      toast.error("Nenhum kit migrado");
+    }
+    await logAuditEvent({
+      action: "initial_kit.migrate_local",
+      tenantId,
+      metadata: { migrated, failed },
+    });
+  };
+
+  const handleClearLocals = () => {
+    if (!confirm(`Apagar TODOS os ${localKits.length} kits locais? Os kits na nuvem não são afetados.`)) return;
+    clearLocal();
+    toast.info("Kits locais apagados");
   };
 
   return (
@@ -187,6 +257,12 @@ export const InitialKitsDialog = ({
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
             Kits Iniciais
+            {tenantId && (
+              <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                <Cloud className="h-3 w-3" />
+                Nuvem
+              </span>
+            )}
           </DialogTitle>
           <DialogDescription>
             Salve um conjunto de bens (inventário, equipamentos, baú, task inventory)
@@ -203,35 +279,88 @@ export const InitialKitsDialog = ({
         />
 
         {view === "list" && (
-          <KitListView
-            kits={kits}
-            onCreate={() => setView("create")}
-            onImport={handleImportClick}
-            onApply={(k) => {
-              setSelectedKit(k);
-              setView("apply");
-            }}
-            onBulkApply={(k) => {
-              setSelectedKit(k);
-              setView("bulk_apply");
-            }}
-            onDuplicate={handleDuplicate}
-            onRemove={handleRemove}
-            onExport={handleExport}
-            canApply={canApply}
-            applyDeniedTitle={applyDeniedTitle}
-            bulkAvailable={bulkAvailable}
-            canBulkApply={canBulkApply}
-            bulkDeniedTitle={bulkDeniedTitle}
-          />
+          <>
+            {localKits.length > 0 && tenantId && (
+              <div className="rounded-md border border-warning/40 bg-warning/5 p-3 text-xs">
+                <div className="flex items-start gap-2">
+                  <CloudUpload className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                  <div className="flex-1">
+                    <div className="font-semibold text-foreground">
+                      {localKits.length} kit{localKits.length === 1 ? "" : "s"} local{localKits.length === 1 ? "" : "is"} encontrado{localKits.length === 1 ? "" : "s"}
+                    </div>
+                    <p className="mt-0.5 text-muted-foreground">
+                      Migre para este servidor para que outros membros possam ver.
+                      Os kits locais não serão apagados automaticamente.
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        onClick={handleMigrateLocals}
+                        disabled={!canManageCloud || migrating}
+                        title={
+                          !canManageCloud
+                            ? "Você não tem permissão para criar kits no servidor"
+                            : undefined
+                        }
+                        className="gap-1.5"
+                      >
+                        {migrating ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <CloudUpload className="h-3.5 w-3.5" />
+                        )}
+                        Migrar para o servidor
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={handleClearLocals}
+                        disabled={migrating}
+                        className="gap-1.5"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Limpar locais
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <KitListView
+              kits={kits}
+              loading={cloudLoading}
+              onCreate={() => setView("create")}
+              onImport={handleImportClick}
+              onApply={(k) => {
+                setSelectedKit(k);
+                setView("apply");
+              }}
+              onBulkApply={(k) => {
+                setSelectedKit(k);
+                setView("bulk_apply");
+              }}
+              onDuplicate={(k) => void handleDuplicate(k)}
+              onRemove={(k) => void handleRemove(k)}
+              onExport={handleExport}
+              canApply={canApply}
+              applyDeniedTitle={applyDeniedTitle}
+              bulkAvailable={bulkAvailable}
+              canBulkApply={canBulkApply}
+              bulkDeniedTitle={bulkDeniedTitle}
+            />
+          </>
         )}
 
         {view === "create" && (
           <KitCreateView
             template={currentTemplate}
+            tenantId={tenantId}
+            canManageCloud={canManageCloud}
+            onCreateCloud={createCloudKit}
             onCancel={() => setView("list")}
-            onSaved={() => {
-              refresh();
+            onSaved={async () => {
+              await refetchCloud();
               setView("list");
             }}
           />
@@ -244,8 +373,18 @@ export const InitialKitsDialog = ({
             canApply={canApply}
             applyDeniedTitle={applyDeniedTitle}
             onCancel={() => setView("list")}
-            onApplied={(next) => {
+            onApplied={async (next) => {
               onApply(next);
+              await logAuditEvent({
+                action: "initial_kit.apply",
+                tenantId,
+                target: selectedKit.id,
+                metadata: {
+                  name: selectedKit.name,
+                  source: selectedKit.source ?? "local",
+                  roleid: currentTemplate.roleid,
+                },
+              });
               toast.success(`Kit "${selectedKit.name}" aplicado — não esqueça de salvar.`);
               handleClose(false);
             }}
@@ -255,6 +394,7 @@ export const InitialKitsDialog = ({
         {view === "bulk_apply" && selectedKit && (
           <KitBulkApplyView
             kit={selectedKit}
+            tenantId={tenantId}
             allEntries={allEntries}
             canBulkApply={canBulkApply}
             bulkDeniedTitle={bulkDeniedTitle}

@@ -140,10 +140,12 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
   const [roleConfirmOpen, setRoleConfirmOpen] = useState(false);
 
   const { can } = useServerPermissions();
+  const { tenant } = useTenant();
   const isRoleMode = mode === "role";
   const requiredSavePerm = isRoleMode ? "save_real_roles" : "save_templates";
   const canSave = can(requiredSavePerm);
   const canBulkApply = can("bulk_apply");
+  const canBulkClearInv = !isRoleMode && canBulkApply && can("save_templates");
   const canCompare = can("compare_backup");
   const permDeniedTitle = "Seu acesso não permite esta ação.";
 

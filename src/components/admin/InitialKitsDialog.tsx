@@ -618,6 +618,27 @@ const KitListView = ({
                         Aplicar em todos os CLS
                       </Button>
                     )}
+                    {(() => {
+                      const canEditThis =
+                        kit.source === "cloud" ? canEditCloudKit : canEditLocalKit;
+                      return (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => onEdit(kit)}
+                          disabled={!canEditThis}
+                          title={
+                            canEditThis
+                              ? "Editar slots do kit"
+                              : kit.source === "cloud"
+                                ? "Sem permissão (save_templates ou manage_kits)"
+                                : "Faça login para editar kits locais"
+                          }
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      );
+                    })()}
                     <Button
                       size="icon"
                       variant="ghost"

@@ -130,6 +130,10 @@ export const InitialKitsDialog = ({
   const { tenantId, can } = useServerPermissions();
   const { session } = useAuth();
   const canManageCloud = can("save_templates");
+  // Editar slots de kit cloud: save_templates OU manage_kits.
+  const canEditCloudKit = can("save_templates") || can("manage_kits");
+  // Editar slots de kit local: precisa estar autenticado.
+  const canEditLocalKit = !!session?.user;
   // Preset → kit no servidor exige save_templates OU manage_kits.
   const canDuplicatePresetServer = can("save_templates") || can("manage_kits");
   // Preset → kit privado exige usuário autenticado + tenant ativo.
@@ -143,6 +147,7 @@ export const InitialKitsDialog = ({
     deleteKit: deleteCloudKit,
     duplicateKit: duplicateCloudKit,
     importKit: importCloudKit,
+    updateKitPayload,
     migrateLocalStorageKitsToCloud,
     clearLocal,
   } = useInitialKits({ tenantId });

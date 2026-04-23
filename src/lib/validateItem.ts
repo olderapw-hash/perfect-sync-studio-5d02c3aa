@@ -19,7 +19,7 @@
 // Saída inclui severidade ("error" | "critical" | "warning") e contexto
 // suficiente para o painel de validação abrir o slot correspondente.
 import type { ClsItem, ClsTemplate } from "@/types/clsconfig";
-import { getEquipmentSlotLabel } from "@/lib/equipmentSlots";
+import { getEquipmentSlotLabel, isUnknownEquipmentPos } from "@/lib/equipmentSlots";
 
 /** Identifica em qual lista o erro foi gerado. Usado pela UI pra abrir a tab certa. */
 export type ItemSection =

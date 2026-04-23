@@ -1,9 +1,11 @@
+import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { Loader2, Mail, ShieldAlert } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useTenant } from "@/hooks/useTenant";
 import { useMyPendingInvites } from "@/hooks/useServerMembers";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   children: React.ReactNode;
@@ -22,7 +24,30 @@ export const ProtectedRoute = ({
   const { tenant, loading: tenantLoading } = useTenant();
   const { invites: pendingInvites } = useMyPendingInvites();
 
-  if (loading || (requireSubscription && (subLoading || tenantLoading))) {
+  // Membros de servidor (owner OU convidado aceito) também podem entrar no /admin,
+  // mesmo sem role admin global.
+  const [isServerMember, setIsServerMember] = useState<boolean | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!session?.user) {
+      setIsServerMember(false);
+      return;
+    }
+    (async () => {
+      const { data, error } = await supabase
+        .from("server_members")
+        .select("id")
+        .eq("user_id", session.user.id)
+        .limit(1);
+      if (cancelled) return;
+      setIsServerMember(!error && (data?.length ?? 0) > 0);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user]);
+
+  if (loading || (requireSubscription && (subLoading || tenantLoading)) || (requireAdmin && isServerMember === null && !!session)) {
     return (
       <div className="flex h-screen items-center justify-center bg-hero">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -34,7 +59,9 @@ export const ProtectedRoute = ({
     return <Navigate to="/auth" replace />;
   }
 
-  if (requireAdmin && !isAdmin) {
+  // Acesso ao painel: admin global OU membro de algum servidor (convidado aceito).
+  const canEnterAdmin = isAdmin || isServerMember === true;
+  if (requireAdmin && !canEnterAdmin) {
     const hasPending = pendingInvites.length > 0;
     return (
       <div className="flex h-screen items-center justify-center bg-hero p-4">
@@ -80,10 +107,11 @@ export const ProtectedRoute = ({
     );
   }
 
-  // Subscription gate. Superadmin AND manually-approved admins bypass —
-  // the superadmin uses the user-management screen to grant comp access
-  // without forcing the user through Paddle checkout.
-  if (requireSubscription && !isSuperadmin && !isAdmin) {
+  // Subscription gate. Superadmin, admins manualmente aprovados E membros convidados
+  // de servidores existentes fazem bypass — convidados operam no tenant do dono,
+  // não precisam pagar nem fazer onboarding próprio.
+  const isGuestMember = isServerMember === true && !isAdmin && !isSuperadmin;
+  if (requireSubscription && !isSuperadmin && !isAdmin && !isGuestMember) {
     if (!isActive) {
       return <Navigate to="/pricing" replace />;
     }
@@ -92,9 +120,8 @@ export const ProtectedRoute = ({
     }
   }
 
-  // Even bypass users still need onboarding done so the panel has a tenant
-  // to work against. Only enforce when they don't have a completed tenant.
-  if (requireSubscription && (isAdmin || isSuperadmin) && !isSuperadmin) {
+  // Admins não-superadmin ainda precisam ter onboarding feito (tenant próprio).
+  if (requireSubscription && isAdmin && !isSuperadmin && !isGuestMember) {
     if (!tenant?.onboarding_completed) {
       return <Navigate to="/onboarding" replace />;
     }

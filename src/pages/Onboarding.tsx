@@ -40,7 +40,7 @@ type Step = "form" | "install" | "test";
 
 const Onboarding = () => {
   const navigate = useNavigate();
-  const { session, loading: authLoading, isAdmin, isSuperadmin } = useAuth();
+  const { session, loading: authLoading, isAdmin, isSuperadmin, signOut } = useAuth();
   const { isActive, loading: subLoading } = useSubscription();
   const { servers, active, loading: serversLoading, refetch, setActive } = useServers();
   const bypassPayment = isAdmin || isSuperadmin;

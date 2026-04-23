@@ -60,9 +60,11 @@ import { SavePreviewDialog } from "./SavePreviewDialog";
 import { SaveChecklistDialog, type SaveChecklistResult } from "./SaveChecklistDialog";
 import { PresetsDialog } from "./PresetsDialog";
 import { BulkApplyDialog } from "./BulkApplyDialog";
+import { BulkClearInventoryDialog } from "./BulkClearInventoryDialog";
 import { CompareClsDialog } from "./CompareClsDialog";
 import { RoleidHistoryDialog } from "./RoleidHistoryDialog";
 import { InitialKitsDialog } from "./InitialKitsDialog";
+import { useTenant } from "@/hooks/useTenant";
 
 /**
  * Modo de operação:

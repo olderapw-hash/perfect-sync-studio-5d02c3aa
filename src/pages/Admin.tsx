@@ -21,6 +21,7 @@ import { useClsconfig } from "@/hooks/useClsconfig";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { useServerPermissions } from "@/hooks/useServerPermissions";
+import { useServers } from "@/hooks/useServers";
 import { PendingInvitesBanner } from "@/components/PendingInvitesBanner";
 import { ClsconfigEditor } from "@/components/admin/ClsconfigEditor";
 import { ItemCatalogManager } from "@/components/admin/ItemCatalogManager";
@@ -41,6 +42,7 @@ const Admin = () => {
   const { user, signOut, isSuperadmin } = useAuth();
   const { settings } = useAppSettings();
   const { can } = useServerPermissions();
+  const { active: activeServer } = useServers();
   const [selected, setSelected] = useState<string | null>(null);
   const [mode, setMode] = useState<AdminMode>("template");
   const [backupsOpen, setBackupsOpen] = useState(false);

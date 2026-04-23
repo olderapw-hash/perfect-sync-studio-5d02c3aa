@@ -1,9 +1,11 @@
+import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, Check, Loader2, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { usePaddleCheckout } from "@/hooks/usePaddleCheckout";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useServers } from "@/hooks/useServers";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 
 const PLAN_FEATURES = [
@@ -38,9 +40,32 @@ const FAQ = [
 
 const Pricing = () => {
   const navigate = useNavigate();
-  const { session, user } = useAuth();
-  const { isActive } = useSubscription();
+  const { session, user, isAdmin, isSuperadmin, loading: authLoading } = useAuth();
+  const { isActive, loading: subLoading } = useSubscription();
+  const { active, loading: serversLoading } = useServers();
   const { openCheckout, loading } = usePaddleCheckout();
+
+  // Se o usuário já tem acesso (assinatura ativa OU é admin/superadmin)
+  // e tem servidor configurado, mandamos direto pro painel — não faz sentido
+  // exibir tela de assinatura.
+  useEffect(() => {
+    if (authLoading || subLoading || serversLoading) return;
+    if (!session) return;
+    const bypass = isActive || isAdmin || isSuperadmin;
+    if (bypass && active?.onboarding_completed) {
+      navigate("/admin", { replace: true });
+    }
+  }, [
+    authLoading,
+    subLoading,
+    serversLoading,
+    session,
+    isActive,
+    isAdmin,
+    isSuperadmin,
+    active?.onboarding_completed,
+    navigate,
+  ]);
 
   const handleCheckout = async () => {
     if (!session) {

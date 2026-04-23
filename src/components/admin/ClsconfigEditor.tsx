@@ -636,6 +636,19 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
                   <Send className="h-3.5 w-3.5" />
                   Aplicar em massa
                 </button>
+                <button
+                  onClick={() => setBulkClearInvOpen(true)}
+                  disabled={allEntries.length === 0 || !canBulkClearInv}
+                  className="inline-flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive transition-smooth hover:border-destructive/70 hover:bg-destructive/20 disabled:opacity-50"
+                  title={
+                    canBulkClearInv
+                      ? "Esvazia o inventário de TODOS os templates carregados"
+                      : permDeniedTitle
+                  }
+                >
+                  <Eraser className="h-3.5 w-3.5" />
+                  Limpar inventários
+                </button>
               </>
             )}
             {isRoleMode && (

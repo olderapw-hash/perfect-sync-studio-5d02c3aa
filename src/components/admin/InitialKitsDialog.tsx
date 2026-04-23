@@ -491,6 +491,7 @@ interface ListViewProps {
   onImport: () => void;
   onApply: (kit: InitialKit) => void;
   onBulkApply: (kit: InitialKit) => void;
+  onEdit: (kit: InitialKit) => void;
   onDuplicate: (kit: InitialKit) => void;
   onRemove: (kit: InitialKit) => void;
   onExport: (kit: InitialKit) => void;
@@ -499,6 +500,8 @@ interface ListViewProps {
   bulkAvailable: boolean;
   canBulkApply: boolean;
   bulkDeniedTitle?: string;
+  canEditCloudKit: boolean;
+  canEditLocalKit: boolean;
 }
 
 const KitListView = ({
@@ -508,6 +511,7 @@ const KitListView = ({
   onImport,
   onApply,
   onBulkApply,
+  onEdit,
   onDuplicate,
   onRemove,
   onExport,
@@ -516,6 +520,8 @@ const KitListView = ({
   bulkAvailable,
   canBulkApply,
   bulkDeniedTitle,
+  canEditCloudKit,
+  canEditLocalKit,
 }: ListViewProps) => {
   return (
     <div className="space-y-3">

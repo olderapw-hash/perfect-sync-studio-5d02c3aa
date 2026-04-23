@@ -652,33 +652,10 @@ export const EquipmentTab = ({ template, onChange }: Props) => {
             </section>
           )}
 
-          {/* Slots extras — grid 8x4 estilo bag do cliente */}
-          <section className="mt-3">
-            <div
-              className="grid grid-cols-8 gap-[3px] rounded-sm p-2"
-              style={{
-                background:
-                  "linear-gradient(180deg, hsl(200 20% 10%), hsl(205 30% 6%))",
-                boxShadow:
-                  "inset 0 0 0 1px hsl(195 55% 35%), inset 0 0 16px hsl(0 0% 0% / 0.85)",
-              }}
-            >
-              {Array.from({ length: EXTRA_GRID_SIZE }).map((_, i) => {
-                // pos virtual sequencial a partir de 100 para extras editáveis
-                const virtualPos = 100 + i;
-                const real = extras[i];
-                const it = real ?? newEmptyItem(virtualPos);
-                return (
-                  <ItemSlot
-                    key={i}
-                    item={it}
-                    size={36}
-                    onClick={() => openSlot(it.pos)}
-                  />
-                );
-              })}
-            </div>
-          </section>
+          {/* Removido: o antigo grid de "extras" usava índice (extras[i]) e
+              um pos virtual 100+i, o que renderizava itens em slots visuais
+              errados. Items com pos não-mapeada agora aparecem em "Slots
+              especiais detectados" acima — sempre por pos real. */}
         </div>
       </div>
 

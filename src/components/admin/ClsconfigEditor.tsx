@@ -78,6 +78,8 @@ interface Props {
   mode?: ClsconfigEditorMode;
   /** Callback chamado após save bem-sucedido com o template recém-persistido. */
   onSaved?: (template: ClsTemplate) => void;
+  /** Callback para recarregar o getClsconfig completo (usado após bulk apply de kit). */
+  onReload?: () => void;
 }
 
 type TabKey = "base" | "status" | "inventory" | "equipment" | "storehouse" | "task";
@@ -117,7 +119,7 @@ const extractAny = (obj: unknown, path: string[]): unknown => {
   return cur;
 };
 
-export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onSaved }: Props) => {
+export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onSaved, onReload }: Props) => {
   const [template, setTemplate] = useState<ClsTemplate>(entry.template);
   const [tab, setTab] = useState<TabKey>("base");
   const [saving, setSaving] = useState(false);
@@ -778,6 +780,11 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
         canApply={canSave}
         applyDeniedTitle={permDeniedTitle}
         onApply={(next) => setTemplate(next)}
+        mode={mode}
+        allEntries={allEntries}
+        canBulkApply={!isRoleMode && canBulkApply && can("save_templates")}
+        bulkDeniedTitle={permDeniedTitle}
+        onBulkReload={onReload}
       />
 
       {/* Confirmação forte ANTES do save em personagem real. */}

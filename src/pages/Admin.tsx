@@ -260,7 +260,7 @@ const Admin = () => {
                 </div>
               </div>
             ) : entry ? (
-              <ClsconfigEditor entry={entry} allEntries={data?.entries ?? []} />
+              <ClsconfigEditor entry={entry} allEntries={data?.entries ?? []} onReload={reload} />
             ) : (
               <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                 Selecione um template à esquerda para editar.

@@ -17,6 +17,7 @@ import {
   Copy,
   ExternalLink,
   Loader2,
+  LogOut,
   Power,
   Server,
   Shield,

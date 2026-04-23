@@ -72,9 +72,24 @@ const DESTINATION_LABELS: Record<InsertDestination, string> = {
   "task.task_inventory": "Task · Inventário",
 };
 
-/** Encontra o primeiro pos vazio dentro da capacidade. */
-function firstEmptyPos(items: ClsItem[], cap: number): number {
+/**
+ * Encontra o primeiro pos vazio dentro da capacidade.
+ *
+ * Para equipment, prioriza slots CONHECIDOS (PW_EQUIPMENT_SLOTS) na ordem
+ * canônica — não usa índice cego. Para outras seções, varre 0..cap-1.
+ */
+function firstEmptyPos(
+  items: ClsItem[],
+  cap: number,
+  destination?: InsertDestination,
+): number {
   const used = new Set(items.filter((it) => it.id > 0).map((it) => it.pos));
+  if (destination === "equipment.items") {
+    for (const def of PW_EQUIPMENT_SLOTS) {
+      if (!used.has(def.pos)) return def.pos;
+    }
+    return PW_EQUIPMENT_SLOTS[0]?.pos ?? 0;
+  }
   for (let i = 0; i < cap; i++) {
     if (!used.has(i)) return i;
   }

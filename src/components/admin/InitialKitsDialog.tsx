@@ -82,7 +82,7 @@ interface Props {
   onBulkReload?: () => void;
 }
 
-type View = "list" | "create" | "apply";
+type View = "list" | "create" | "apply" | "bulk_apply";
 
 const APPLY_MODE_LABEL: Record<ApplyMode, { title: string; desc: string }> = {
   replace_section: {
@@ -106,7 +106,14 @@ export const InitialKitsDialog = ({
   onApply,
   canApply,
   applyDeniedTitle,
+  mode = "template",
+  allEntries = [],
+  canBulkApply = false,
+  bulkDeniedTitle,
+  onBulkReload,
 }: Props) => {
+  const isTemplateMode = mode === "template";
+  const bulkAvailable = isTemplateMode && allEntries.length > 0;
   const [view, setView] = useState<View>("list");
   const [kits, setKits] = useState<InitialKit[]>(() => kitStore.list());
   const [selectedKit, setSelectedKit] = useState<InitialKit | null>(null);
@@ -195,11 +202,18 @@ export const InitialKitsDialog = ({
               setSelectedKit(k);
               setView("apply");
             }}
+            onBulkApply={(k) => {
+              setSelectedKit(k);
+              setView("bulk_apply");
+            }}
             onDuplicate={handleDuplicate}
             onRemove={handleRemove}
             onExport={handleExport}
             canApply={canApply}
             applyDeniedTitle={applyDeniedTitle}
+            bulkAvailable={bulkAvailable}
+            canBulkApply={canBulkApply}
+            bulkDeniedTitle={bulkDeniedTitle}
           />
         )}
 
@@ -225,6 +239,19 @@ export const InitialKitsDialog = ({
               onApply(next);
               toast.success(`Kit "${selectedKit.name}" aplicado — não esqueça de salvar.`);
               handleClose(false);
+            }}
+          />
+        )}
+
+        {view === "bulk_apply" && selectedKit && (
+          <KitBulkApplyView
+            kit={selectedKit}
+            allEntries={allEntries}
+            canBulkApply={canBulkApply}
+            bulkDeniedTitle={bulkDeniedTitle}
+            onCancel={() => setView("list")}
+            onFinished={() => {
+              onBulkReload?.();
             }}
           />
         )}

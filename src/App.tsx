@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,7 +9,7 @@ import { AppSettingsProvider } from "@/hooks/useAppSettings";
 import { ServerPermissionsProvider } from "@/hooks/useServerPermissions";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { SuperadminRoute } from "@/components/SuperadminRoute";
-import Admin from "./pages/Admin.tsx";
+import { AdminLayout } from "@/components/admin/layout/AdminLayout";
 import AdminUsers from "./pages/AdminUsers.tsx";
 import Auth from "./pages/Auth.tsx";
 import Landing from "./pages/Landing.tsx";
@@ -22,6 +22,22 @@ import Audit from "./pages/Audit.tsx";
 import Members from "./pages/Members.tsx";
 import Invites from "./pages/Invites.tsx";
 import NotFound from "./pages/NotFound.tsx";
+
+// Páginas internas do painel /admin (Fase 1 da nova arquitetura).
+import TemplatesPage from "./pages/admin/TemplatesPage.tsx";
+import TemplatesKitsPage from "./pages/admin/TemplatesKitsPage.tsx";
+import TemplatesCatalogPage from "./pages/admin/TemplatesCatalogPage.tsx";
+import TemplatesBackupsPage from "./pages/admin/TemplatesBackupsPage.tsx";
+import RolesPage from "./pages/admin/RolesPage.tsx";
+import RolesHistoryPage from "./pages/admin/RolesHistoryPage.tsx";
+import RolesBackupsPage from "./pages/admin/RolesBackupsPage.tsx";
+import MailPage from "./pages/admin/MailPage.tsx";
+import MailTemplatesPage from "./pages/admin/MailTemplatesPage.tsx";
+import MailHistoryPage from "./pages/admin/MailHistoryPage.tsx";
+import EventsPage from "./pages/admin/EventsPage.tsx";
+import ServerOpsPage from "./pages/admin/ServerOpsPage.tsx";
+import SecurityOverviewPage from "./pages/admin/SecurityOverviewPage.tsx";
+import SecuritySettingsPage from "./pages/admin/SecuritySettingsPage.tsx";
 
 const queryClient = new QueryClient();
 
@@ -48,14 +64,70 @@ const App = () => (
                       </ProtectedRoute>
                     }
                   />
+
+                  {/* /admin — layout compartilhado com sidebar lateral.
+                      Todas as subpáginas herdam header + sidebar via <Outlet/>. */}
                   <Route
                     path="/admin"
                     element={
                       <ProtectedRoute requireAdmin requireSubscription>
-                        <Admin />
+                        <AdminLayout />
+                      </ProtectedRoute>
+                    }
+                  >
+                    {/* Landing do /admin → templates (área principal). */}
+                    <Route index element={<Navigate to="/admin/templates" replace />} />
+
+                    {/* Personagens Iniciais */}
+                    <Route path="templates" element={<TemplatesPage />} />
+                    <Route path="templates/kits" element={<TemplatesKitsPage />} />
+                    <Route path="templates/catalogo" element={<TemplatesCatalogPage />} />
+                    <Route path="templates/backups" element={<TemplatesBackupsPage />} />
+
+                    {/* Personagens Reais */}
+                    <Route path="roles" element={<RolesPage />} />
+                    <Route path="roles/historico" element={<RolesHistoryPage />} />
+                    <Route path="roles/backups" element={<RolesBackupsPage />} />
+
+                    {/* Correio & Recompensas (Fase 2) */}
+                    <Route path="mail" element={<MailPage />} />
+                    <Route path="mail/templates" element={<MailTemplatesPage />} />
+                    <Route path="mail/history" element={<MailHistoryPage />} />
+
+                    {/* Eventos (Fase 2) */}
+                    <Route path="events" element={<EventsPage />} />
+
+                    {/* Operação do Servidor (Fase 2) */}
+                    <Route path="server" element={<ServerOpsPage />} />
+
+                    {/* Segurança */}
+                    <Route path="security" element={<SecurityOverviewPage />} />
+                    <Route path="security/settings" element={<SecuritySettingsPage />} />
+                  </Route>
+
+                  {/* Members e Audit têm header próprio com botão "voltar".
+                      Mantemos como rotas top-level (acessíveis também pelo
+                      grupo "Segurança" da sidebar via Link normal). */}
+                  <Route
+                    path="/admin/members"
+                    element={
+                      <ProtectedRoute requireAdmin={false}>
+                        <Members />
                       </ProtectedRoute>
                     }
                   />
+                  <Route
+                    path="/admin/audit"
+                    element={
+                      <ProtectedRoute requireAdmin>
+                        <Audit />
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* Aliases legados (links antigos continuam válidos). */}
+                  <Route path="/members" element={<Navigate to="/admin/members" replace />} />
+                  <Route path="/audit" element={<Navigate to="/admin/audit" replace />} />
+
                   <Route
                     path="/admin/users"
                     element={
@@ -73,14 +145,6 @@ const App = () => (
                     }
                   />
                   <Route
-                    path="/members"
-                    element={
-                      <ProtectedRoute requireAdmin={false}>
-                        <Members />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
                     path="/invites"
                     element={
                       <ProtectedRoute requireAdmin={false}>
@@ -89,14 +153,7 @@ const App = () => (
                     }
                   />
                   <Route path="/install" element={<Install />} />
-                  <Route
-                    path="/audit"
-                    element={
-                      <ProtectedRoute requireAdmin>
-                        <Audit />
-                      </ProtectedRoute>
-                    }
-                  />
+
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>

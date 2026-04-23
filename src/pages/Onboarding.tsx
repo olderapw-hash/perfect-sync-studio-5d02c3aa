@@ -17,6 +17,7 @@ import {
   Copy,
   ExternalLink,
   Loader2,
+  LogOut,
   Power,
   Server,
   Shield,
@@ -39,7 +40,7 @@ type Step = "form" | "install" | "test";
 
 const Onboarding = () => {
   const navigate = useNavigate();
-  const { session, loading: authLoading, isAdmin, isSuperadmin } = useAuth();
+  const { session, loading: authLoading, isAdmin, isSuperadmin, signOut } = useAuth();
   const { isActive, loading: subLoading } = useSubscription();
   const { servers, active, loading: serversLoading, refetch, setActive } = useServers();
   const bypassPayment = isAdmin || isSuperadmin;
@@ -202,6 +203,20 @@ const Onboarding = () => {
             PW <span className="text-primary">Admin</span>
           </span>
           <span className="ml-2 text-xs text-muted-foreground">· Configuração inicial</span>
+          <div className="ml-auto">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={async () => {
+                await signOut();
+                navigate("/auth", { replace: true });
+              }}
+              className="gap-2"
+            >
+              <LogOut className="h-4 w-4" />
+              Sair
+            </Button>
+          </div>
         </div>
       </header>
 

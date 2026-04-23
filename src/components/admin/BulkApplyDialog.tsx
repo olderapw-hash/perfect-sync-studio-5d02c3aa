@@ -161,6 +161,11 @@ export const BulkApplyDialog = ({
           status: "ok",
         });
       } catch (e) {
+        if (e instanceof NoServerSelectedError) {
+          toast.error(e.message);
+          setRunning(false);
+          return;
+        }
         errCount++;
         const msg = e instanceof Error ? e.message : "erro";
         handleMaybeAuthError(e);

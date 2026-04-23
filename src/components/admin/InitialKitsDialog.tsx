@@ -12,6 +12,7 @@ import {
   HardDrive,
   Loader2,
   Package,
+  Pencil,
   Plus,
   Save,
   Send,
@@ -67,6 +68,7 @@ import { saveHistory } from "@/lib/saveHistory";
 import { seenBackups } from "@/lib/seenBackups";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PresetsTabView } from "./PresetsTabView";
+import { KitEditSlotsView } from "./KitEditSlotsView";
 
 export type KitsDialogMode = "template" | "role";
 
@@ -93,7 +95,7 @@ interface Props {
   onBulkReload?: () => void;
 }
 
-type View = "list" | "create" | "apply" | "bulk_apply";
+type View = "list" | "create" | "apply" | "bulk_apply" | "edit";
 
 const APPLY_MODE_LABEL: Record<ApplyMode, { title: string; desc: string }> = {
   replace_section: {
@@ -128,6 +130,10 @@ export const InitialKitsDialog = ({
   const { tenantId, can } = useServerPermissions();
   const { session } = useAuth();
   const canManageCloud = can("save_templates");
+  // Editar slots de kit cloud: save_templates OU manage_kits.
+  const canEditCloudKit = can("save_templates") || can("manage_kits");
+  // Editar slots de kit local: precisa estar autenticado.
+  const canEditLocalKit = !!session?.user;
   // Preset → kit no servidor exige save_templates OU manage_kits.
   const canDuplicatePresetServer = can("save_templates") || can("manage_kits");
   // Preset → kit privado exige usuário autenticado + tenant ativo.
@@ -141,6 +147,7 @@ export const InitialKitsDialog = ({
     deleteKit: deleteCloudKit,
     duplicateKit: duplicateCloudKit,
     importKit: importCloudKit,
+    updateKitPayload,
     migrateLocalStorageKitsToCloud,
     clearLocal,
   } = useInitialKits({ tenantId });
@@ -363,6 +370,10 @@ export const InitialKitsDialog = ({
                   setSelectedKit(k);
                   setView("bulk_apply");
                 }}
+                onEdit={(k) => {
+                  setSelectedKit(k);
+                  setView("edit");
+                }}
                 onDuplicate={(k) => void handleDuplicate(k)}
                 onRemove={(k) => void handleRemove(k)}
                 onExport={handleExport}
@@ -371,6 +382,8 @@ export const InitialKitsDialog = ({
                 bulkAvailable={bulkAvailable}
                 canBulkApply={canBulkApply}
                 bulkDeniedTitle={bulkDeniedTitle}
+                canEditCloudKit={canEditCloudKit}
+                canEditLocalKit={canEditLocalKit}
               />
             </TabsContent>
 
@@ -441,6 +454,27 @@ export const InitialKitsDialog = ({
             }}
           />
         )}
+
+        {view === "edit" && selectedKit && (
+          <KitEditSlotsView
+            kit={selectedKit}
+            tenantId={tenantId}
+            canEdit={
+              selectedKit.source === "cloud" ? canEditCloudKit : canEditLocalKit
+            }
+            editDeniedTitle={
+              selectedKit.source === "cloud"
+                ? "Você precisa de save_templates ou manage_kits para editar este kit."
+                : "Faça login para editar kits locais."
+            }
+            onSaveCloud={(id, kit) => updateKitPayload(id, kit)}
+            onCancel={() => setView("list")}
+            onSaved={async () => {
+              await refetchCloud();
+              setView("list");
+            }}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -457,6 +491,7 @@ interface ListViewProps {
   onImport: () => void;
   onApply: (kit: InitialKit) => void;
   onBulkApply: (kit: InitialKit) => void;
+  onEdit: (kit: InitialKit) => void;
   onDuplicate: (kit: InitialKit) => void;
   onRemove: (kit: InitialKit) => void;
   onExport: (kit: InitialKit) => void;
@@ -465,6 +500,8 @@ interface ListViewProps {
   bulkAvailable: boolean;
   canBulkApply: boolean;
   bulkDeniedTitle?: string;
+  canEditCloudKit: boolean;
+  canEditLocalKit: boolean;
 }
 
 const KitListView = ({
@@ -474,6 +511,7 @@ const KitListView = ({
   onImport,
   onApply,
   onBulkApply,
+  onEdit,
   onDuplicate,
   onRemove,
   onExport,
@@ -482,6 +520,8 @@ const KitListView = ({
   bulkAvailable,
   canBulkApply,
   bulkDeniedTitle,
+  canEditCloudKit,
+  canEditLocalKit,
 }: ListViewProps) => {
   return (
     <div className="space-y-3">
@@ -578,6 +618,27 @@ const KitListView = ({
                         Aplicar em todos os CLS
                       </Button>
                     )}
+                    {(() => {
+                      const canEditThis =
+                        kit.source === "cloud" ? canEditCloudKit : canEditLocalKit;
+                      return (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => onEdit(kit)}
+                          disabled={!canEditThis}
+                          title={
+                            canEditThis
+                              ? "Editar slots do kit"
+                              : kit.source === "cloud"
+                                ? "Sem permissão (save_templates ou manage_kits)"
+                                : "Faça login para editar kits locais"
+                          }
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      );
+                    })()}
                     <Button
                       size="icon"
                       variant="ghost"

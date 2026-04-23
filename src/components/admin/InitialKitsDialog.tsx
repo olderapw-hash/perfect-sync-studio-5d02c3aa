@@ -599,6 +599,31 @@ const KitTargetBadge = ({ cls }: { cls: number | null }) => {
   );
 };
 
+const KitSourceBadge = ({ kit }: { kit: InitialKit }) => {
+  if (kit.source === "cloud") {
+    if (kit.visibility === "private") {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-medium text-accent-foreground">
+          <EyeOff className="h-3 w-3" />
+          Privado
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+        <Cloud className="h-3 w-3" />
+        Servidor
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-medium text-warning">
+      <HardDrive className="h-3 w-3" />
+      Local
+    </span>
+  );
+};
+
 // ────────────────────────────────────────────────────────────
 // CREATE view
 // ────────────────────────────────────────────────────────────

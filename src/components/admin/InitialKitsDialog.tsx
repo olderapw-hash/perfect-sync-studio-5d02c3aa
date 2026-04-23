@@ -1205,6 +1205,24 @@ const KitBulkApplyView = ({
         `Concluído: ${okCount} ok · ${errCount} erro(s) · ${ignoredCount} ignorado(s)`,
       );
     }
+
+    // Audit log do bulk apply (best-effort).
+    void logAuditEvent({
+      action: "initial_kit.bulk_apply",
+      tenantId,
+      target: kit.id,
+      status: errCount === 0 ? "ok" : "error",
+      metadata: {
+        kit_name: kit.name,
+        kit_source: kit.source ?? "local",
+        mode,
+        ok: okCount,
+        error: errCount,
+        ignored: ignoredCount,
+        total: targets.length,
+      },
+    });
+
     // Recarrega o getClsconfig para refletir as mudanças.
     onFinished();
   };

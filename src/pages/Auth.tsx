@@ -28,13 +28,23 @@ const Auth = () => {
 
     const hasServerAccess = servers.length > 0;
     const hasCompletedActiveServer = !!active?.onboarding_completed;
+    const bypassPayment = isSuperadmin || isAdmin;
 
-    if (isSuperadmin || isAdmin || hasCompletedActiveServer) {
+    // Servidor ativo já configurado -> painel.
+    if (hasCompletedActiveServer) {
       navigate("/admin", { replace: true });
       return;
     }
 
-    if (hasServerAccess || isActive) {
+    // Tem servidor cadastrado mas ainda não completou setup (ex: criou mas não
+    // testou conexão / não rodou install) -> volta pro onboarding pra terminar.
+    if (hasServerAccess) {
+      navigate("/onboarding", { replace: true });
+      return;
+    }
+
+    // Sem servidor: precisa de assinatura ativa (admin/superadmin pulam pagamento).
+    if (isActive || bypassPayment) {
       navigate("/onboarding", { replace: true });
       return;
     }

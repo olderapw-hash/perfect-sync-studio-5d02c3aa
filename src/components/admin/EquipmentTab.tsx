@@ -174,10 +174,8 @@ export const EquipmentTab = ({ template, onChange }: Props) => {
       : SLOTS.find((s) => s.pos === editingPos)?.label
         ?? (LEADER_POSITIONS.has(editingPos) ? "Líder" : "extra");
 
-  // Grid de slots extras (sempre mostra ao menos 32 caixas, no estilo da imagem)
-  const EXTRA_GRID_SIZE = 32;
-  const extrasByPos = new Map<number, ClsItem>();
-  extras.forEach((it) => extrasByPos.set(it.pos, it));
+  // Removido: grid de extras com pos virtual (100+i). Items não-mapeados
+  // agora aparecem por pos real na seção "Slots especiais detectados".
 
   // Roupas: lê direto do storehouse.dress (array de fashion do servidor PW).
   const dress = template.storehouse?.dress ?? [];
@@ -229,7 +227,11 @@ export const EquipmentTab = ({ template, onChange }: Props) => {
     photo.reload();
   };
 
-  /** Renderiza um slot equipamento com label PW BR acima. */
+  /**
+   * Renderiza um slot equipamento com label PW BR acima.
+   * IMPORTANTE: lookup é SEMPRE por `pos` real (Map by-pos). Nunca por índice.
+   * Em dev, mostra o "pos X" abaixo pra ajudar a depurar mapeamento.
+   */
   const LabeledSlot = ({ pos, label, size = 44 }: { pos: number; label: string; size?: number }) => {
     const it = byPos.get(pos) ?? newEmptyItem(pos);
     return (
@@ -256,6 +258,14 @@ export const EquipmentTab = ({ template, onChange }: Props) => {
             emptyLabel=""
           />
         </div>
+        {import.meta.env.DEV && (
+          <span
+            className="font-mono text-[8px] leading-none opacity-60"
+            style={{ color: "hsl(40 35% 55%)" }}
+          >
+            pos {pos}
+          </span>
+        )}
       </div>
     );
   };
@@ -640,33 +650,10 @@ export const EquipmentTab = ({ template, onChange }: Props) => {
             </section>
           )}
 
-          {/* Slots extras — grid 8x4 estilo bag do cliente */}
-          <section className="mt-3">
-            <div
-              className="grid grid-cols-8 gap-[3px] rounded-sm p-2"
-              style={{
-                background:
-                  "linear-gradient(180deg, hsl(200 20% 10%), hsl(205 30% 6%))",
-                boxShadow:
-                  "inset 0 0 0 1px hsl(195 55% 35%), inset 0 0 16px hsl(0 0% 0% / 0.85)",
-              }}
-            >
-              {Array.from({ length: EXTRA_GRID_SIZE }).map((_, i) => {
-                // pos virtual sequencial a partir de 100 para extras editáveis
-                const virtualPos = 100 + i;
-                const real = extras[i];
-                const it = real ?? newEmptyItem(virtualPos);
-                return (
-                  <ItemSlot
-                    key={i}
-                    item={it}
-                    size={36}
-                    onClick={() => openSlot(it.pos)}
-                  />
-                );
-              })}
-            </div>
-          </section>
+          {/* Removido: o antigo grid de "extras" usava índice (extras[i]) e
+              um pos virtual 100+i, o que renderizava itens em slots visuais
+              errados. Items com pos não-mapeada agora aparecem em "Slots
+              especiais detectados" acima — sempre por pos real. */}
         </div>
       </div>
 

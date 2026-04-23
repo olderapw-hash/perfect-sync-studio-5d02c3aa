@@ -780,6 +780,11 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
         canApply={canSave}
         applyDeniedTitle={permDeniedTitle}
         onApply={(next) => setTemplate(next)}
+        mode={mode}
+        allEntries={allEntries}
+        canBulkApply={!isRoleMode && canBulkApply && can("save_templates")}
+        bulkDeniedTitle={permDeniedTitle}
+        onBulkReload={onReload}
       />
 
       {/* Confirmação forte ANTES do save em personagem real. */}

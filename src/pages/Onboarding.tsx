@@ -312,12 +312,28 @@ const Onboarding = () => {
                       value={apiUrl}
                       onChange={(e) => setApiUrl(e.target.value)}
                       placeholder="http://SEU_IP/apicls/api_cls.php"
-                      className="font-mono text-xs"
+                      className={cn(
+                        "font-mono text-xs",
+                        apiUrl && !urlValidation.ok && "border-destructive",
+                      )}
                     />
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      Endereço do <code className="font-mono">api_cls.php</code> que você vai
-                      instalar.
-                    </p>
+                    {apiUrl && !urlValidation.ok && (
+                      <p className="mt-1 text-[11px] text-destructive">
+                        ✗ {urlValidation.error}
+                      </p>
+                    )}
+                    {apiUrl && urlValidation.ok && (
+                      <p className="mt-1 text-[11px] text-emerald-500">
+                        ✓ Endpoint final:{" "}
+                        <code className="font-mono">{urlValidation.endpoint}</code>
+                      </p>
+                    )}
+                    {!apiUrl && (
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        Endereço do <code className="font-mono">api_cls.php</code> que você vai
+                        instalar.
+                      </p>
+                    )}
                   </div>
                   <div>
                     <Label htmlFor="ob-secret">Secret</Label>

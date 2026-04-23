@@ -14,6 +14,7 @@ import { uploadCharacterPhoto, uploadClassPhoto, removeCharacterPhoto } from "@/
 import { PhotoUploadButton } from "./PhotoUploadButton";
 import { clearItems, summarizeSection } from "@/lib/clearSection";
 import { ClearSectionDialog } from "./ClearSectionDialog";
+import { getEquipmentSlotLabel, sortEquipmentBySlot } from "@/lib/equipmentSlots";
 
 interface Props {
   template: ClsTemplate;
@@ -159,12 +160,11 @@ export const EquipmentTab = ({ template, onChange }: Props) => {
     editingPos == null
       ? ""
       : SLOTS.find((s) => s.pos === editingPos)?.label
-        ?? (LEADER_POSITIONS.has(editingPos) ? "Líder" : "extra");
+        ?? (LEADER_POSITIONS.has(editingPos) ? "Líder" : getEquipmentSlotLabel(editingPos));
 
-  // Grid de slots extras (sempre mostra ao menos 32 caixas, no estilo da imagem)
-  const EXTRA_GRID_SIZE = 32;
-  const extrasByPos = new Map<number, ClsItem>();
-  extras.forEach((it) => extrasByPos.set(it.pos, it));
+  // Slots especiais detectados — itens com pos real fora do paper-doll/líderes.
+  // NUNCA são removidos. Renderizados pelo pos REAL (não pelo índice).
+  const specialDetected = sortEquipmentBySlot(extras);
 
   // Roupas: lê direto do storehouse.dress (array de fashion do servidor PW).
   const dress = template.storehouse?.dress ?? [];
@@ -592,33 +592,55 @@ export const EquipmentTab = ({ template, onChange }: Props) => {
             </div>
           </section>
 
-          {/* Slots extras — grid 8x4 estilo bag do cliente */}
-          <section className="mt-3">
-            <div
-              className="grid grid-cols-8 gap-[3px] rounded-sm p-2"
-              style={{
-                background:
-                  "linear-gradient(180deg, hsl(200 20% 10%), hsl(205 30% 6%))",
-                boxShadow:
-                  "inset 0 0 0 1px hsl(195 55% 35%), inset 0 0 16px hsl(0 0% 0% / 0.85)",
-              }}
-            >
-              {Array.from({ length: EXTRA_GRID_SIZE }).map((_, i) => {
-                // pos virtual sequencial a partir de 100 para extras editáveis
-                const virtualPos = 100 + i;
-                const real = extras[i];
-                const it = real ?? newEmptyItem(virtualPos);
-                return (
-                  <ItemSlot
-                    key={i}
-                    item={it}
-                    size={36}
-                    onClick={() => openSlot(it.pos)}
-                  />
-                );
-              })}
-            </div>
-          </section>
+          {/* Slots especiais detectados — preserva pos REAL (ex: 26, 29, 32, 33).
+              Nunca remove itens com pos fora do paper-doll. */}
+          {specialDetected.length > 0 && (
+            <section className="mt-3">
+              <div className="mb-1.5 flex items-center justify-between">
+                <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-200/70">
+                  Slots especiais detectados
+                </h4>
+                <span className="font-mono text-[10px] text-amber-200/60">
+                  {specialDetected.length}
+                </span>
+              </div>
+              <div
+                className="grid grid-cols-4 gap-2 rounded-sm p-2 sm:grid-cols-6 md:grid-cols-8"
+                style={{
+                  background:
+                    "linear-gradient(180deg, hsl(200 20% 10%), hsl(205 30% 6%))",
+                  boxShadow:
+                    "inset 0 0 0 1px hsl(195 55% 35%), inset 0 0 16px hsl(0 0% 0% / 0.85)",
+                }}
+              >
+                {specialDetected.map((it) => {
+                  const label = getEquipmentSlotLabel(it.pos, { short: true });
+                  return (
+                    <div key={it.pos} className="flex flex-col items-center gap-1">
+                      <span
+                        className="max-w-full truncate text-[9px] font-bold uppercase tracking-wider"
+                        style={{ color: "hsl(40 45% 65%)" }}
+                        title={`${getEquipmentSlotLabel(it.pos)} (pos ${it.pos})`}
+                      >
+                        {label}
+                      </span>
+                      <ItemSlot
+                        item={it}
+                        size={40}
+                        onClick={() => openSlot(it.pos)}
+                      />
+                      <span className="font-mono text-[9px] text-muted-foreground">
+                        pos {it.pos}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                Itens em slots fora do paper-doll padrão são preservados no payload.
+              </p>
+            </section>
+          )}
         </div>
       </div>
 

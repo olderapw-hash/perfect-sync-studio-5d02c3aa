@@ -1,11 +1,16 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Boxes,
   CheckCircle2,
+  Cloud,
+  CloudUpload,
   Copy,
   Download,
+  Eye,
+  EyeOff,
   FileUp,
+  HardDrive,
   Loader2,
   Package,
   Plus,
@@ -48,7 +53,11 @@ import {
   type ApplyMode,
   type InitialKit,
   type KitIncludes,
+  type KitVisibility,
 } from "@/lib/initialKits";
+import { useInitialKits } from "@/hooks/useInitialKits";
+import { useServerPermissions } from "@/hooks/useServerPermissions";
+import { logAuditEvent } from "@/lib/auditLog";
 import type { ClsEntry, ClsTemplate } from "@/types/clsconfig";
 import { summarizeIssues, validateAllItems } from "@/lib/validateItem";
 import { ValidationPanel } from "./ValidationPanel";

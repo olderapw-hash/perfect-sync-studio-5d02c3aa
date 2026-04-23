@@ -1,8 +1,9 @@
-import { Navigate } from "react-router-dom";
-import { Loader2, ShieldAlert } from "lucide-react";
+import { Link, Navigate } from "react-router-dom";
+import { Loader2, Mail, ShieldAlert } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useTenant } from "@/hooks/useTenant";
+import { useMyPendingInvites } from "@/hooks/useServerMembers";
 
 interface Props {
   children: React.ReactNode;
@@ -19,6 +20,7 @@ export const ProtectedRoute = ({
   const { session, isAdmin, isSuperadmin, loading, signOut } = useAuth();
   const { isActive, loading: subLoading } = useSubscription();
   const { tenant, loading: tenantLoading } = useTenant();
+  const { invites: pendingInvites } = useMyPendingInvites();
 
   if (loading || (requireSubscription && (subLoading || tenantLoading))) {
     return (
@@ -33,6 +35,7 @@ export const ProtectedRoute = ({
   }
 
   if (requireAdmin && !isAdmin) {
+    const hasPending = pendingInvites.length > 0;
     return (
       <div className="flex h-screen items-center justify-center bg-hero p-4">
         <div className="max-w-sm rounded-xl border border-destructive/40 bg-destructive/10 p-6 text-center">
@@ -41,12 +44,37 @@ export const ProtectedRoute = ({
           <p className="mt-2 text-xs text-muted-foreground">
             Sua conta não tem permissão de administrador para acessar o painel.
           </p>
-          <button
-            onClick={signOut}
-            className="mt-4 rounded-md border border-border bg-card/60 px-4 py-2 text-xs hover:border-primary/50"
-          >
-            Sair
-          </button>
+          {hasPending && (
+            <div className="mt-4 rounded-md border border-primary/40 bg-primary/10 p-3 text-left text-xs">
+              <Mail className="mb-1 inline h-3.5 w-3.5 text-primary" /> Você tem{" "}
+              <strong>{pendingInvites.length}</strong> convite
+              {pendingInvites.length > 1 ? "s" : ""} pendente
+              {pendingInvites.length > 1 ? "s" : ""}. Aceite para virar membro de um
+              servidor.
+            </div>
+          )}
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            {hasPending && (
+              <Link
+                to="/invites"
+                className="rounded-md bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:opacity-90"
+              >
+                Ver convites
+              </Link>
+            )}
+            <Link
+              to="/servers"
+              className="rounded-md border border-border bg-card/60 px-4 py-2 text-xs hover:border-primary/50"
+            >
+              Meus servidores
+            </Link>
+            <button
+              onClick={signOut}
+              className="rounded-md border border-border bg-card/60 px-4 py-2 text-xs hover:border-primary/50"
+            >
+              Sair
+            </button>
+          </div>
         </div>
       </div>
     );

@@ -16,6 +16,7 @@ import {
   UserCog,
   History,
   Sparkles,
+  Eraser,
 } from "lucide-react";
 import {
   AlertDialog,

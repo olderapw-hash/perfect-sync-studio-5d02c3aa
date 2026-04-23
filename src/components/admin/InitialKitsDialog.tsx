@@ -454,6 +454,27 @@ export const InitialKitsDialog = ({
             }}
           />
         )}
+
+        {view === "edit" && selectedKit && (
+          <KitEditSlotsView
+            kit={selectedKit}
+            tenantId={tenantId}
+            canEdit={
+              selectedKit.source === "cloud" ? canEditCloudKit : canEditLocalKit
+            }
+            editDeniedTitle={
+              selectedKit.source === "cloud"
+                ? "Você precisa de save_templates ou manage_kits para editar este kit."
+                : "Faça login para editar kits locais."
+            }
+            onSaveCloud={(id, kit) => updateKitPayload(id, kit)}
+            onCancel={() => setView("list")}
+            onSaved={async () => {
+              await refetchCloud();
+              setView("list");
+            }}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

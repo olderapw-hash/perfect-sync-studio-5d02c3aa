@@ -88,18 +88,6 @@ function expectedApiUrl(rawUrl: string | null | undefined): string {
   return `${trimmed}/apicls/api_cls.php`;
 }
 
-function extractIp(rawUrl: string | null | undefined): string {
-  if (!rawUrl) return "IP_DA_VPS";
-  try {
-    const u = new URL(
-      rawUrl.startsWith("http") ? rawUrl : `http://${rawUrl}`,
-    );
-    return u.hostname || "IP_DA_VPS";
-  } catch {
-    return "IP_DA_VPS";
-  }
-}
-
 const Install = () => {
   const navigate = useNavigate();
   const { session, loading: authLoading } = useAuth();
@@ -143,13 +131,16 @@ const Install = () => {
   }, [selected]);
 
   const apiUrl = expectedApiUrl(selected?.pw_api_base_url);
-  const ip = extractIp(selected?.pw_api_base_url);
-  const secretToken = secret ?? "<SECRET_DO_SERVIDOR>";
+  // Sempre usamos placeholders fictícios no comando exibido — o IP e o secret
+  // reais do servidor nunca aparecem no método recomendado, para evitar
+  // vazamento ao copiar/compartilhar a tela.
+  const ipPlaceholder = "IP_DA_VPS";
+  const secretPlaceholder = "SEU_SECRET";
 
   const installCommand = [
-    `scp api_cls.php root@${ip}:/root/api_cls.php`,
-    `scp install-apicls-centos7.sh root@${ip}:/root/install-apicls-centos7.sh`,
-    `ssh root@${ip} "bash /root/install-apicls-centos7.sh --secret ${secretToken} --api-src /root/api_cls.php"`,
+    `scp api_cls.php root@${ipPlaceholder}:/root/api_cls.php`,
+    `scp install-apicls-centos7.sh root@${ipPlaceholder}:/root/install-apicls-centos7.sh`,
+    `ssh root@${ipPlaceholder} "bash /root/install-apicls-centos7.sh --secret ${secretPlaceholder} --api-src /root/api_cls.php"`,
   ].join("\n");
 
   const handleDownload = (file: InstallerFile) => {
@@ -410,15 +401,11 @@ const Install = () => {
               <Copy className="mr-2 h-3.5 w-3.5" /> Copiar
             </Button>
           </div>
-          {!secret && (
-            <p className="mt-2 text-[11px] text-amber-500">
-              <AlertTriangle className="mr-1 inline h-3 w-3" />
-              Selecione (e ative) um servidor acima para o comando vir com o secret real.
-            </p>
-          )}
           <p className="mt-3 text-xs text-muted-foreground">
-            Depois que terminar, volte aqui e clique em <strong>Testar conexão</strong>{" "}
-            ou cadastre/atualize a VPS em <strong>Meus Servidores</strong>.
+            Substitua <code className="rounded bg-muted px-1 font-mono">IP_DA_VPS</code> pelo IP/host
+            real e <code className="rounded bg-muted px-1 font-mono">SEU_SECRET</code> pelo secret
+            mostrado em <strong>Meus Servidores</strong>. Depois volte aqui e clique em{" "}
+            <strong>Testar conexão</strong>.
           </p>
         </section>
 

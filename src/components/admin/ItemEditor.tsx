@@ -245,12 +245,25 @@ export const ItemEditor = ({
 
   // ───────────────── Render ─────────────────
 
+  const isEquipmentSection = section === "equipment.items";
+  const slotDef = isEquipmentSection ? getEquipmentSlotDef(item.pos) : undefined;
+  const slotLabel = isEquipmentSection ? getEquipmentSlotLabel(item.pos) : null;
+
   return (
     <div className="rounded-xl border border-border bg-background/40 p-3">
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="rounded-md bg-muted/40 px-2 py-0.5 font-mono text-[11px] text-muted-foreground">
-            pos {item.pos}
+            {isEquipmentSection ? (
+              <>
+                <span className={slotDef ? "text-foreground" : "text-warning"}>
+                  {slotLabel}
+                </span>
+                <span className="ml-1 opacity-60">(pos {item.pos})</span>
+              </>
+            ) : (
+              <>pos {item.pos}</>
+            )}
           </span>
           {liveBlocking > 0 && (
             <span className="rounded-md bg-destructive/15 px-1.5 py-0.5 text-[10px] font-semibold text-destructive">

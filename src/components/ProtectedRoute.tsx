@@ -107,10 +107,11 @@ export const ProtectedRoute = ({
     );
   }
 
-  // Subscription gate. Superadmin AND manually-approved admins bypass —
-  // the superadmin uses the user-management screen to grant comp access
-  // without forcing the user through Paddle checkout.
-  if (requireSubscription && !isSuperadmin && !isAdmin) {
+  // Subscription gate. Superadmin, admins manualmente aprovados E membros convidados
+  // de servidores existentes fazem bypass — convidados operam no tenant do dono,
+  // não precisam pagar nem fazer onboarding próprio.
+  const isGuestMember = isServerMember === true && !isAdmin && !isSuperadmin;
+  if (requireSubscription && !isSuperadmin && !isAdmin && !isGuestMember) {
     if (!isActive) {
       return <Navigate to="/pricing" replace />;
     }
@@ -119,9 +120,8 @@ export const ProtectedRoute = ({
     }
   }
 
-  // Even bypass users still need onboarding done so the panel has a tenant
-  // to work against. Only enforce when they don't have a completed tenant.
-  if (requireSubscription && (isAdmin || isSuperadmin) && !isSuperadmin) {
+  // Admins não-superadmin ainda precisam ter onboarding feito (tenant próprio).
+  if (requireSubscription && isAdmin && !isSuperadmin && !isGuestMember) {
     if (!tenant?.onboarding_completed) {
       return <Navigate to="/onboarding" replace />;
     }

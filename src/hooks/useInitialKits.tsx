@@ -127,6 +127,12 @@ interface UseInitialKitsResult {
     id: string,
     patch: Partial<Pick<InitialKit, "name" | "description" | "target_cls" | "visibility">>,
   ) => Promise<boolean>;
+  /**
+   * Atualiza o conteúdo (slots) de um kit cloud. Recebe o kit JÁ atualizado
+   * em memória; só extrai o payload mínimo (inventory/equipment/storehouse/
+   * task.task_inventory + includes) e grava em `payload`.
+   */
+  updateKitPayload: (id: string, kit: InitialKit) => Promise<boolean>;
   deleteKit: (id: string) => Promise<boolean>;
   duplicateKit: (id: string) => Promise<InitialKit | null>;
   importKit: (kit: InitialKit, visibility: KitVisibility) => Promise<InitialKit | null>;

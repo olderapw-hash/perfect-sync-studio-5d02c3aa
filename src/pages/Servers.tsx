@@ -326,11 +326,13 @@ const ServerFormDialog = ({ open, editing, onClose, onSaved, userId }: FormDialo
       setServerName(editing.server_name ?? "");
       setApiUrl(editing.pw_api_base_url ?? "");
       setIconBase(editing.icon_base_url ?? "");
-      // Para edição, busca o secret via RPC seguro.
-      supabase.rpc("get_my_tenant_secret").then(({ data }) => {
-        if (data && editing.is_active) setApiSecret(data as string);
-        else setApiSecret("");
-      });
+      // Busca o secret específico deste tenant (RPC valida ownership).
+      // Funciona mesmo se o servidor NÃO for o ativo.
+      supabase
+        .rpc("get_tenant_secret", { _tenant_id: editing.id })
+        .then(({ data }) => {
+          setApiSecret((data as string | null) ?? "");
+        });
     } else if (open) {
       setServerName("");
       setApiUrl("");

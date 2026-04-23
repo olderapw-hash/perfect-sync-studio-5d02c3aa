@@ -49,16 +49,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
-    // 2) Sessão atual
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      if (s?.user) {
-        hadSessionRef.current = true;
-        checkRoles(s.user.id).finally(() => setLoading(false));
-      } else {
+    // 2) Sessão atual — sempre destrava `loading`, mesmo em erro
+    // (ex.: refresh_token_not_found após token expirar)
+    supabase.auth
+      .getSession()
+      .then(({ data: { session: s } }) => {
+        setSession(s);
+        if (s?.user) {
+          hadSessionRef.current = true;
+          checkRoles(s.user.id).finally(() => setLoading(false));
+        } else {
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error("[auth] getSession failed", err);
+        setSession(null);
         setLoading(false);
-      }
-    });
+      });
+
+    // Safety net: se nada destravou loading em 5s, libera mesmo assim
+    // para a UI poder pelo menos redirecionar para /auth.
+    const safety = setTimeout(() => {
+      setLoading((prev) => {
+        if (prev) console.warn("[auth] safety timeout — forcing loading=false");
+        return false;
+      });
+    }, 5000);
 
     return () => sub.subscription.unsubscribe();
   }, []);

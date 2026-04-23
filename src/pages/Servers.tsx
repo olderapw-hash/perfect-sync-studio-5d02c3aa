@@ -359,8 +359,12 @@ const ServerFormDialog = ({ open, editing, onClose, onSaved, userId }: FormDialo
     setTesting(true);
     const r = await testServerConnection({ url: apiUrl, secret: apiSecret });
     setTesting(false);
-    if (r.success) toast.success(`Conexão OK · ${r.elapsed_ms}ms`);
-    else toast.error(`Falha: ${r.error ?? "erro"}`);
+    if (r.success) {
+      toast.success(`Conexão OK · ${r.elapsed_ms}ms`);
+    } else {
+      const f = friendlyConnectionError(r);
+      toast.error(f.title, { description: f.hint, duration: 8000 });
+    }
   };
 
   const handleSave = async () => {

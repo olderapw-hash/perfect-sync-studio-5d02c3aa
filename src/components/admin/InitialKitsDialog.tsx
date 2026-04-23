@@ -989,6 +989,7 @@ const KitApplyView = ({
 
 interface BulkApplyViewProps {
   kit: InitialKit;
+  tenantId: string | null;
   allEntries: ClsEntry[];
   canBulkApply: boolean;
   bulkDeniedTitle?: string;
@@ -1029,6 +1030,7 @@ const extractStr = (obj: unknown, path: string[]): string | undefined => {
 
 const KitBulkApplyView = ({
   kit,
+  tenantId,
   allEntries,
   canBulkApply,
   bulkDeniedTitle,

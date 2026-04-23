@@ -1253,19 +1253,20 @@ const KitBulkApplyView = ({
     let errCount = 0;
     let ignoredCount = 0;
 
-    for (const t of targets) {
-      const rid = t.roleid;
-      setResults((prev) => ({ ...prev, [rid]: { ...prev[rid], status: "running" } }));
+    try {
+      for (const t of targets) {
+        const rid = t.roleid;
+        setResults((prev) => ({ ...prev, [rid]: { ...prev[rid], status: "running" } }));
 
-      try {
-        // 1. cópia do template + aplicação do kit
+        // 1. cópia do template + aplicação do kit (idempotente, fora do retry)
         const applied = applyKitToTemplate(t.entry.template, kit, { mode });
 
         // 2. validador avançado — bloqueia só em critical/error
         const summary = summarizeIssues(validateAllItems(applied));
         if (summary.hasBlocking) {
           ignoredCount++;
-          const head = summary.criticals[0]?.message ?? summary.errors[0]?.message ?? "validação falhou";
+          const head =
+            summary.criticals[0]?.message ?? summary.errors[0]?.message ?? "validação falhou";
           setResults((prev) => ({
             ...prev,
             [rid]: {
@@ -1283,85 +1284,138 @@ const KitBulkApplyView = ({
             status: "error",
             error: head,
           });
+          await sleep(interRoleidDelay());
           continue;
         }
 
         // 3. payload mínimo
         const payload = buildKitBulkPayload(rid, applied, kit);
 
-        // 4. POST clsconfig-proxy/clsconfig
-        const { data, error, rawBody } = await invokeClsconfigProxy(
-          "clsconfig-proxy/clsconfig",
-          { method: "POST", body: payload },
-        );
-        if (error) {
-          throw new Error(rawBody ? `${error.message}\n\n${rawBody}` : error.message);
+        // 4. Fila com retry: até 3 tentativas para erros de rede/Edge.
+        let attemptUsed = 0;
+        let lastErrorMsg = "";
+        let succeededData: unknown = null;
+        let succeeded = false;
+
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          attemptUsed = attempt;
+          try {
+            const { data, error, rawBody } = await invokeClsconfigProxy(
+              "clsconfig-proxy/clsconfig",
+              { method: "POST", body: payload },
+            );
+            if (error) {
+              throw new Error(rawBody ? `${error.message}\n\n${rawBody}` : error.message);
+            }
+            if (
+              data &&
+              typeof data === "object" &&
+              (data as { success?: boolean }).success === false
+            ) {
+              // Erro lógico do backend — JSON real, não é network. Não retry.
+              const apiErr =
+                (data as { error?: string }).error ||
+                JSON.stringify(data).slice(0, 500) ||
+                "save falhou";
+              const err = new Error(apiErr);
+              (err as Error & { __noRetry?: boolean }).__noRetry = true;
+              throw err;
+            }
+            succeededData = data;
+            succeeded = true;
+            break;
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            lastErrorMsg = msg;
+            const noRetry = (e as { __noRetry?: boolean })?.__noRetry === true;
+            const { retryable, forbidden } = classifyError(msg);
+
+            if (noRetry || forbidden || !retryable || attempt === 3) {
+              break;
+            }
+            // Backoff: tentativa 2 → 800ms, tentativa 3 → 2000ms
+            await sleep(attempt === 1 ? 800 : 2000);
+          }
         }
-        if (data && typeof data === "object" && (data as { success?: boolean }).success === false) {
-          throw new Error((data as { error?: string }).error || "save falhou");
+
+        if (succeeded) {
+          // 5. extrai backups/export pra relatório
+          const backupRoleJson =
+            extractStr(succeededData, ["saved", "backup", "file"]) ??
+            extractStr(succeededData, ["saved", "backups", "role_json", "file"]);
+          const backupClsconfigFile =
+            extractStr(succeededData, ["saved", "clsconfig_file_backup", "file"]) ??
+            extractStr(succeededData, ["saved", "backups", "clsconfig_file", "file"]);
+          const exportLogFile = extractStr(succeededData, ["saved", "export", "log_file"]);
+
+          if (backupRoleJson) seenBackups.add(rid, "role_json", backupRoleJson);
+          if (backupClsconfigFile) seenBackups.add(rid, "clsconfig_file", backupClsconfigFile);
+
+          okCount++;
+          setResults((prev) => ({
+            ...prev,
+            [rid]: {
+              ...prev[rid],
+              status: "success",
+              message: attemptUsed > 1 ? `Salvo (tentativa ${attemptUsed})` : "Salvo",
+              attempt: attemptUsed,
+              backupRoleJson,
+              backupClsconfigFile,
+              exportLogFile,
+            },
+          }));
+          saveHistory.pushDiff({
+            roleid: rid,
+            className: t.className,
+            field: `kit:${kit.name}`,
+            oldValue: "(antes)",
+            newValue: `(kit aplicado · modo ${mode}${attemptUsed > 1 ? ` · tentativa ${attemptUsed}` : ""})`,
+            status: "ok",
+          });
+        } else {
+          errCount++;
+          setResults((prev) => ({
+            ...prev,
+            [rid]: {
+              ...prev[rid],
+              status: "error",
+              message: lastErrorMsg || "erro desconhecido",
+              attempt: attemptUsed,
+            },
+          }));
+          saveHistory.pushDiff({
+            roleid: rid,
+            className: t.className,
+            field: `kit:${kit.name}`,
+            oldValue: "(antes)",
+            newValue: `(falha · tentativa ${attemptUsed})`,
+            status: "error",
+            error: lastErrorMsg,
+          });
+          // Continua mesmo com erro — não para no primeiro.
         }
 
-        // 5. extrai backups/export pra relatório
-        const backupRoleJson =
-          extractStr(data, ["saved", "backup", "file"]) ??
-          extractStr(data, ["saved", "backups", "role_json", "file"]);
-        const backupClsconfigFile =
-          extractStr(data, ["saved", "clsconfig_file_backup", "file"]) ??
-          extractStr(data, ["saved", "backups", "clsconfig_file", "file"]);
-        const exportLogFile = extractStr(data, ["saved", "export", "log_file"]);
-
-        if (backupRoleJson) seenBackups.add(rid, "role_json", backupRoleJson);
-        if (backupClsconfigFile) seenBackups.add(rid, "clsconfig_file", backupClsconfigFile);
-
-        okCount++;
-        setResults((prev) => ({
-          ...prev,
-          [rid]: {
-            ...prev[rid],
-            status: "success",
-            message: "Salvo",
-            backupRoleJson,
-            backupClsconfigFile,
-            exportLogFile,
-          },
-        }));
-        saveHistory.pushDiff({
-          roleid: rid,
-          className: t.className,
-          field: `kit:${kit.name}`,
-          oldValue: "(antes)",
-          newValue: `(kit aplicado · modo ${mode})`,
-          status: "ok",
-        });
-      } catch (e) {
-        errCount++;
-        const msg = e instanceof Error ? e.message : "erro";
-        setResults((prev) => ({
-          ...prev,
-          [rid]: { ...prev[rid], status: "error", message: msg },
-        }));
-        saveHistory.pushDiff({
-          roleid: rid,
-          className: t.className,
-          field: `kit:${kit.name}`,
-          oldValue: "(antes)",
-          newValue: "(falha)",
-          status: "error",
-          error: msg,
-        });
-        // Continua mesmo com erro — não para no primeiro.
+        // Delay entre roleids (300-700ms) — evita rajada na Edge.
+        await sleep(interRoleidDelay());
       }
-    }
 
-    setRunning(false);
-    setDone(true);
-
-    if (errCount === 0 && ignoredCount === 0) {
-      toast.success(`Kit aplicado em ${okCount} CLS`);
-    } else {
-      toast.warning(
-        `Concluído: ${okCount} ok · ${errCount} erro(s) · ${ignoredCount} ignorado(s)`,
+      if (errCount === 0 && ignoredCount === 0) {
+        toast.success(`Kit aplicado em ${okCount} CLS`);
+      } else {
+        toast.warning(
+          `Concluído: ${okCount} ok · ${errCount} erro(s) · ${ignoredCount} ignorado(s)`,
+        );
+      }
+    } catch (fatal) {
+      // Erro fatal inesperado no loop — registra e segue para o finally.
+      console.error("[bulk-apply] fatal", fatal);
+      toast.error(
+        fatal instanceof Error ? fatal.message : "Erro fatal durante a aplicação em massa",
       );
+    } finally {
+      // Garante liberação do botão mesmo em erro inesperado.
+      setRunning(false);
+      setDone(true);
     }
 
     // Audit log do bulk apply (best-effort).

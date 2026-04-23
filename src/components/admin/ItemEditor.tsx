@@ -81,6 +81,7 @@ export const ItemEditor = ({
   const [pickerDest, setPickerDest] = useState<string>("");
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteText, setPasteText] = useState("");
+  const [catalogOpen, setCatalogOpen] = useState(false);
   const [collisionConfirm, setCollisionConfirm] = useState<{
     mode: "duplicate" | "move" | "paste";
     incoming: ClsItem;

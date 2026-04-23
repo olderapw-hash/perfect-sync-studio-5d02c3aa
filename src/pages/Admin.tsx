@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   AlertCircle,
-  Database,
   Image as ImageIcon,
   Loader2,
   LogOut,
@@ -15,12 +14,12 @@ import {
   Users as UsersIcon,
   Settings as SettingsIcon,
   ShieldCheck,
-  UserPlus,
 } from "lucide-react";
 import { useClsconfig } from "@/hooks/useClsconfig";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { useServerPermissions } from "@/hooks/useServerPermissions";
+import { useTenant } from "@/hooks/useTenant";
 import { PendingInvitesBanner } from "@/components/PendingInvitesBanner";
 import { ClsconfigEditor } from "@/components/admin/ClsconfigEditor";
 import { ItemCatalogManager } from "@/components/admin/ItemCatalogManager";
@@ -31,6 +30,7 @@ import { ItemCatalogAdvancedDialog } from "@/components/admin/ItemCatalogAdvance
 import { RolePersonagemTab } from "@/components/admin/RolePersonagemTab";
 import { ClassPhotosTab } from "@/components/admin/ClassPhotosTab";
 import { SettingsTab } from "@/components/admin/SettingsTab";
+import { EmptyClsconfigBanner } from "@/components/admin/EmptyClsconfigBanner";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +41,7 @@ const Admin = () => {
   const { user, signOut, isSuperadmin } = useAuth();
   const { settings } = useAppSettings();
   const { can } = useServerPermissions();
+  const { tenant } = useTenant();
   const [selected, setSelected] = useState<string | null>(null);
   const [mode, setMode] = useState<AdminMode>("template");
   const [backupsOpen, setBackupsOpen] = useState(false);
@@ -243,23 +244,15 @@ const Admin = () => {
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : isEmpty ? (
-              <div className="m-6 overflow-auto rounded-xl border border-border bg-card/40 p-6 text-sm">
-                <div className="flex items-center gap-2 font-semibold text-foreground">
-                  <Database className="h-4 w-4 text-primary" />
-                  Nenhum template retornado (count = 0)
-                </div>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  O endpoint <code className="font-mono">/apicls/api_cls.php?action=getClsconfig</code>{" "}
-                  respondeu com sucesso, mas <code className="font-mono">entries</code> está vazio.
-                </p>
-                <div className="mt-4">
-                  <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    JSON bruto (debug)
-                  </div>
-                  <pre className="max-h-[60vh] overflow-auto rounded-md bg-background/60 p-3 font-mono text-[11px] text-foreground/80">
-                    {JSON.stringify(raw, null, 2)}
-                  </pre>
-                </div>
+              <div className="h-full overflow-y-auto p-6">
+                <EmptyClsconfigBanner
+                  count={(raw as { count?: number })?.count ?? data?.entries.length ?? 0}
+                  entriesLength={data?.entries.length ?? 0}
+                  hasClasses={(data?.classes?.length ?? 0) > 0}
+                  tenantId={tenant?.id ?? null}
+                  endpoint="/apicls/api_cls.php?action=getClsconfig"
+                  rawResponse={raw}
+                />
               </div>
             ) : entry ? (
               <ClsconfigEditor entry={entry} allEntries={data?.entries ?? []} onReload={reload} />

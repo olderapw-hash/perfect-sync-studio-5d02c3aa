@@ -15,14 +15,6 @@ import type { ClsItem } from "@/types/clsconfig";
 import type { CatalogItem } from "@/lib/pwApiActions";
 import { normalizeItem } from "@/lib/itemTools";
 import { summarizeIssues, validateItems } from "@/lib/validateItem";
-import { PW_EQUIPMENT_SLOTS, getEquipmentSlotLabel } from "@/lib/equipmentSlots";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 export type InsertDestination =
   | "inventory.items"
@@ -81,19 +73,6 @@ function firstEmptyPos(items: ClsItem[], cap: number): number {
   return Math.max(0, cap - 1);
 }
 
-/**
- * Para equipamento: prefere o primeiro slot CONHECIDO vazio (na ordem da
- * tabela PW_EQUIPMENT_SLOTS). Se todos conhecidos estiverem ocupados, cai
- * pro primeiro pos numérico vazio dentro da capacidade.
- */
-function firstEmptyEquipmentPos(items: ClsItem[], cap: number): number {
-  const used = new Set(items.filter((it) => it.id > 0).map((it) => it.pos));
-  for (const slot of PW_EQUIPMENT_SLOTS) {
-    if (!used.has(slot.pos)) return slot.pos;
-  }
-  return firstEmptyPos(items, cap);
-}
-
 function effectiveCapacity(ctx: InsertContextSlot | undefined): number {
   if (!ctx) return 64;
   if (ctx.capacity && Number.isFinite(ctx.capacity)) return Math.max(1, ctx.capacity);
@@ -150,11 +129,7 @@ export const ItemInsertModal = ({
     if (!autoSlot) return;
     const ctx = contexts[destination];
     if (!ctx) return;
-    const next =
-      destination === "equipment.items"
-        ? firstEmptyEquipmentPos(ctx.items, effectiveCapacity(ctx))
-        : firstEmptyPos(ctx.items, effectiveCapacity(ctx));
-    setPos(next);
+    setPos(firstEmptyPos(ctx.items, effectiveCapacity(ctx)));
   }, [autoSlot, destination, contexts]);
 
   if (!source) return null;
@@ -243,68 +218,31 @@ export const ItemInsertModal = ({
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2 sm:col-span-1">
+            <div>
               <Label className="mb-1 block text-xs uppercase tracking-wider text-muted-foreground">
-                {destination === "equipment.items" ? "Slot de equipamento" : `Pos ${ctx ? `(0..${cap - 1})` : ""}`}
+                Pos {ctx ? `(0..${cap - 1})` : ""}
               </Label>
-              {destination === "equipment.items" ? (
-                <div className="space-y-1">
-                  <Select
-                    value={String(pos)}
-                    onValueChange={(v) => {
-                      setAutoSlot(false);
-                      setPos(parseInt(v, 10) || 0);
-                    }}
-                  >
-                    <SelectTrigger className="text-xs">
-                      <SelectValue placeholder="Selecione o slot" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PW_EQUIPMENT_SLOTS.map((s) => {
-                        const occupied = ctx?.items.some(
-                          (it) => it.pos === s.pos && it.id > 0,
-                        );
-                        return (
-                          <SelectItem key={s.pos} value={String(s.pos)}>
-                            {s.label}
-                            <span className="ml-1 font-mono text-[10px] text-muted-foreground">
-                              (pos {s.pos})
-                            </span>
-                            {occupied && (
-                              <span className="ml-1 text-[10px] text-warning">• ocupado</span>
-                            )}
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                  <p className="font-mono text-[10px] text-muted-foreground">
-                    Slot atual: {getEquipmentSlotLabel(pos)} · pos {pos}
-                  </p>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    min={0}
-                    max={Math.max(0, cap - 1)}
-                    value={pos}
-                    onChange={(e) => {
-                      setAutoSlot(false);
-                      setPos(parseInt(e.target.value, 10) || 0);
-                    }}
-                    disabled={!destination}
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min={0}
+                  max={Math.max(0, cap - 1)}
+                  value={pos}
+                  onChange={(e) => {
+                    setAutoSlot(false);
+                    setPos(parseInt(e.target.value, 10) || 0);
+                  }}
+                  disabled={!destination}
+                />
+                <label className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={autoSlot}
+                    onChange={(e) => setAutoSlot(e.target.checked)}
                   />
-                  <label className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                    <input
-                      type="checkbox"
-                      checked={autoSlot}
-                      onChange={(e) => setAutoSlot(e.target.checked)}
-                    />
-                    auto
-                  </label>
-                </div>
-              )}
+                  auto
+                </label>
+              </div>
               {collided && (
                 <p className="mt-1 flex items-center gap-1 text-[10px] text-warning">
                   <AlertTriangle className="h-3 w-3" />

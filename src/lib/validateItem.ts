@@ -19,7 +19,6 @@
 // Saída inclui severidade ("error" | "critical" | "warning") e contexto
 // suficiente para o painel de validação abrir o slot correspondente.
 import type { ClsItem, ClsTemplate } from "@/types/clsconfig";
-import { getEquipmentSlotLabel, isUnknownEquipmentPos } from "@/lib/equipmentSlots";
 
 /** Identifica em qual lista o erro foi gerado. Usado pela UI pra abrir a tab certa. */
 export type ItemSection =
@@ -174,12 +173,6 @@ export function validateItems(
     // Regra 8 + 13: pos duplicado
     if (isFiniteNumber(pos)) {
       if (seenPos.has(pos)) {
-        // Para equipamento, usa o nome real do slot na mensagem.
-        const isEquipment = opts.section === "equipment.items";
-        const slotName = isEquipment ? getEquipmentSlotLabel(pos) : null;
-        const dupMsg = isEquipment
-          ? `${opts.label} duplicado no slot ${slotName} (pos ${pos}) — também no índice ${seenPos.get(pos)}`
-          : `${opts.label} · pos ${pos}: duplicada (também no slot índice ${seenPos.get(pos)})`;
         issues.push({
           section: opts.section,
           tab: opts.tab,
@@ -187,32 +180,11 @@ export function validateItems(
           pos,
           field: "pos",
           severity: opts.duplicateIsCritical ? "critical" : "error",
-          message: dupMsg,
+          message: `${opts.label} · pos ${pos}: duplicada (também no slot índice ${seenPos.get(pos)})`,
         });
       } else {
         seenPos.set(pos, idx);
       }
-    }
-
-    // Equipamento: pos desconhecida com item válido → AVISO (não erro).
-    // Slot é preservado; só sinaliza pra UX que o painel não tem layout pra ele.
-    if (
-      opts.section === "equipment.items" &&
-      isFiniteNumber(pos) &&
-      pos >= 0 &&
-      isFiniteNumber(id) &&
-      id > 0 &&
-      isUnknownEquipmentPos(pos)
-    ) {
-      issues.push({
-        section: opts.section,
-        tab: opts.tab,
-        index: idx,
-        pos,
-        field: "pos",
-        severity: "warning",
-        message: `Slot especial/desconhecido detectado (pos ${pos}). Será preservado.`,
-      });
     }
 
     // Regra 7: data hex par

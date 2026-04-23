@@ -87,17 +87,7 @@ export const RolePersonagemTab = () => {
         );
       } else {
         const msg = e instanceof Error ? e.message : String(e);
-        // Detecta o erro específico de gamedbd offline e mostra orientação clara
-        // em vez do stack puro vindo do PHP.
-        if (/gamedbd/i.test(msg) && /(connection refused|recusad)/i.test(msg)) {
-          setError(
-            "O serviço gamedbd (porta 29400) não está acessível no servidor de jogo. " +
-              "Isso é uma falha do lado da VPS, não do painel. Verifique se o gamedbd " +
-              "está em execução e escutando em 127.0.0.1:29400, e depois tente novamente.",
-          );
-        } else {
-          setError(msg);
-        }
+        setError(msg);
       }
     } finally {
       setLoading(false);

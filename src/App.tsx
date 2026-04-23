@@ -103,9 +103,30 @@ const App = () => (
                     {/* Segurança */}
                     <Route path="security" element={<SecurityOverviewPage />} />
                     <Route path="security/settings" element={<SecuritySettingsPage />} />
-                    <Route path="members" element={<Members />} />
-                    <Route path="audit" element={<Audit />} />
                   </Route>
+
+                  {/* Members e Audit têm header próprio com botão "voltar".
+                      Mantemos como rotas top-level (acessíveis também pelo
+                      grupo "Segurança" da sidebar via Link normal). */}
+                  <Route
+                    path="/admin/members"
+                    element={
+                      <ProtectedRoute requireAdmin={false}>
+                        <Members />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/audit"
+                    element={
+                      <ProtectedRoute requireAdmin>
+                        <Audit />
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* Aliases legados (links antigos continuam válidos). */}
+                  <Route path="/members" element={<Navigate to="/admin/members" replace />} />
+                  <Route path="/audit" element={<Navigate to="/admin/audit" replace />} />
 
                   <Route
                     path="/admin/users"

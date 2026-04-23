@@ -485,6 +485,7 @@ export const BulkClearInventoryDialog = ({
               />
             </div>
           )}
+          </div>
         </div>
 
         <DialogFooter>

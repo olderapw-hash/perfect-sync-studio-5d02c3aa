@@ -20,6 +20,7 @@ import Servers from "./pages/Servers.tsx";
 import Install from "./pages/Install.tsx";
 import Audit from "./pages/Audit.tsx";
 import Members from "./pages/Members.tsx";
+import Invites from "./pages/Invites.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -76,6 +77,14 @@ const App = () => (
                     element={
                       <ProtectedRoute requireAdmin={false}>
                         <Members />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/invites"
+                    element={
+                      <ProtectedRoute requireAdmin={false}>
+                        <Invites />
                       </ProtectedRoute>
                     }
                   />

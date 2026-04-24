@@ -78,6 +78,8 @@ interface NavSection {
     | "manage_servers";
   /** Marca como "em breve" — visual diferente. */
   comingSoon?: boolean;
+  /** Marca como recurso pago — exibe badge PRO no modo trial. */
+  proInTrial?: boolean;
 }
 
 const SECTIONS: NavSection[] = [

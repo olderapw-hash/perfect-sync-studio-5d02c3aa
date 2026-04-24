@@ -158,9 +158,22 @@ const SECTIONS: NavSection[] = [
 ];
 
 export const AdminLayout = () => {
+  const { settings } = useAppSettings();
+  const bgStyle = settings.background_url
+    ? {
+        backgroundImage: `linear-gradient(hsl(var(--background) / 0.85), hsl(var(--background) / 0.92)), url(${settings.background_url})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundAttachment: "fixed" as const,
+      }
+    : undefined;
+
   return (
     <SidebarProvider defaultOpen>
-      <div className="flex h-screen w-full bg-hero">
+      <div
+        className={cn("flex h-screen w-full", !settings.background_url && "bg-hero")}
+        style={bgStyle}
+      >
         <AdminNavSidebar />
         <div className="flex min-w-0 flex-1 flex-col">
           <PendingInvitesBanner />

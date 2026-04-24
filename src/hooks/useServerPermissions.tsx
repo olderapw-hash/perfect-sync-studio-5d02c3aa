@@ -8,6 +8,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useServers } from "@/hooks/useServers";
+import { useSubscription } from "@/hooks/useSubscription";
 
 export type ServerPermissionKey =
   | "view"
@@ -52,6 +53,23 @@ const TRUE_MAP: PermissionMap = ALL_PERMISSION_KEYS.reduce((acc, k) => {
   return acc;
 }, {} as PermissionMap);
 
+/**
+ * Mapa efetivo no modo TRIAL: apenas leitura ampla + edição manual de
+ * templates iniciais. Tudo que automatiza ou afeta personagens reais
+ * fica bloqueado, mesmo que o role no servidor (ou owner) liberasse.
+ *
+ * Permitido: view, save_templates (clsconfig manual).
+ * Bloqueado: bulk_apply, clear_sections, restore_backup, save_real_roles,
+ *            manage_security, manage_kits, manage_members, manage_servers, etc.
+ */
+const TRIAL_MAP: PermissionMap = {
+  ...FALSE_MAP,
+  view: true,
+  save_templates: true,
+  // compare_backup é só leitura → seguro liberar.
+  compare_backup: true,
+};
+
 function normalize(input: unknown): PermissionMap {
   if (!input || typeof input !== "object") return { ...FALSE_MAP };
   const src = input as Record<string, unknown>;
@@ -69,6 +87,8 @@ interface CtxValue {
   permissions: PermissionMap;
   /** Atalho prático: `can("save_templates")`. */
   can: (perm: ServerPermissionKey) => boolean;
+  /** True quando o usuário está no modo Free Trial. */
+  isTrial: boolean;
   refetch: () => Promise<void>;
 }
 
@@ -78,6 +98,7 @@ const Ctx = createContext<CtxValue>({
   role: null,
   permissions: { ...FALSE_MAP },
   can: () => false,
+  isTrial: false,
   refetch: async () => {},
 });
 

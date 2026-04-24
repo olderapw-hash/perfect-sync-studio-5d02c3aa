@@ -645,13 +645,18 @@ const MailPage = () => {
   );
 };
 
-interface ValidatedSend {
-  kind: "item" | "gold";
+interface ValidatedSendBase {
   recipient: { roleid: number; name?: string };
   message: { subject?: string; body?: string };
-  payload:
-    | { item_id: number; count: number; max_count?: number }
-    | { amount: number };
 }
+type ValidatedSend =
+  | (ValidatedSendBase & {
+      kind: "item";
+      payload: { item_id: number; count: number; max_count?: number };
+    })
+  | (ValidatedSendBase & {
+      kind: "gold";
+      payload: { amount: number };
+    });
 
 export default MailPage;

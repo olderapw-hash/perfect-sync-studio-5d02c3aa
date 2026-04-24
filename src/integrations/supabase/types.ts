@@ -16,6 +16,8 @@ export type Database = {
     Tables: {
       app_settings: {
         Row: {
+          background_url: string | null
+          favicon_url: string | null
           icon_base_url: string
           id: number
           logo_url: string | null
@@ -27,6 +29,8 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          background_url?: string | null
+          favicon_url?: string | null
           icon_base_url?: string
           id?: number
           logo_url?: string | null
@@ -38,6 +42,8 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          background_url?: string | null
+          favicon_url?: string | null
           icon_base_url?: string
           id?: number
           logo_url?: string | null
@@ -638,6 +644,8 @@ export type Database = {
       get_public_branding: {
         Args: never
         Returns: {
+          background_url: string
+          favicon_url: string
           logo_url: string
           primary_color: string
           server_name: string

@@ -154,7 +154,9 @@ const MailPage = () => {
     toast.success(`Template "${tpl.name}" aplicado`);
   };
 
-  const validate = (): { ok: true; data: ValidatedSend } | { ok: false; error: string } => {
+  const validate = ():
+    | { ok: true; data: ValidatedSend }
+    | { ok: false; error: string } => {
     const recipient = recipientSchema.safeParse({
       roleid: parseInt(roleidStr, 10),
       name: targetName.trim() || undefined,
@@ -167,6 +169,9 @@ const MailPage = () => {
     });
     if (!msg.success) return { ok: false, error: msg.error.issues[0].message };
 
+    const recipientData = { roleid: recipient.data.roleid, name: recipient.data.name };
+    const messageData = { subject: msg.data.subject, body: msg.data.body };
+
     if (tab === "item") {
       const it = itemSchema.safeParse({
         item_id: parseInt(itemIdStr, 10),
@@ -177,9 +182,9 @@ const MailPage = () => {
         ok: true,
         data: {
           kind: "item",
-          recipient: recipient.data,
-          message: msg.data,
-          payload: it.data,
+          recipient: recipientData,
+          message: messageData,
+          payload: { item_id: it.data.item_id, count: it.data.count, max_count: it.data.max_count },
         },
       };
     }
@@ -189,9 +194,9 @@ const MailPage = () => {
       ok: true,
       data: {
         kind: "gold",
-        recipient: recipient.data,
-        message: msg.data,
-        payload: g.data,
+        recipient: recipientData,
+        message: messageData,
+        payload: { amount: g.data.amount },
       },
     };
   };

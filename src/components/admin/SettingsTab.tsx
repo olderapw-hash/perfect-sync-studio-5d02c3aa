@@ -341,3 +341,89 @@ const ReadonlyField = ({ label, value, mono }: { label: string; value: string; m
     </div>
   </div>
 );
+
+interface ImageUploaderProps {
+  label: string;
+  hint?: string;
+  currentUrl: string;
+  onUploaded: (url: string) => void;
+  onClear: () => void;
+  folder: string;
+}
+
+const ImageUploader = ({ label, hint, currentUrl, onUploaded, onClear, folder }: ImageUploaderProps) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "png";
+      const path = `${folder}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("branding").upload(path, file, {
+        cacheControl: "3600",
+        upsert: true,
+        contentType: file.type,
+      });
+      if (upErr) throw upErr;
+      const { data } = supabase.storage.from("branding").getPublicUrl(path);
+      onUploaded(data.publicUrl);
+      toast({ title: `${label} enviado`, description: "Lembre de salvar pra aplicar." });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erro desconhecido";
+      toast({ title: "Falha no upload", description: msg, variant: "destructive" });
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className="rounded-lg border border-border bg-background/40 p-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          {label}
+        </Label>
+        {currentUrl && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="text-muted-foreground transition-smooth hover:text-destructive"
+            title="Remover"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+
+      <div className="flex aspect-square items-center justify-center overflow-hidden rounded-md border border-border/60 bg-card/40">
+        {currentUrl ? (
+          <img src={currentUrl} alt={label} className="h-full w-full object-contain" />
+        ) : (
+          <ImageIcon className="h-8 w-8 text-muted-foreground/40" />
+        )}
+      </div>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFile}
+      />
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={uploading}
+        className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-smooth hover:bg-primary/20 disabled:opacity-50"
+      >
+        {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+        {uploading ? "Enviando..." : "Enviar arquivo"}
+      </button>
+      {hint && <p className="mt-1.5 text-[10px] text-muted-foreground">{hint}</p>}
+    </div>
+  );
+};
+

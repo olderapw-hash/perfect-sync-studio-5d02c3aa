@@ -486,6 +486,25 @@ async function relay(upstream: Response): Promise<Response> {
       { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
+
+  // Detecta "Acao invalida" (action ainda não implementada na VPS) e
+  // converte para uma resposta 200 com shape conhecido. O frontend
+  // (pwApiActions.callAction) já detecta esse padrão e lança
+  // EndpointMissingError, que é tratado pelo mailSend/orquestrador.
+  if (upstream.status === 400 && json && typeof json === "object") {
+    const errMsg = String((json as { error?: unknown }).error ?? "");
+    if (/acao\s+invalida|a[cç][aã]o\s+inv[aá]lida|unknown\s+action/i.test(errMsg)) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: errMsg || "Acao invalida (endpoint ausente nesta VPS)",
+          endpoint_missing: true,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+  }
+
   return new Response(JSON.stringify(json), {
     status: upstream.ok ? 200 : upstream.status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },

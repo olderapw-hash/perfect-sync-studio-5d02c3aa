@@ -142,16 +142,19 @@ const SecurityModerationPage = () => {
   }
 
   const roleid = parseInt(roleidStr.trim(), 10);
+  const userid = parseInt(useridStr.trim(), 10);
   const hasRoleid = Number.isFinite(roleid) && roleid > 0;
+  const hasUserid = Number.isFinite(userid) && userid > 0;
   const hasAccount = account.trim().length > 0;
+  const hasAnyTarget = hasRoleid || hasUserid || hasAccount;
 
   function openAction(a: ActionConfig) {
     if (a.kind === "kick" && !hasRoleid) {
-      toast.error("Informe o roleid para kickar.");
+      toast.error("Kick exige um roleid válido.");
       return;
     }
-    if ((a.kind === "ban_temp" || a.kind === "ban_perm" || a.kind === "unban") && !hasAccount && !hasRoleid) {
-      toast.error("Informe a conta (login/userid) ou um roleid.");
+    if ((a.kind === "ban_temp" || a.kind === "ban_perm" || a.kind === "unban") && !hasAnyTarget) {
+      toast.error("Informe conta, userid ou roleid.");
       return;
     }
     setReason("");
@@ -179,12 +182,15 @@ const SecurityModerationPage = () => {
 
     const payloadAccount = hasAccount ? account.trim() : undefined;
     const payloadRoleid = hasRoleid ? roleid : undefined;
+    const payloadUserid = hasUserid ? userid : undefined;
     const auditTarget =
       payloadRoleid != null
         ? `roleid:${payloadRoleid}`
-        : payloadAccount
-          ? `account:${payloadAccount}`
-          : "—";
+        : payloadUserid != null
+          ? `userid:${payloadUserid}`
+          : payloadAccount
+            ? `account:${payloadAccount}`
+            : "—";
 
     try {
       let res: SecurityActionResponse;
@@ -196,6 +202,7 @@ const SecurityModerationPage = () => {
           const seconds = Math.round(parseFloat(durationHours) * 3600);
           res = await pwApi.banAccount({
             account: payloadAccount,
+            userid: payloadUserid,
             roleid: payloadRoleid,
             duration_seconds: seconds,
             reason: trimmedReason,
@@ -205,13 +212,16 @@ const SecurityModerationPage = () => {
         case "ban_perm":
           res = await pwApi.banAccount({
             account: payloadAccount,
+            userid: payloadUserid,
             roleid: payloadRoleid,
+            permanent: true,
             reason: trimmedReason,
           });
           break;
         case "unban":
           res = await pwApi.unbanAccount({
             account: payloadAccount,
+            userid: payloadUserid,
             roleid: payloadRoleid,
             reason: trimmedReason || undefined,
           });

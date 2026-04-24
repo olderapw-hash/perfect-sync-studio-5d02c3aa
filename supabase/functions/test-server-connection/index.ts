@@ -143,7 +143,7 @@ Deno.serve(async (req: Request) => {
     try {
       parsed = JSON.parse(text);
     } catch {
-      upstreamMessage = `Resposta não-JSON (${text.slice(0, 200)})`;
+      upstreamMessage = "Resposta não-JSON do servidor";
     }
     if (parsed && typeof parsed === "object") {
       const p = parsed as Record<string, unknown>;

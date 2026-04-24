@@ -222,7 +222,7 @@ const Pricing = () => {
           </div>
 
           {/* Paid plan */}
-          <div className="relative flex flex-col overflow-hidden rounded-2xl border-2 border-primary/40 bg-gradient-to-br from-card via-card/80 to-card p-8 shadow-glow">
+          <div className="relative flex flex-col overflow-hidden rounded-2xl border-2 border-primary/40 bg-gradient-to-br from-card via-card/80 to-card p-5 shadow-glow sm:p-8">
             <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-primary/20 blur-3xl" />
             <div className="relative flex flex-1 flex-col">
               <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -235,8 +235,8 @@ const Pricing = () => {
               </div>
 
               <div className="mb-2 flex items-baseline gap-2">
-                <span className="text-5xl font-extrabold tracking-tight">R$ 47</span>
-                <span className="text-base text-muted-foreground">/mês</span>
+                <span className="text-4xl font-extrabold tracking-tight sm:text-5xl">R$ 47</span>
+                <span className="text-sm text-muted-foreground sm:text-base">/mês</span>
               </div>
               <p className="mb-6 text-sm text-muted-foreground">
                 Por servidor. Sem limite de personagens, edições ou administradores.

@@ -56,6 +56,195 @@ export type Database = {
         }
         Relationships: []
       }
+      attendance_claims: {
+        Row: {
+          claimed_at: string
+          claimed_by: string
+          date_key: string
+          event_id: string
+          id: string
+          metadata: Json | null
+          role_name: string | null
+          roleid: number
+          streak_count: number
+          tenant_id: string
+        }
+        Insert: {
+          claimed_at?: string
+          claimed_by: string
+          date_key: string
+          event_id: string
+          id?: string
+          metadata?: Json | null
+          role_name?: string | null
+          roleid: number
+          streak_count?: number
+          tenant_id: string
+        }
+        Update: {
+          claimed_at?: string
+          claimed_by?: string
+          date_key?: string
+          event_id?: string
+          id?: string
+          metadata?: Json | null
+          role_name?: string | null
+          roleid?: number
+          streak_count?: number
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_claims_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "attendance_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_claims_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      attendance_events: {
+        Row: {
+          created_at: string
+          created_by: string
+          daily_reset: boolean
+          description: string | null
+          id: string
+          name: string
+          period_end: string | null
+          period_start: string | null
+          reward_payload: Json
+          status_active: boolean
+          streak_enabled: boolean
+          streak_payload: Json | null
+          tenant_id: string
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          daily_reset?: boolean
+          description?: string | null
+          id?: string
+          name: string
+          period_end?: string | null
+          period_start?: string | null
+          reward_payload?: Json
+          status_active?: boolean
+          streak_enabled?: boolean
+          streak_payload?: Json | null
+          tenant_id: string
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          daily_reset?: boolean
+          description?: string | null
+          id?: string
+          name?: string
+          period_end?: string | null
+          period_start?: string | null
+          reward_payload?: Json
+          status_active?: boolean
+          streak_enabled?: boolean
+          streak_payload?: Json | null
+          tenant_id?: string
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      attendance_reward_deliveries: {
+        Row: {
+          claim_id: string | null
+          created_at: string
+          date_key: string
+          delivered_by: string
+          error_message: string | null
+          event_id: string
+          id: string
+          mail_log_ids: string[]
+          reward_snapshot: Json
+          role_name: string | null
+          roleid: number
+          status: Database["public"]["Enums"]["attendance_delivery_status"]
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          claim_id?: string | null
+          created_at?: string
+          date_key: string
+          delivered_by: string
+          error_message?: string | null
+          event_id: string
+          id?: string
+          mail_log_ids?: string[]
+          reward_snapshot: Json
+          role_name?: string | null
+          roleid: number
+          status?: Database["public"]["Enums"]["attendance_delivery_status"]
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          claim_id?: string | null
+          created_at?: string
+          date_key?: string
+          delivered_by?: string
+          error_message?: string | null
+          event_id?: string
+          id?: string
+          mail_log_ids?: string[]
+          reward_snapshot?: Json
+          role_name?: string | null
+          roleid?: number
+          status?: Database["public"]["Enums"]["attendance_delivery_status"]
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_reward_deliveries_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "attendance_claims"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_reward_deliveries_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "attendance_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_reward_deliveries_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -726,6 +915,11 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user" | "superadmin"
+      attendance_delivery_status:
+        | "pending"
+        | "sent"
+        | "error"
+        | "duplicate_blocked"
       invite_status: "pending" | "accepted" | "revoked" | "expired"
       server_role: "owner" | "admin" | "editor" | "readonly"
     }
@@ -856,6 +1050,12 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user", "superadmin"],
+      attendance_delivery_status: [
+        "pending",
+        "sent",
+        "error",
+        "duplicate_blocked",
+      ],
       invite_status: ["pending", "accepted", "revoked", "expired"],
       server_role: ["owner", "admin", "editor", "readonly"],
     },

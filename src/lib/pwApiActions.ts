@@ -333,6 +333,40 @@ export const pwApi = {
   exportClsconfig() {
     return callAction<ExportClsconfigResponse>("exportClsconfig", { method: "POST", body: {} });
   },
+  /* ─────────── Segurança v1 (kick / ban / unban) ─────────── */
+  /**
+   * Desconecta um personagem online (kick). Não bane — apenas força a
+   * saída. Útil pra liberar slot ou interromper exploit em andamento.
+   */
+  kickRole(body: KickRolePayload) {
+    return callAction<SecurityActionResponse>("kickRole", { method: "POST", body });
+  },
+  /**
+   * Bane uma conta. Quando `duration_seconds` é informado e > 0, é um
+   * ban temporário; ausente / 0 = ban permanente. `reason` obrigatório
+   * para auditoria.
+   */
+  banAccount(body: BanAccountPayload) {
+    return callAction<SecurityActionResponse>("banAccount", { method: "POST", body });
+  },
+  /**
+   * Remove o ban de uma conta. `reason` recomendado pra trilha.
+   */
+  unbanAccount(body: UnbanAccountPayload) {
+    return callAction<SecurityActionResponse>("unbanAccount", { method: "POST", body });
+  },
+  /**
+   * Lista as últimas N ações de segurança registradas na VPS (kick/ban/
+   * unban). O front mantém uma trilha paralela em `audit_logs` — esse
+   * endpoint é a "fonte da verdade" do servidor.
+   */
+  listSecurityHistory(params: { limit?: number; account?: string; roleid?: number } = {}) {
+    const query: Record<string, string | number> = {};
+    if (params.limit != null) query.limit = params.limit;
+    if (params.account) query.account = params.account;
+    if (params.roleid != null) query.roleid = params.roleid;
+    return callAction<SecurityHistoryResponse>("listSecurityHistory", { method: "GET", query });
+  },
 };
 
 /* ─────────── Operação do Servidor v1 ─────────── */

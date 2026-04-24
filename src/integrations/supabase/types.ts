@@ -474,6 +474,27 @@ export type Database = {
           },
         ]
       }
+      site_content: {
+        Row: {
+          content: Json
+          id: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          content?: Json
+          id?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          content?: Json
+          id?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           cancel_at_period_end: boolean | null

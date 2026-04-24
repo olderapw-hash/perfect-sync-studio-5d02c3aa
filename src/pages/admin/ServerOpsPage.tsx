@@ -138,15 +138,15 @@ import { pwApi, EndpointMissingError, type ServiceInfo } from "@/lib/pwApiAction
 import { logAuditEvent } from "@/lib/auditLog";
 import { toast } from "sonner";
 
-const KNOWN_SERVICES: { name: string; label: string; port?: number }[] = [
-  { name: "gamedbd", label: "Game DB Daemon", port: 29400 },
-  { name: "gdeliveryd", label: "Delivery Daemon", port: 29100 },
-  { name: "gacd", label: "Account Daemon", port: 29000 },
-  { name: "glink", label: "Game Link", port: 29200 },
-  { name: "authd", label: "Auth Daemon", port: 29300 },
-  { name: "uniquenamed", label: "Unique Name", port: 29500 },
-  { name: "mysql", label: "MySQL/MariaDB", port: 3306 },
-  { name: "httpd", label: "Web (Apache/httpd)", port: 80 },
+const KNOWN_SERVICES: { key: string; label: string; port?: number }[] = [
+  { key: "gamedbd", label: "Game DB Daemon", port: 29400 },
+  { key: "gdeliveryd", label: "Delivery Daemon", port: 29100 },
+  { key: "gacd", label: "Account Daemon", port: 29000 },
+  { key: "glink", label: "Game Link", port: 29200 },
+  { key: "authd", label: "Auth Daemon", port: 29300 },
+  { key: "uniquenamed", label: "Unique Name", port: 29500 },
+  { key: "mysql", label: "MySQL/MariaDB", port: 3306 },
+  { key: "httpd", label: "Web (Apache/httpd)", port: 80 },
 ];
 
 function ServerStatusTab() {

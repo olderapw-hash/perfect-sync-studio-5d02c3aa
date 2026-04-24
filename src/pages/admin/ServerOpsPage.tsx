@@ -198,7 +198,10 @@ function ServerStatusTab() {
   // Mescla a lista conhecida com o que veio da VPS (preserva ordem amigável).
   const merged = useMemo<ServiceInfo[]>(() => {
     const byName = new Map<string, ServiceInfo>();
-    for (const s of services ?? []) byName.set(s.name.toLowerCase(), s);
+    for (const s of services ?? []) {
+      if (!s?.name) continue;
+      byName.set(s.name.toLowerCase(), s);
+    }
     const result: ServiceInfo[] = [];
     for (const k of KNOWN_SERVICES) {
       const found = byName.get(k.name);

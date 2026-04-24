@@ -1,12 +1,14 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, Check, Loader2, Shield } from "lucide-react";
+import { ArrowRight, Check, Loader2, Shield, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { usePaddleCheckout } from "@/hooks/usePaddleCheckout";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useServers } from "@/hooks/useServers";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
+import { supabase } from "@/integrations/supabase/client";
+import { getPaymentEnvironment } from "@/lib/paddle";
 
 const PLAN_FEATURES = [
   "Editor completo de personagens (status, equip, inventário, storehouse)",
@@ -41,9 +43,10 @@ const FAQ = [
 const Pricing = () => {
   const navigate = useNavigate();
   const { session, user, isAdmin, isSuperadmin, loading: authLoading } = useAuth();
-  const { isActive, loading: subLoading } = useSubscription();
+  const { isActive, isTrial, loading: subLoading, refetch: refetchSub } = useSubscription();
   const { active, loading: serversLoading } = useServers();
   const { openCheckout, loading } = usePaddleCheckout();
+  const [trialLoading, setTrialLoading] = useState(false);
 
   // Se o usuário já tem acesso (assinatura ativa OU é admin/superadmin)
   // e tem servidor configurado, mandamos direto pro painel — não faz sentido
@@ -72,7 +75,7 @@ const Pricing = () => {
       navigate("/auth?next=/pricing");
       return;
     }
-    if (isActive) {
+    if (isActive && !isTrial) {
       navigate("/admin");
       return;
     }
@@ -86,6 +89,28 @@ const Pricing = () => {
     } catch (e) {
       console.error(e);
       toast.error("Erro ao abrir checkout. Tenta de novo.");
+    }
+  };
+
+  const handleStartTrial = async () => {
+    if (!session) {
+      navigate("/auth?next=/pricing");
+      return;
+    }
+    setTrialLoading(true);
+    try {
+      const { error } = await supabase.rpc("start_free_trial", {
+        _environment: getPaymentEnvironment(),
+      });
+      if (error) throw error;
+      toast.success("Trial gratuito ativado!");
+      await refetchSub();
+      navigate("/admin");
+    } catch (e) {
+      console.error(e);
+      toast.error("Não foi possível iniciar o trial. Tenta de novo.");
+    } finally {
+      setTrialLoading(false);
     }
   };
 

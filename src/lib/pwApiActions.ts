@@ -513,3 +513,68 @@ export interface GetBackupContentResponse {
   role?: unknown;
   error?: string;
 }
+
+/* ─────────── Segurança v1 (kick / ban / unban) ─────────── */
+
+export interface KickRolePayload {
+  /** roleid do personagem alvo (obrigatório). */
+  roleid: number;
+  /** Motivo curto (auditoria). Obrigatório no front. */
+  reason: string;
+}
+
+export interface BanAccountPayload {
+  /** Identificador da conta. Pode ser nome de login OU userid. */
+  account?: string;
+  userid?: number;
+  /** Quando informado, a VPS pode resolver a conta a partir do roleid. */
+  roleid?: number;
+  /** Duração em segundos. 0/ausente = ban permanente. */
+  duration_seconds?: number;
+  reason: string;
+}
+
+export interface UnbanAccountPayload {
+  account?: string;
+  userid?: number;
+  roleid?: number;
+  /** Recomendado mas não obrigatório (auditoria). */
+  reason?: string;
+}
+
+export interface SecurityActionResponse {
+  success: boolean;
+  /** roleid envolvido (kickRole sempre devolve). */
+  roleid?: number;
+  /** Conta envolvida quando aplicável. */
+  account?: string;
+  userid?: number;
+  /** epoch seconds em que o ban expira (ban temporário). */
+  ban_until?: number | null;
+  /** Estado pós-ação (online/offline/banned/unbanned). */
+  state?: "online" | "offline" | "banned" | "unbanned";
+  message?: string;
+  error?: string;
+}
+
+export type SecurityHistoryAction = "kick" | "ban" | "unban";
+
+export interface SecurityHistoryEntry {
+  ts: number;
+  action: SecurityHistoryAction;
+  roleid?: number | null;
+  account?: string | null;
+  userid?: number | null;
+  reason?: string | null;
+  duration_seconds?: number | null;
+  by?: string | null;
+}
+
+export interface SecurityHistoryResponse {
+  success: boolean;
+  count?: number;
+  entries: SecurityHistoryEntry[];
+  warning?: string;
+  error?: string;
+}
+

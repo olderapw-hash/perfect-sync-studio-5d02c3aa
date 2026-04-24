@@ -17,12 +17,21 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
+import { useSiteContent } from "@/hooks/useSiteContent";
 import heroImg from "@/assets/landing-hero.jpg";
+
+// Ícones rotativos pra cada bloco — o conteúdo dos textos vem do banco
+// (editável em /admin/site), mas mantemos os ícones em código pra preservar
+// a identidade visual.
+const PROBLEM_ICONS = [Database, UserCog, Lock, RefreshCw];
+const FEATURE_ICONS = [UserCog, Database, ImageIcon, History, Users, Server];
+const STEP_ICONS = [UserCog, Server, Zap];
 
 const Landing = () => {
   const navigate = useNavigate();
   const { session, isAdmin } = useAuth();
   const { settings } = useAppSettings();
+  const { content } = useSiteContent();
   const bgImage = settings.background_url || heroImg;
 
   // SEO dinâmico (mantém index.html limpo, atualiza title em runtime)
@@ -105,17 +114,19 @@ const Landing = () => {
           <div className="relative mx-auto max-w-5xl px-4 py-24 text-center sm:py-32">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              Pra donos de servidor privado de PW
+              {content.hero.badge}
             </div>
 
             <h1 className="mx-auto max-w-3xl text-balance text-4xl font-extrabold leading-tight tracking-tight text-foreground sm:text-6xl">
-              Administre seu servidor de{" "}
-              <span className="bg-gradient-gold bg-clip-text text-transparent">Perfect World</span>{" "}
-              sem tocar no banco
+              {content.hero.title_prefix}{" "}
+              <span className="bg-gradient-gold bg-clip-text text-transparent">
+                {content.hero.title_highlight}
+              </span>{" "}
+              {content.hero.title_suffix}
             </h1>
 
             <p className="mx-auto mt-6 max-w-2xl text-pretty text-base text-muted-foreground sm:text-lg">
-              Edite personagens, itens, equipamentos, status e inventário direto pelo navegador. Backup automático, histórico de alterações e zero risco de quebrar dados com SQL manual.
+              {content.hero.subtitle}
             </p>
 
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -123,19 +134,17 @@ const Landing = () => {
                 to="/pricing"
                 className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-bold text-primary-foreground shadow-glow transition-smooth hover:brightness-110"
               >
-                Começar por R$ 47/mês <ArrowRight className="h-4 w-4" />
+                {content.hero.primary_cta} <ArrowRight className="h-4 w-4" />
               </Link>
               <a
                 href="#como-funciona"
                 className="inline-flex items-center gap-2 rounded-md border border-border bg-card/40 px-6 py-3 text-sm font-semibold text-foreground transition-smooth hover:border-primary/50"
               >
-                Ver como funciona
+                {content.hero.secondary_cta}
               </a>
             </div>
 
-            <p className="mt-5 text-xs text-muted-foreground">
-              Sem fidelidade • Cancele quando quiser • Funciona com qualquer servidor PW
-            </p>
+            <p className="mt-5 text-xs text-muted-foreground">{content.hero.fineprint}</p>
           </div>
         </section>
 
@@ -143,22 +152,27 @@ const Landing = () => {
         <section className="border-t border-border/60 bg-card/20 py-20">
           <div className="mx-auto max-w-5xl px-4">
             <div className="mb-12 text-center">
-              <p className="text-xs font-bold uppercase tracking-wider text-primary">O problema</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-primary">
+                {content.problems.eyebrow}
+              </p>
               <h2 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
-                Cansado de abrir o phpMyAdmin toda hora?
+                {content.problems.title}
               </h2>
             </div>
 
             <div className="grid gap-6 sm:grid-cols-2">
-              {PROBLEMS.map((p) => (
-                <div key={p.title} className="rounded-xl border border-border bg-card/40 p-6">
-                  <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-destructive/15 text-destructive">
-                    <p.icon className="h-5 w-5" />
+              {content.problems.items.map((p, i) => {
+                const Icon = PROBLEM_ICONS[i % PROBLEM_ICONS.length];
+                return (
+                  <div key={`${p.title}-${i}`} className="rounded-xl border border-border bg-card/40 p-6">
+                    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-destructive/15 text-destructive">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <h3 className="mb-1 font-bold">{p.title}</h3>
+                    <p className="text-sm text-muted-foreground">{p.desc}</p>
                   </div>
-                  <h3 className="mb-1 font-bold">{p.title}</h3>
-                  <p className="text-sm text-muted-foreground">{p.desc}</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </section>
@@ -167,28 +181,33 @@ const Landing = () => {
         <section id="recursos" className="py-20">
           <div className="mx-auto max-w-6xl px-4">
             <div className="mb-12 text-center">
-              <p className="text-xs font-bold uppercase tracking-wider text-primary">Recursos</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-primary">
+                {content.features.eyebrow}
+              </p>
               <h2 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
-                Tudo que um GM precisa, num só lugar
+                {content.features.title}
               </h2>
               <p className="mx-auto mt-3 max-w-2xl text-sm text-muted-foreground">
-                Construído por gente que vive o servidor — cada recurso resolve uma dor real do dia-a-dia.
+                {content.features.subtitle}
               </p>
             </div>
 
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {FEATURES.map((f) => (
-                <div
-                  key={f.title}
-                  className="group rounded-xl border border-border bg-card/40 p-6 transition-smooth hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-glow"
-                >
-                  <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-primary/15 text-primary transition-smooth group-hover:bg-primary/25">
-                    <f.icon className="h-5 w-5" />
+              {content.features.items.map((f, i) => {
+                const Icon = FEATURE_ICONS[i % FEATURE_ICONS.length];
+                return (
+                  <div
+                    key={`${f.title}-${i}`}
+                    className="group rounded-xl border border-border bg-card/40 p-6 transition-smooth hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-glow"
+                  >
+                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-primary/15 text-primary transition-smooth group-hover:bg-primary/25">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <h3 className="mb-1.5 font-bold text-foreground">{f.title}</h3>
+                    <p className="text-sm leading-relaxed text-muted-foreground">{f.desc}</p>
                   </div>
-                  <h3 className="mb-1.5 font-bold text-foreground">{f.title}</h3>
-                  <p className="text-sm leading-relaxed text-muted-foreground">{f.desc}</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </section>
@@ -197,25 +216,30 @@ const Landing = () => {
         <section id="como-funciona" className="border-t border-border/60 bg-card/20 py-20">
           <div className="mx-auto max-w-5xl px-4">
             <div className="mb-12 text-center">
-              <p className="text-xs font-bold uppercase tracking-wider text-primary">Setup em 3 passos</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-primary">
+                {content.steps.eyebrow}
+              </p>
               <h2 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
-                Pronto em menos de 5 minutos
+                {content.steps.title}
               </h2>
             </div>
 
             <div className="grid gap-6 md:grid-cols-3">
-              {STEPS.map((s, i) => (
-                <div key={s.title} className="relative rounded-xl border border-border bg-card/60 p-6">
-                  <div className="absolute -top-3 left-6 rounded-md bg-gradient-gold px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-primary-foreground">
-                    Passo {i + 1}
+              {content.steps.items.map((s, i) => {
+                const Icon = STEP_ICONS[i % STEP_ICONS.length];
+                return (
+                  <div key={`${s.title}-${i}`} className="relative rounded-xl border border-border bg-card/60 p-6">
+                    <div className="absolute -top-3 left-6 rounded-md bg-gradient-gold px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-primary-foreground">
+                      Passo {i + 1}
+                    </div>
+                    <div className="mb-3 mt-2 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15 text-primary">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <h3 className="mb-1.5 font-bold">{s.title}</h3>
+                    <p className="text-sm text-muted-foreground">{s.desc}</p>
                   </div>
-                  <div className="mb-3 mt-2 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15 text-primary">
-                    <s.icon className="h-5 w-5" />
-                  </div>
-                  <h3 className="mb-1.5 font-bold">{s.title}</h3>
-                  <p className="text-sm text-muted-foreground">{s.desc}</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </section>
@@ -224,9 +248,11 @@ const Landing = () => {
         <section id="preco" className="py-20">
           <div className="mx-auto max-w-3xl px-4">
             <div className="mb-12 text-center">
-              <p className="text-xs font-bold uppercase tracking-wider text-primary">Preço</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-primary">
+                {content.pricing.eyebrow}
+              </p>
               <h2 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
-                Simples. Sem letras miúdas.
+                {content.pricing.title}
               </h2>
             </div>
 
@@ -235,20 +261,18 @@ const Landing = () => {
 
               <div className="relative">
                 <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-primary/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-primary">
-                  Plano único
+                  {content.pricing.plan_label}
                 </div>
 
                 <div className="mb-2 flex items-baseline gap-2">
-                  <span className="text-5xl font-extrabold tracking-tight">R$ 47</span>
-                  <span className="text-base text-muted-foreground">/mês</span>
+                  <span className="text-5xl font-extrabold tracking-tight">{content.pricing.price}</span>
+                  <span className="text-base text-muted-foreground">{content.pricing.price_suffix}</span>
                 </div>
-                <p className="mb-6 text-sm text-muted-foreground">
-                  Por servidor. Acesso completo, sem limite de personagens editados.
-                </p>
+                <p className="mb-6 text-sm text-muted-foreground">{content.pricing.plan_desc}</p>
 
                 <ul className="mb-8 space-y-3">
-                  {PLAN_FEATURES.map((f) => (
-                    <li key={f} className="flex items-start gap-3 text-sm">
+                  {content.pricing.features.map((f, i) => (
+                    <li key={`${f}-${i}`} className="flex items-start gap-3 text-sm">
                       <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary">
                         <Check className="h-3 w-3" strokeWidth={3} />
                       </div>
@@ -261,12 +285,10 @@ const Landing = () => {
                   to="/pricing"
                   className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-6 py-3.5 text-sm font-bold text-primary-foreground shadow-glow transition-smooth hover:brightness-110"
                 >
-                  Criar minha conta agora <ArrowRight className="h-4 w-4" />
+                  {content.pricing.cta} <ArrowRight className="h-4 w-4" />
                 </Link>
 
-                <p className="mt-4 text-center text-xs text-muted-foreground">
-                  Cancele quando quiser • 7 dias de teste grátis
-                </p>
+                <p className="mt-4 text-center text-xs text-muted-foreground">{content.pricing.fineprint}</p>
               </div>
             </div>
           </div>
@@ -276,16 +298,18 @@ const Landing = () => {
         <section id="faq" className="border-t border-border/60 bg-card/20 py-20">
           <div className="mx-auto max-w-3xl px-4">
             <div className="mb-12 text-center">
-              <p className="text-xs font-bold uppercase tracking-wider text-primary">FAQ</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-primary">
+                {content.faq.eyebrow}
+              </p>
               <h2 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
-                Dúvidas comuns
+                {content.faq.title}
               </h2>
             </div>
 
             <div className="space-y-3">
-              {FAQ.map((q) => (
+              {content.faq.items.map((q, i) => (
                 <details
-                  key={q.q}
+                  key={`${q.q}-${i}`}
                   className="group rounded-xl border border-border bg-card/40 p-5 transition-smooth open:border-primary/40 open:shadow-glow"
                 >
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-4">
@@ -305,17 +329,17 @@ const Landing = () => {
         <section className="py-24">
           <div className="mx-auto max-w-3xl px-4 text-center">
             <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-              Pronto pra deixar de quebrar a cabeça com SQL?
+              {content.final_cta.title}
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-base text-muted-foreground">
-              Junte-se aos GMs que já administram seus servidores com a tranquilidade de um painel pensado pra Perfect World.
+              {content.final_cta.subtitle}
             </p>
             <div className="mt-8">
               <Link
                 to="/pricing"
                 className="inline-flex items-center gap-2 rounded-md bg-primary px-8 py-4 text-base font-bold text-primary-foreground shadow-glow transition-smooth hover:brightness-110"
               >
-                Começar agora — R$ 47/mês <ArrowRight className="h-5 w-5" />
+                {content.final_cta.cta} <ArrowRight className="h-5 w-5" />
               </Link>
             </div>
           </div>
@@ -341,120 +365,5 @@ const Landing = () => {
     </div>
   );
 };
-
-// ===== Conteúdo =====
-
-const PROBLEMS = [
-  {
-    icon: Database,
-    title: "Editar pelo phpMyAdmin é arriscado",
-    desc: "Um UPDATE errado num campo binário e o personagem trava. Sem rollback, sem histórico de quem mexeu.",
-  },
-  {
-    icon: UserCog,
-    title: "Restaurar item perdido vira novela",
-    desc: "Player perdeu equipamento? Procurar o ID, montar o INSERT, validar bytes do octet... 30 minutos por player.",
-  },
-  {
-    icon: Lock,
-    title: "Sem controle de quem fez o quê",
-    desc: "Time de moderação direto no banco = zero auditoria. Quem deu aquele item raro pro alt do amigo?",
-  },
-  {
-    icon: RefreshCw,
-    title: "Templates iniciais difíceis de balancear",
-    desc: "Mudar atributos de personagem novo (cls 16) exige edição manual em todas as classes. Trabalhoso e propenso a erro.",
-  },
-];
-
-const FEATURES = [
-  {
-    icon: UserCog,
-    title: "Editor visual de personagens",
-    desc: "Status, equipamento, inventário e storehouse com interface idêntica ao cliente do jogo. Sem decorar IDs.",
-  },
-  {
-    icon: Database,
-    title: "Templates iniciais (clsconfig)",
-    desc: "Edite os atributos de cada classe nova de personagem direto pelo painel — HP, MP, itens iniciais, tudo visual.",
-  },
-  {
-    icon: ImageIcon,
-    title: "Fotos personalizadas das classes",
-    desc: "Suba retratos custom por classe ou por personagem específico. Identidade visual do seu servidor.",
-  },
-  {
-    icon: History,
-    title: "Backups automáticos + histórico",
-    desc: "Cada alteração gera um backup. Reverteu errado? Restaurar é 1 clique. Auditoria completa de quem mudou o quê.",
-  },
-  {
-    icon: Users,
-    title: "Múltiplos admins, sem conflito",
-    desc: "Convide moderadores com permissões granulares. Você decide quem pode editar status, dar item, ou só visualizar.",
-  },
-  {
-    icon: Server,
-    title: "Funciona com sua VPS",
-    desc: "Os dados continuam na sua VPS. O painel só conecta via API segura — você troca de servidor sem perder configuração.",
-  },
-];
-
-const STEPS = [
-  {
-    icon: UserCog,
-    title: "Crie sua conta",
-    desc: "Cadastro rápido com email e senha. Sem cartão de crédito no teste.",
-  },
-  {
-    icon: Server,
-    title: "Conecte sua VPS",
-    desc: "Cole o IP/domínio do seu servidor PW e o secret da API. Pronto, o painel começa a sincronizar.",
-  },
-  {
-    icon: Zap,
-    title: "Comece a editar",
-    desc: "Busque personagem, edite o que precisar, salve. Tudo com backup automático e histórico.",
-  },
-];
-
-const PLAN_FEATURES = [
-  "Editor completo de personagens (status, equip, inventário, storehouse)",
-  "Templates iniciais por classe (clsconfig)",
-  "Backups automáticos + restauração 1-clique",
-  "Histórico completo de alterações",
-  "Múltiplos administradores",
-  "Fotos personalizadas das classes",
-  "Branding do seu servidor (logo, nome, cor)",
-  "Suporte por Discord",
-  "Atualizações constantes",
-];
-
-const FAQ = [
-  {
-    q: "Preciso instalar algo na minha VPS?",
-    a: "Sim, um único arquivo PHP (api_cls.php) que serve como ponte segura entre o painel e seu banco. Enviamos o arquivo e instruções de instalação após o cadastro — é literalmente colocar um arquivo numa pasta e pronto.",
-  },
-  {
-    q: "Funciona com qual versão do Perfect World?",
-    a: "Compatível com a maioria das versões/revisões usadas em servidores privados (1.3.6, 1.4.x, 1.5.x). Se tiver dúvida sobre a sua revisão específica, fala com a gente antes de assinar.",
-  },
-  {
-    q: "Meus dados ficam seguros?",
-    a: "Os dados nunca saem da sua VPS — o painel só lê e escreve via API com header secret criptografado. Conexões via HTTPS. Cada admin tem login próprio e auditoria completa de ações.",
-  },
-  {
-    q: "Posso cancelar quando quiser?",
-    a: "Sim. Sem fidelidade, sem multa. Cancela e a cobrança para no próximo ciclo. Seu painel fica acessível em modo somente-leitura por mais 30 dias pra você exportar o que precisar.",
-  },
-  {
-    q: "Como funciona o teste grátis?",
-    a: "7 dias de acesso completo, sem pedir cartão. No fim do teste, você decide se quer assinar. Se não fizer nada, a conta simplesmente expira.",
-  },
-  {
-    q: "Vocês oferecem versão self-hosted (instalo na minha VPS)?",
-    a: "Em breve, como tier Enterprise. Por enquanto, o painel é hospedado por nós e conecta na sua VPS via API.",
-  },
-];
 
 export default Landing;

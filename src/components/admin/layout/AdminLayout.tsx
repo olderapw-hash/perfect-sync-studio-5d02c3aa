@@ -36,6 +36,8 @@ import { useAppSettings } from "@/hooks/useAppSettings";
 import { useServers } from "@/hooks/useServers";
 import { useServerPermissions } from "@/hooks/useServerPermissions";
 import { PendingInvitesBanner } from "@/components/PendingInvitesBanner";
+import { TrialBanner } from "@/components/TrialBanner";
+import { ProBadge } from "@/components/ProBadge";
 import {
   Sidebar,
   SidebarContent,
@@ -156,6 +158,7 @@ export const AdminLayout = () => {
         <AdminNavSidebar />
         <div className="flex min-w-0 flex-1 flex-col">
           <PendingInvitesBanner />
+          <TrialBanner />
           <AdminTopBar />
           <main className="flex-1 overflow-hidden">
             <Outlet />

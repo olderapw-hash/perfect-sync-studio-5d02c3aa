@@ -501,6 +501,26 @@ function LastResultPanel({
 }) {
   const { action, res } = data;
   const ok = res.success !== false;
+  const fields: { label: string; value: string }[] = [];
+  fields.push({ label: "Action", value: res.action ?? action });
+  if (res.roleid != null) fields.push({ label: "Roleid", value: String(res.roleid) });
+  if (res.userid != null) fields.push({ label: "Userid", value: String(res.userid) });
+  if (res.account) fields.push({ label: "Conta", value: res.account });
+  if (res.seconds != null && res.seconds > 0) {
+    const hours = (res.seconds / 3600).toFixed(2).replace(/\.?0+$/, "");
+    fields.push({ label: "Duração", value: `${res.seconds}s (~${hours}h)` });
+  }
+  if (res.ban_until != null) {
+    fields.push({
+      label: "Expira em",
+      value: new Date(res.ban_until * 1000).toLocaleString(),
+    });
+  }
+  if (res.state) fields.push({ label: "Estado", value: res.state });
+  if (res.reason) fields.push({ label: "Motivo", value: res.reason });
+  if (res.log_file) fields.push({ label: "Log", value: res.log_file });
+  if (res.dry_run) fields.push({ label: "Modo", value: "dry_run" });
+
   return (
     <section
       className={cn(
@@ -516,13 +536,36 @@ function LastResultPanel({
         ) : (
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
         )}
-        <div className="text-xs">
+        <div className="flex-1 text-xs">
           <p className="font-bold uppercase tracking-wider">
             Resultado · {action}
           </p>
-          <pre className="mt-2 max-h-48 overflow-auto rounded-md border border-border/30 bg-background/40 p-2 font-mono text-[10px] text-foreground/80">
-            {JSON.stringify(res, null, 2)}
-          </pre>
+          <dl className="mt-3 grid gap-x-4 gap-y-1.5 sm:grid-cols-2">
+            {fields.map((f) => (
+              <div key={f.label} className="flex flex-col">
+                <dt className="text-[10px] font-bold uppercase tracking-wider opacity-70">
+                  {f.label}
+                </dt>
+                <dd className="break-all font-mono text-[11px] text-foreground/90">
+                  {f.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          {res.message && (
+            <p className="mt-3 text-[11px] text-foreground/80">{res.message}</p>
+          )}
+          {res.error && (
+            <p className="mt-3 text-[11px] text-destructive">{res.error}</p>
+          )}
+          <details className="mt-3">
+            <summary className="cursor-pointer text-[10px] font-bold uppercase tracking-wider opacity-60 hover:opacity-100">
+              Resposta bruta
+            </summary>
+            <pre className="mt-2 max-h-48 overflow-auto rounded-md border border-border/30 bg-background/40 p-2 font-mono text-[10px] text-foreground/80">
+              {JSON.stringify(res, null, 2)}
+            </pre>
+          </details>
         </div>
       </div>
     </section>

@@ -32,6 +32,12 @@ export const ACTION_PERMISSION: Record<string, ServerPermissionKey> = {
   getServiceStatus: "view",
   getServerLogs: "view_audit",
   exportClsconfig: "save_templates",
+
+  // segurança (kick/ban/unban + histórico)
+  kickRole: "manage_security",
+  banAccount: "manage_security",
+  unbanAccount: "manage_security",
+  listSecurityHistory: "view_audit",
 };
 
 /** Operações UI que mapeiam pra mais de uma action. */

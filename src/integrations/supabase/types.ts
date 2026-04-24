@@ -258,6 +258,128 @@ export type Database = {
           },
         ]
       }
+      mail_send_log: {
+        Row: {
+          body: string | null
+          created_at: string
+          error_message: string | null
+          http_status: number | null
+          id: string
+          kind: string
+          payload: Json
+          response: Json | null
+          status: string
+          subject: string | null
+          target_name: string | null
+          target_roleid: number
+          template_id: string | null
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          error_message?: string | null
+          http_status?: number | null
+          id?: string
+          kind: string
+          payload: Json
+          response?: Json | null
+          status: string
+          subject?: string | null
+          target_name?: string | null
+          target_roleid: number
+          template_id?: string | null
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          error_message?: string | null
+          http_status?: number | null
+          id?: string
+          kind?: string
+          payload?: Json
+          response?: Json | null
+          status?: string
+          subject?: string | null
+          target_name?: string | null
+          target_roleid?: number
+          template_id?: string | null
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mail_send_log_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "mail_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mail_send_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mail_templates: {
+        Row: {
+          body: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          kind: string
+          name: string
+          payload: Json
+          subject: string | null
+          tenant_id: string
+          updated_at: string
+          visibility: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          kind: string
+          name: string
+          payload: Json
+          subject?: string | null
+          tenant_id: string
+          updated_at?: string
+          visibility?: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          kind?: string
+          name?: string
+          payload?: Json
+          subject?: string | null
+          tenant_id?: string
+          updated_at?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mail_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       server_invites: {
         Row: {
           accepted_at: string | null

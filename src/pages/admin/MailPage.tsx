@@ -204,7 +204,7 @@ const MailPage = () => {
   const handleOpenConfirm = () => {
     setLastResult(null);
     const v = validate();
-    if (!v.ok) {
+    if (v.ok === false) {
       toast.error(v.error);
       return;
     }
@@ -214,7 +214,7 @@ const MailPage = () => {
   const handleSend = async () => {
     if (!tenantId || !user?.id) return;
     const v = validate();
-    if (!v.ok) {
+    if (v.ok === false) {
       toast.error(v.error);
       setConfirmOpen(false);
       return;
@@ -645,13 +645,18 @@ const MailPage = () => {
   );
 };
 
-interface ValidatedSend {
-  kind: "item" | "gold";
+interface ValidatedSendBase {
   recipient: { roleid: number; name?: string };
   message: { subject?: string; body?: string };
-  payload:
-    | { item_id: number; count: number; max_count?: number }
-    | { amount: number };
 }
+type ValidatedSend =
+  | (ValidatedSendBase & {
+      kind: "item";
+      payload: { item_id: number; count: number; max_count?: number };
+    })
+  | (ValidatedSendBase & {
+      kind: "gold";
+      payload: { amount: number };
+    });
 
 export default MailPage;

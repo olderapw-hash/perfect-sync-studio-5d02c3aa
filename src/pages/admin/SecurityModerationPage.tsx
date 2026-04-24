@@ -109,6 +109,7 @@ const SecurityModerationPage = () => {
 
   const [roleidStr, setRoleidStr] = useState("");
   const [account, setAccount] = useState("");
+  const [useridStr, setUseridStr] = useState("");
   const [pendingAction, setPendingAction] = useState<ActionConfig | null>(null);
   const [reason, setReason] = useState("");
   const [durationHours, setDurationHours] = useState<string>("24");
@@ -141,16 +142,19 @@ const SecurityModerationPage = () => {
   }
 
   const roleid = parseInt(roleidStr.trim(), 10);
+  const userid = parseInt(useridStr.trim(), 10);
   const hasRoleid = Number.isFinite(roleid) && roleid > 0;
+  const hasUserid = Number.isFinite(userid) && userid > 0;
   const hasAccount = account.trim().length > 0;
+  const hasAnyTarget = hasRoleid || hasUserid || hasAccount;
 
   function openAction(a: ActionConfig) {
     if (a.kind === "kick" && !hasRoleid) {
-      toast.error("Informe o roleid para kickar.");
+      toast.error("Kick exige um roleid válido.");
       return;
     }
-    if ((a.kind === "ban_temp" || a.kind === "ban_perm" || a.kind === "unban") && !hasAccount && !hasRoleid) {
-      toast.error("Informe a conta (login/userid) ou um roleid.");
+    if ((a.kind === "ban_temp" || a.kind === "ban_perm" || a.kind === "unban") && !hasAnyTarget) {
+      toast.error("Informe conta, userid ou roleid.");
       return;
     }
     setReason("");
@@ -178,12 +182,15 @@ const SecurityModerationPage = () => {
 
     const payloadAccount = hasAccount ? account.trim() : undefined;
     const payloadRoleid = hasRoleid ? roleid : undefined;
+    const payloadUserid = hasUserid ? userid : undefined;
     const auditTarget =
       payloadRoleid != null
         ? `roleid:${payloadRoleid}`
-        : payloadAccount
-          ? `account:${payloadAccount}`
-          : "—";
+        : payloadUserid != null
+          ? `userid:${payloadUserid}`
+          : payloadAccount
+            ? `account:${payloadAccount}`
+            : "—";
 
     try {
       let res: SecurityActionResponse;
@@ -195,6 +202,7 @@ const SecurityModerationPage = () => {
           const seconds = Math.round(parseFloat(durationHours) * 3600);
           res = await pwApi.banAccount({
             account: payloadAccount,
+            userid: payloadUserid,
             roleid: payloadRoleid,
             duration_seconds: seconds,
             reason: trimmedReason,
@@ -204,13 +212,16 @@ const SecurityModerationPage = () => {
         case "ban_perm":
           res = await pwApi.banAccount({
             account: payloadAccount,
+            userid: payloadUserid,
             roleid: payloadRoleid,
+            permanent: true,
             reason: trimmedReason,
           });
           break;
         case "unban":
           res = await pwApi.unbanAccount({
             account: payloadAccount,
+            userid: payloadUserid,
             roleid: payloadRoleid,
             reason: trimmedReason || undefined,
           });
@@ -266,10 +277,11 @@ const SecurityModerationPage = () => {
         </div>
         <p className="mb-4 text-xs text-muted-foreground">
           Informe ao menos um identificador. <strong>Kick</strong> requer
-          roleid. <strong>Ban/Unban</strong> aceita conta (login) ou roleid —
-          a VPS resolve a conta a partir do roleid quando possível.
+          roleid. <strong>Ban/Unban</strong> aceita conta (login),{" "}
+          <strong>userid</strong> ou roleid — a VPS resolve a conta a partir
+          do roleid quando possível.
         </p>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-3">
           <div>
             <Label htmlFor="roleid" className="text-xs">
               Roleid
@@ -281,6 +293,20 @@ const SecurityModerationPage = () => {
               placeholder="ex.: 31"
               value={roleidStr}
               onChange={(e) => setRoleidStr(e.target.value)}
+              className="mt-1 font-mono"
+            />
+          </div>
+          <div>
+            <Label htmlFor="userid" className="text-xs">
+              Userid
+            </Label>
+            <Input
+              id="userid"
+              type="number"
+              inputMode="numeric"
+              placeholder="ex.: 1024"
+              value={useridStr}
+              onChange={(e) => setUseridStr(e.target.value)}
               className="mt-1 font-mono"
             />
           </div>
@@ -333,9 +359,13 @@ const SecurityModerationPage = () => {
               <span className="block">
                 Alvo:{" "}
                 <span className="font-mono text-foreground">
-                  {hasRoleid && `roleid ${roleid}`}
-                  {hasRoleid && hasAccount && " · "}
-                  {hasAccount && `conta ${account.trim()}`}
+                  {[
+                    hasRoleid ? `roleid ${roleid}` : null,
+                    hasUserid ? `userid ${userid}` : null,
+                    hasAccount ? `conta ${account.trim()}` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </span>
               </span>
               {pendingAction?.tone === "destructive" && (
@@ -471,6 +501,26 @@ function LastResultPanel({
 }) {
   const { action, res } = data;
   const ok = res.success !== false;
+  const fields: { label: string; value: string }[] = [];
+  fields.push({ label: "Action", value: res.action ?? action });
+  if (res.roleid != null) fields.push({ label: "Roleid", value: String(res.roleid) });
+  if (res.userid != null) fields.push({ label: "Userid", value: String(res.userid) });
+  if (res.account) fields.push({ label: "Conta", value: res.account });
+  if (res.seconds != null && res.seconds > 0) {
+    const hours = (res.seconds / 3600).toFixed(2).replace(/\.?0+$/, "");
+    fields.push({ label: "Duração", value: `${res.seconds}s (~${hours}h)` });
+  }
+  if (res.ban_until != null) {
+    fields.push({
+      label: "Expira em",
+      value: new Date(res.ban_until * 1000).toLocaleString(),
+    });
+  }
+  if (res.state) fields.push({ label: "Estado", value: res.state });
+  if (res.reason) fields.push({ label: "Motivo", value: res.reason });
+  if (res.log_file) fields.push({ label: "Log", value: res.log_file });
+  if (res.dry_run) fields.push({ label: "Modo", value: "dry_run" });
+
   return (
     <section
       className={cn(
@@ -486,13 +536,36 @@ function LastResultPanel({
         ) : (
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
         )}
-        <div className="text-xs">
+        <div className="flex-1 text-xs">
           <p className="font-bold uppercase tracking-wider">
             Resultado · {action}
           </p>
-          <pre className="mt-2 max-h-48 overflow-auto rounded-md border border-border/30 bg-background/40 p-2 font-mono text-[10px] text-foreground/80">
-            {JSON.stringify(res, null, 2)}
-          </pre>
+          <dl className="mt-3 grid gap-x-4 gap-y-1.5 sm:grid-cols-2">
+            {fields.map((f) => (
+              <div key={f.label} className="flex flex-col">
+                <dt className="text-[10px] font-bold uppercase tracking-wider opacity-70">
+                  {f.label}
+                </dt>
+                <dd className="break-all font-mono text-[11px] text-foreground/90">
+                  {f.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          {res.message && (
+            <p className="mt-3 text-[11px] text-foreground/80">{res.message}</p>
+          )}
+          {res.error && (
+            <p className="mt-3 text-[11px] text-destructive">{res.error}</p>
+          )}
+          <details className="mt-3">
+            <summary className="cursor-pointer text-[10px] font-bold uppercase tracking-wider opacity-60 hover:opacity-100">
+              Resposta bruta
+            </summary>
+            <pre className="mt-2 max-h-48 overflow-auto rounded-md border border-border/30 bg-background/40 p-2 font-mono text-[10px] text-foreground/80">
+              {JSON.stringify(res, null, 2)}
+            </pre>
+          </details>
         </div>
       </div>
     </section>

@@ -20,7 +20,8 @@ export type ServerPermissionKey =
   | "manage_servers"
   | "view_audit"
   | "manage_members"
-  | "manage_kits";
+  | "manage_kits"
+  | "manage_security";
 
 export type ServerRole = "owner" | "admin" | "editor" | "readonly";
 
@@ -38,6 +39,7 @@ const ALL_PERMISSION_KEYS: ServerPermissionKey[] = [
   "view_audit",
   "manage_members",
   "manage_kits",
+  "manage_security",
 ];
 
 const FALSE_MAP: PermissionMap = ALL_PERMISSION_KEYS.reduce((acc, k) => {

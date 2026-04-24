@@ -333,6 +333,40 @@ export const pwApi = {
   exportClsconfig() {
     return callAction<ExportClsconfigResponse>("exportClsconfig", { method: "POST", body: {} });
   },
+  /* ─────────── Segurança v1 (kick / ban / unban) ─────────── */
+  /**
+   * Desconecta um personagem online (kick). Não bane — apenas força a
+   * saída. Útil pra liberar slot ou interromper exploit em andamento.
+   */
+  kickRole(body: KickRolePayload) {
+    return callAction<SecurityActionResponse>("kickRole", { method: "POST", body });
+  },
+  /**
+   * Bane uma conta. Quando `duration_seconds` é informado e > 0, é um
+   * ban temporário; ausente / 0 = ban permanente. `reason` obrigatório
+   * para auditoria.
+   */
+  banAccount(body: BanAccountPayload) {
+    return callAction<SecurityActionResponse>("banAccount", { method: "POST", body });
+  },
+  /**
+   * Remove o ban de uma conta. `reason` recomendado pra trilha.
+   */
+  unbanAccount(body: UnbanAccountPayload) {
+    return callAction<SecurityActionResponse>("unbanAccount", { method: "POST", body });
+  },
+  /**
+   * Lista as últimas N ações de segurança registradas na VPS (kick/ban/
+   * unban). O front mantém uma trilha paralela em `audit_logs` — esse
+   * endpoint é a "fonte da verdade" do servidor.
+   */
+  listSecurityHistory(params: { limit?: number; account?: string; roleid?: number } = {}) {
+    const query: Record<string, string | number> = {};
+    if (params.limit != null) query.limit = params.limit;
+    if (params.account) query.account = params.account;
+    if (params.roleid != null) query.roleid = params.roleid;
+    return callAction<SecurityHistoryResponse>("listSecurityHistory", { method: "GET", query });
+  },
 };
 
 /* ─────────── Operação do Servidor v1 ─────────── */
@@ -479,3 +513,68 @@ export interface GetBackupContentResponse {
   role?: unknown;
   error?: string;
 }
+
+/* ─────────── Segurança v1 (kick / ban / unban) ─────────── */
+
+export interface KickRolePayload {
+  /** roleid do personagem alvo (obrigatório). */
+  roleid: number;
+  /** Motivo curto (auditoria). Obrigatório no front. */
+  reason: string;
+}
+
+export interface BanAccountPayload {
+  /** Identificador da conta. Pode ser nome de login OU userid. */
+  account?: string;
+  userid?: number;
+  /** Quando informado, a VPS pode resolver a conta a partir do roleid. */
+  roleid?: number;
+  /** Duração em segundos. 0/ausente = ban permanente. */
+  duration_seconds?: number;
+  reason: string;
+}
+
+export interface UnbanAccountPayload {
+  account?: string;
+  userid?: number;
+  roleid?: number;
+  /** Recomendado mas não obrigatório (auditoria). */
+  reason?: string;
+}
+
+export interface SecurityActionResponse {
+  success: boolean;
+  /** roleid envolvido (kickRole sempre devolve). */
+  roleid?: number;
+  /** Conta envolvida quando aplicável. */
+  account?: string;
+  userid?: number;
+  /** epoch seconds em que o ban expira (ban temporário). */
+  ban_until?: number | null;
+  /** Estado pós-ação (online/offline/banned/unbanned). */
+  state?: "online" | "offline" | "banned" | "unbanned";
+  message?: string;
+  error?: string;
+}
+
+export type SecurityHistoryAction = "kick" | "ban" | "unban";
+
+export interface SecurityHistoryEntry {
+  ts: number;
+  action: SecurityHistoryAction;
+  roleid?: number | null;
+  account?: string | null;
+  userid?: number | null;
+  reason?: string | null;
+  duration_seconds?: number | null;
+  by?: string | null;
+}
+
+export interface SecurityHistoryResponse {
+  success: boolean;
+  count?: number;
+  entries: SecurityHistoryEntry[];
+  warning?: string;
+  error?: string;
+}
+

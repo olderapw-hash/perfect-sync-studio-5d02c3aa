@@ -105,6 +105,7 @@ const Ctx = createContext<CtxValue>({
 export const ServerPermissionsProvider = ({ children }: { children: ReactNode }) => {
   const { session, isSuperadmin } = useAuth();
   const { active, loading: serversLoading } = useServers();
+  const { isTrial, loading: subLoading } = useSubscription();
   const [permissions, setPermissions] = useState<PermissionMap>({ ...FALSE_MAP });
   const [role, setRole] = useState<ServerRole | null>(null);
   const [loading, setLoading] = useState(true);
@@ -155,18 +156,30 @@ export const ServerPermissionsProvider = ({ children }: { children: ReactNode })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.id, tenantId, isSuperadmin, serversLoading]);
 
+  // No modo trial substituímos o mapa efetivo pelo TRIAL_MAP — independente
+  // do role no servidor (owner inclusive). Superadmin escapa do clamp para
+  // continuar testando o painel completo.
+  const effectivePermissions = useMemo<PermissionMap>(() => {
+    if (isTrial && !isSuperadmin) return { ...TRIAL_MAP };
+    return permissions;
+  }, [isTrial, isSuperadmin, permissions]);
+
   const value = useMemo<CtxValue>(
     () => ({
-      loading,
+      loading: loading || subLoading,
       tenantId,
       role,
-      permissions,
-      can: (perm) => permissions[perm] === true,
+      permissions: effectivePermissions,
+      can: (perm) => effectivePermissions[perm] === true,
+      isTrial: isTrial && !isSuperadmin,
       refetch: fetchPermissions,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [loading, tenantId, role, permissions],
+    [loading, subLoading, tenantId, role, effectivePermissions, isTrial, isSuperadmin],
   );
+
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+};
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 };

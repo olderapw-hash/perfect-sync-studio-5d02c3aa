@@ -9,7 +9,10 @@ import { AppSettingsProvider } from "@/hooks/useAppSettings";
 import { ServerPermissionsProvider } from "@/hooks/useServerPermissions";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { SuperadminRoute } from "@/components/SuperadminRoute";
+import { TrialRoute } from "@/components/TrialRoute";
 import { AdminLayout } from "@/components/admin/layout/AdminLayout";
+import { TrialLayout } from "@/components/trial/TrialLayout";
+import TrialTemplatesPage from "./pages/trial/TrialTemplatesPage.tsx";
 import AdminUsers from "./pages/AdminUsers.tsx";
 import Auth from "./pages/Auth.tsx";
 import Landing from "./pages/Landing.tsx";
@@ -113,6 +116,20 @@ const App = () => (
                       <Route path="history" element={<SecurityHistoryPage />} />
                       <Route path="settings" element={<SecuritySettingsPage />} />
                     </Route>
+                  </Route>
+
+                  {/* /trial — área enxuta para usuários no Free Trial.
+                      Só libera edição manual de templates iniciais. */}
+                  <Route
+                    path="/trial"
+                    element={
+                      <TrialRoute>
+                        <TrialLayout />
+                      </TrialRoute>
+                    }
+                  >
+                    <Route index element={<Navigate to="/trial/templates" replace />} />
+                    <Route path="templates" element={<TrialTemplatesPage />} />
                   </Route>
 
                   {/* Members e Audit têm header próprio com botão "voltar".

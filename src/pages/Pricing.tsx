@@ -54,6 +54,11 @@ const Pricing = () => {
   useEffect(() => {
     if (authLoading || subLoading || serversLoading) return;
     if (!session) return;
+    // Trial → área dedicada /trial.
+    if (isTrial) {
+      navigate("/trial", { replace: true });
+      return;
+    }
     const bypass = isActive || isAdmin || isSuperadmin;
     if (bypass && active?.onboarding_completed) {
       navigate("/admin", { replace: true });
@@ -64,6 +69,7 @@ const Pricing = () => {
     serversLoading,
     session,
     isActive,
+    isTrial,
     isAdmin,
     isSuperadmin,
     active?.onboarding_completed,
@@ -105,7 +111,7 @@ const Pricing = () => {
       if (error) throw error;
       toast.success("Trial gratuito ativado!");
       await refetchSub();
-      navigate("/admin");
+      navigate("/trial");
     } catch (e) {
       console.error(e);
       toast.error("Não foi possível iniciar o trial. Tenta de novo.");

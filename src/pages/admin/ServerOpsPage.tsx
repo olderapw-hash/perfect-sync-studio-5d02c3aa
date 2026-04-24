@@ -153,7 +153,7 @@ function ServerStatusTab() {
   const { active } = useServers();
   const [services, setServices] = useState<ServiceInfo[] | null>(null);
   const [loading, setLoading] = useState(false);
-  const [collectedAt, setCollectedAt] = useState<number | null>(null);
+  const [collectedAt, setCollectedAt] = useState<string | number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [endpointMissing, setEndpointMissing] = useState(false);
 

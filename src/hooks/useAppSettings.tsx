@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import defaultLogo from "@/assets/orphea-core-logo.png";
 
 export interface AppSettings {
   server_name: string;
@@ -7,6 +8,8 @@ export interface AppSettings {
   icon_base_url: string;
   logo_url: string | null;
   primary_color: string | null;
+  background_url: string | null;
+  favicon_url: string | null;
 }
 
 interface Ctx {
@@ -16,11 +19,13 @@ interface Ctx {
 }
 
 const DEFAULTS: AppSettings = {
-  server_name: "Perfect World Admin",
+  server_name: "Orphea Core",
   pw_api_base_url: null,
   icon_base_url: "http://93.127.143.77/",
-  logo_url: null,
+  logo_url: defaultLogo,
   primary_color: null,
+  background_url: null,
+  favicon_url: null,
 };
 
 const AppSettingsContext = createContext<Ctx>({
@@ -38,7 +43,7 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     // Tenta ler tabela completa (se admin) — senão cai pro branding público.
     const { data: full } = await supabase
       .from("app_settings")
-      .select("server_name, pw_api_base_url, icon_base_url, logo_url, primary_color")
+      .select("server_name, pw_api_base_url, icon_base_url, logo_url, primary_color, background_url, favicon_url")
       .eq("id", 1)
       .maybeSingle();
 
@@ -47,8 +52,10 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
         server_name: full.server_name ?? DEFAULTS.server_name,
         pw_api_base_url: full.pw_api_base_url,
         icon_base_url: full.icon_base_url ?? DEFAULTS.icon_base_url,
-        logo_url: full.logo_url,
+        logo_url: full.logo_url ?? DEFAULTS.logo_url,
         primary_color: full.primary_color,
+        background_url: full.background_url ?? null,
+        favicon_url: full.favicon_url ?? null,
       });
     } else {
       const { data: pub } = await supabase.rpc("get_public_branding");
@@ -57,8 +64,10 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
         setSettings({
           ...DEFAULTS,
           server_name: row.server_name ?? DEFAULTS.server_name,
-          logo_url: row.logo_url,
+          logo_url: row.logo_url ?? DEFAULTS.logo_url,
           primary_color: row.primary_color,
+          background_url: row.background_url ?? null,
+          favicon_url: row.favicon_url ?? null,
         });
       }
     }
@@ -68,6 +77,18 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Aplica favicon dinâmico se configurado
+  useEffect(() => {
+    if (!settings.favicon_url) return;
+    let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
+    if (!link) {
+      link = document.createElement("link");
+      link.rel = "icon";
+      document.head.appendChild(link);
+    }
+    link.href = settings.favicon_url;
+  }, [settings.favicon_url]);
 
   return (
     <AppSettingsContext.Provider value={{ settings, loading, reload: load }}>

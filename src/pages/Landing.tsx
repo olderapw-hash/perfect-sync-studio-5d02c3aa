@@ -24,7 +24,7 @@ const Landing = () => {
 
   // SEO dinâmico (mantém index.html limpo, atualiza title em runtime)
   useEffect(() => {
-    document.title = "PW Admin — Painel completo pra GMs de Perfect World";
+    document.title = "Orphea Core — Painel completo pra GMs de Perfect World";
     const meta = document.querySelector('meta[name="description"]');
     if (meta) {
       meta.setAttribute(
@@ -40,11 +40,13 @@ const Landing = () => {
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <Link to="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/15">
-              <Shield className="h-4 w-4 text-primary" />
-            </div>
+            <img
+              src="/orphea-core-logo.png"
+              alt="Orphea Core"
+              className="h-8 w-8 rounded-md object-contain"
+            />
             <span className="text-sm font-extrabold uppercase tracking-wider">
-              PW <span className="text-primary">Admin</span>
+              Orphea <span className="text-primary">Core</span>
             </span>
           </Link>
 
@@ -319,8 +321,8 @@ const Landing = () => {
       <footer className="border-t border-border/60 bg-card/20 py-10">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 text-center text-xs text-muted-foreground sm:flex-row sm:text-left">
           <div className="flex items-center gap-2">
-            <Shield className="h-4 w-4 text-primary" />
-            <span className="font-bold uppercase tracking-wider text-foreground">PW Admin</span>
+            <img src="/orphea-core-logo.png" alt="" className="h-5 w-5 object-contain" />
+            <span className="font-bold uppercase tracking-wider text-foreground">Orphea Core</span>
             <span>· © {new Date().getFullYear()}</span>
           </div>
           <div className="flex items-center gap-5">

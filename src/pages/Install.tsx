@@ -57,7 +57,7 @@ const FILES: InstallerFile[] = [
   {
     name: "api_cls.php",
     description:
-      "Bridge HTTP completa (gamedbd, templates CLS, backups, restore, item catalog).",
+      "Bridge HTTP completa: gamedbd, templates CLS, backups, restore, item catalog e correio (sendMailItem/sendMailGold).",
     path: "/installer/api_cls.php",
     icon: FileCode,
     language: "php",
@@ -66,19 +66,46 @@ const FILES: InstallerFile[] = [
   {
     name: "install-apicls-centos7.sh",
     description:
-      "Instalador automático para CentOS 7. Configura Apache, sudoers, scripts e backups.",
+      "Instalador automático para CentOS 7. Configura Apache, sudoers, scripts de correio/backup e testa o ambiente.",
     path: "/installer/install-apicls-centos7.sh",
     icon: Terminal,
     language: "bash",
     primary: true,
   },
   {
+    name: "pw_send_mail.php",
+    description:
+      "Handler do correio real (item/gold). Conversa com o gdeliveryd via send_mail.lua. Sem ele o correio fica em modo queue-only.",
+    path: "/installer/pw_send_mail.php",
+    icon: FileCode,
+    language: "php",
+    primary: true,
+  },
+  {
+    name: "sendreward-api.sh",
+    description:
+      "Wrapper sudo chamado pelo Apache para executar o pw_send_mail.php como root (acesso ao console do gdeliveryd).",
+    path: "/installer/sendreward-api.sh",
+    icon: Terminal,
+    language: "bash",
+  },
+  {
     name: "README.md",
-    description: "Tutorial completo atualizado (instalação, testes, troubleshooting).",
+    description: "Tutorial completo: instalação, testes, dry_run do correio, troubleshooting.",
     path: "/installer/README.md",
     icon: FileText,
     language: "markdown",
   },
+];
+
+/** Features que a versão atual da API já suporta. Aparece na UI como
+ *  "o que você ganha instalando este pacote". */
+const API_FEATURES: { label: string; detail: string }[] = [
+  { label: "Templates CLS", detail: "getClsconfig, saveClsconfigTemplate, exportClsconfig" },
+  { label: "Personagem real", detail: "getRoleEditable, saveRoleEditable, getRolesEditable" },
+  { label: "Backups", detail: "backupGamedbd, listBackups, getBackupContent, restoreBackup" },
+  { label: "Item catalog", detail: "getItemCatalog (webtradeid, auctionid, valuables, visibleid)" },
+  { label: "Correio real via gdeliveryd", detail: "sendMailItem, sendMailGold (com fallback queue + dry_run)" },
 ];
 
 /** Tenta inferir uma URL "esperada" do api_cls.php a partir da URL cadastrada. */

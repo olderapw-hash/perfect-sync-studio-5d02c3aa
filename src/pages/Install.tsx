@@ -503,6 +503,27 @@ const Install = () => {
           )}
         </section>
 
+        {/* Features que esta versão da API entrega */}
+        <section className="mb-8 rounded-2xl border border-border bg-card/30 p-6">
+          <h2 className="mb-3 text-sm font-extrabold uppercase tracking-wider">
+            O que esta versão suporta
+          </h2>
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {API_FEATURES.map((f) => (
+              <li
+                key={f.label}
+                className="flex items-start gap-2 rounded-md border border-border bg-background/50 p-3"
+              >
+                <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-foreground">{f.label}</p>
+                  <p className="font-mono text-[10px] text-muted-foreground">{f.detail}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+
         {/* Arquivos */}
         <section>
           <h2 className="mb-4 text-sm font-bold uppercase tracking-wider text-muted-foreground">

@@ -253,7 +253,7 @@ function ServerStatusTab() {
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {merged.map((svc) => (
-          <ServiceCard key={svc.name} service={svc} loading={loading && !services} />
+          <ServiceCard key={svc.key} service={svc} loading={loading && !services} />
         ))}
       </div>
     </div>

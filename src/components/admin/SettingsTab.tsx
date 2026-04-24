@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Loader2, Save, Server, Shield, AlertTriangle, ExternalLink } from "lucide-react";
+import { Loader2, Save, Server, Shield, AlertTriangle, ExternalLink, Upload, Image as ImageIcon, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
@@ -13,12 +13,16 @@ interface SettingsForm {
   server_name: string;
   logo_url: string;
   primary_color: string;
+  background_url: string;
+  favicon_url: string;
 }
 
 const EMPTY: SettingsForm = {
   server_name: "",
   logo_url: "",
   primary_color: "",
+  background_url: "",
+  favicon_url: "",
 };
 
 /**

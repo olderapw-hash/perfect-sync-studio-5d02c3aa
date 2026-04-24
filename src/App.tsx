@@ -117,6 +117,16 @@ const App = () => (
                       <Route path="history" element={<SecurityHistoryPage />} />
                       <Route path="settings" element={<SecuritySettingsPage />} />
                     </Route>
+
+                    {/* Site (landing pública) — apenas superadmin (guard interno). */}
+                    <Route
+                      path="site"
+                      element={
+                        <SuperadminRoute>
+                          <SitePage />
+                        </SuperadminRoute>
+                      }
+                    />
                   </Route>
 
                   {/* /trial — área enxuta para usuários no Free Trial.

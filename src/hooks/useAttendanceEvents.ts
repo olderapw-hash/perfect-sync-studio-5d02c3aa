@@ -73,13 +73,10 @@ export function useAttendanceEvents(tenantId: string | null) {
 
   const updateEvent = useCallback(
     async (id: string, patch: Partial<NewAttendanceEventInput>) => {
-      const updatePayload: Record<string, unknown> = { ...patch };
-      if (patch.reward_payload) {
-        updatePayload.reward_payload = patch.reward_payload as never;
-      }
       const { error: err } = await supabase
         .from("attendance_events")
-        .update(updatePayload)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .update(patch as any)
         .eq("id", id);
       if (err) throw err;
       await refetch();

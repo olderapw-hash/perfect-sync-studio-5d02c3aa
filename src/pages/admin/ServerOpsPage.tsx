@@ -292,11 +292,11 @@ function ServiceCard({
           <div className="flex items-center gap-2">
             <span className={cn("h-2 w-2 rounded-full", dot, loading && "animate-pulse")} />
             <h3 className="truncate text-sm font-bold text-foreground">
-              {service.label || service.name}
+              {service.label || service.key}
             </h3>
           </div>
           <p className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">
-            {service.name}
+            {service.process_name ?? service.key}
             {service.port != null && <span> · :{service.port}</span>}
           </p>
         </div>
@@ -327,6 +327,16 @@ function ServiceCard({
         </div>
       </dl>
 
+      {(service.systemd_state || service.listening != null) && (
+        <p className="mt-2 text-[10px] text-muted-foreground">
+          {service.systemd_state && <>systemd: <span className="font-mono">{service.systemd_state}</span></>}
+          {service.systemd_state && service.listening != null && " · "}
+          {service.listening != null && (
+            <>porta: <span className="font-mono">{service.listening ? "LISTEN" : "fechada"}</span></>
+          )}
+        </p>
+      )}
+
       {service.message && (
         <p className="mt-3 rounded-md border border-border/60 bg-background/40 px-2 py-1 text-[10px] text-muted-foreground">
           {service.message}
@@ -334,6 +344,17 @@ function ServiceCard({
       )}
     </div>
   );
+}
+
+/** Aceita ISO string OU epoch (segundos/ms). */
+function formatCollectedAt(v: string | number): string {
+  if (typeof v === "string") {
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? v : d.toLocaleTimeString();
+  }
+  // epoch: <1e12 = segundos, senão milissegundos.
+  const ms = v < 1e12 ? v * 1000 : v;
+  return new Date(ms).toLocaleTimeString();
 }
 
 /* -------------------------------------------------------------------------- */

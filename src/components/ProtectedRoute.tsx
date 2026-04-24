@@ -4,6 +4,7 @@ import { Loader2, Mail, ShieldAlert } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useTenant } from "@/hooks/useTenant";
+// Trial users are redirected to /trial which has its own slim layout.
 import { useMyPendingInvites } from "@/hooks/useServerMembers";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -20,7 +21,7 @@ export const ProtectedRoute = ({
   requireSubscription = false,
 }: Props) => {
   const { session, isAdmin, isSuperadmin, loading, signOut } = useAuth();
-  const { isActive, loading: subLoading } = useSubscription();
+  const { isActive, isTrial, loading: subLoading } = useSubscription();
   const { tenant, loading: tenantLoading } = useTenant();
   const { invites: pendingInvites } = useMyPendingInvites();
 
@@ -90,6 +91,10 @@ export const ProtectedRoute = ({
   if (requireSubscription && !isSuperadmin && !isAdmin && !isGuestMember) {
     if (!isActive) {
       return <Navigate to="/pricing" replace />;
+    }
+    // Trial users get their own slim area — não entram no /admin completo.
+    if (isTrial) {
+      return <Navigate to="/trial" replace />;
     }
     if (!tenant?.onboarding_completed) {
       return <Navigate to="/onboarding" replace />;

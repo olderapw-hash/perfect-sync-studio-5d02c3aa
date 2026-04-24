@@ -209,6 +209,8 @@ const NavSectionGroup = ({
   section: NavSection;
   collapsed: boolean;
 }) => {
+  const { isTrial } = useServerPermissions();
+  const showProBadge = isTrial && section.proInTrial === true;
   const location = useLocation();
   const isActiveSection = location.pathname.startsWith(section.basePath);
   const [open, setOpen] = useState(isActiveSection);
@@ -254,6 +256,7 @@ const NavSectionGroup = ({
                 EM BREVE
               </span>
             )}
+            {showProBadge && <ProBadge />}
             <ChevronDown
               className={cn(
                 "h-3.5 w-3.5 text-muted-foreground transition-transform",

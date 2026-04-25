@@ -5013,9 +5013,22 @@ if (php_sapi_name() !== 'cli' || isset($_GET['action'])) {
             }
             break;
 
+        case 'registerIngameParticipation':
+            try {
+                $result = registerIngameParticipationHandler($CONFIG);
+                respondJson($result['body'], $result['http']);
+            } catch (Exception $e) {
+                respondJson([
+                    'success' => false,
+                    'status'  => 'upstream_error',
+                    'message' => $e->getMessage(),
+                ], 500);
+            }
+            break;
+
         default:
             respondJson([
-                'error' => 'Acao invalida. Use: getRole, getRoles, getRoleEditable, getRolesEditable, getClasses, getClsconfig, getClsconfigDebug, getItemCatalog, listBackups, backupGamedbd, getBackupContent, restoreBackup, exportClsconfig, saveRoleEditable, saveClsconfigTemplate, sendMailItem, sendMailGold, getServiceStatus, getServerLogs',
+                'error' => 'Acao invalida. Use: getRole, getRoles, getRoleEditable, getRolesEditable, getClasses, getClsconfig, getClsconfigDebug, getItemCatalog, listBackups, backupGamedbd, getBackupContent, restoreBackup, exportClsconfig, saveRoleEditable, saveClsconfigTemplate, sendMailItem, sendMailGold, getServiceStatus, getServerLogs, registerIngameParticipation',
             ], 400);
             break;
     }

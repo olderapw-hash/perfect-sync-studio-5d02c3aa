@@ -4300,6 +4300,7 @@ function registerIngameParticipationHandler(array $config)
 }
 
 
+/* ============================================================
  * Operação do Servidor v1 — getServiceStatus / getServerLogs
  * Apenas LEITURA: pgrep + tail. Sem start/stop/kill.
  * ============================================================ */

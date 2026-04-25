@@ -70,6 +70,7 @@ import {
   isRewardPayloadValid,
   raffleStatusLabel,
   type RaffleEvent,
+  type RaffleParticipant,
   type RaffleRewardItem,
   type RaffleRewardPayload,
   type RaffleStatus,

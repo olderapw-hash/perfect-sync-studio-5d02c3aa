@@ -52,6 +52,23 @@ $CONFIG = [
     'mail_send_max_count'       => 9999,
     'mail_send_max_amount'      => 2000000000,
     'mail_send_log_dir'         => __DIR__ . '/backups/mail-logs',
+
+    // === Eventos ingame (registerIngameParticipation) ===
+    // Ponte NPC -> VPS -> Supabase. O NPC NUNCA fala direto com o Supabase:
+    // ele chama este api_cls.php, que aqui repassa para a RPC
+    // `register_ingame_participation` usando a service_role key do Supabase.
+    //
+    // PREENCHA com os dados do seu projeto PW Admin (Lovable Cloud):
+    //   supabase_url               -> ex: https://abcd1234.supabase.co
+    //   supabase_service_role_key  -> service role key do projeto (NUNCA expor publicamente)
+    //   ingame_default_tenant_id   -> uuid do servidor cadastrado no painel
+    //                                 (usado quando o NPC nao envia tenant_id)
+    'ingame_enabled'              => true,
+    'supabase_url'                => '',
+    'supabase_service_role_key'   => '',
+    'ingame_default_tenant_id'    => '',
+    'ingame_log_dir'              => __DIR__ . '/backups/ingame-logs',
+    'ingame_request_timeout'      => 8,
 ];
 
 $CULTIVATION_MAP = [

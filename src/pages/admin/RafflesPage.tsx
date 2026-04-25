@@ -19,6 +19,7 @@ import {
   CalendarClock,
   CheckCircle2,
   Coins,
+  Dices,
   Gift,
   Loader2,
   Lock,
@@ -26,10 +27,12 @@ import {
   Pencil,
   Play,
   Plus,
+  RotateCw,
   Search,
   Square,
   Trash2,
   Trophy,
+  UserPlus,
   Users,
 } from "lucide-react";
 import { toast } from "sonner";

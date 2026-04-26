@@ -419,8 +419,11 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
 
     const className = template.summary.class_name ?? `Classe ${template.summary.cls}`;
     const statusDiff = diffSimpleStatus(entry.template, template);
+    // Abas que só editam campos simples de status (reputation cai aqui também)
+    // podem usar o patch leve. titles/skills mexem em blobs raw → save completo.
+    const isSimpleStatusTab = tab === "status" || tab === "reputation";
     const useStatusPatch =
-      tab === "status" &&
+      isSimpleStatusTab &&
       Object.keys(statusDiff).length > 0 &&
       onlySimpleStatusChanged(entry.template, template);
     const useInventoryPatch =

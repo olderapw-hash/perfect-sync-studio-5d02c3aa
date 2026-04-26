@@ -140,6 +140,23 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
   const [exportClsconfigForRole, setExportClsconfigForRole] = useState(false);
   /** Apenas modo "role": confirmação forte ANTES de chamar runSave. */
   const [roleConfirmOpen, setRoleConfirmOpen] = useState(false);
+  /**
+   * Modo "template": dispara exportclsconfig automaticamente após save bem-sucedido.
+   * Persiste a preferência em localStorage. Default ON — recomendado pra que o
+   * `clsconfig.data` no servidor reflita imediatamente o que foi editado.
+   */
+  const [autoExportTemplate, setAutoExportTemplate] = useState(() => {
+    if (typeof window === "undefined") return true;
+    const v = window.localStorage.getItem("orphea.autoExportClsconfig");
+    return v == null ? true : v === "1";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("orphea.autoExportClsconfig", autoExportTemplate ? "1" : "0");
+    }
+  }, [autoExportTemplate]);
+  /** Estado do botão "Exportar agora" (manual, fora do save). */
+  const [manualExporting, setManualExporting] = useState(false);
 
   const { can } = useServerPermissions();
   const { tenant } = useTenant();

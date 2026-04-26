@@ -78,15 +78,26 @@ export async function invokeClsconfigProxy<T = unknown>(
   const headers: Record<string, string> = {};
   if (tenantId) headers["x-server-id"] = tenantId;
 
-  const { data, error } = await supabase.functions.invoke(path, {
-    method,
-    body: method === "POST" ? (opts.body ?? {}) : undefined,
-    headers,
-  });
-
+  // Tenta até 2x quando o runtime do Supabase responde 503
+  // (SUPABASE_EDGE_RUNTIME_ERROR — cold start / worker reiniciando).
+  let data: unknown = null;
+  let error: { message: string; context?: Response } | null = null;
   let status = 0;
   let rawBody = "";
-  if (error) {
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const res = await supabase.functions.invoke(path, {
+      method,
+      body: method === "POST" ? (opts.body ?? {}) : undefined,
+      headers,
+    });
+    data = res.data;
+    error = res.error as typeof error;
+    status = 0;
+    rawBody = "";
+
+    if (!error) break;
+
     const ctx = (error as unknown as { context?: Response }).context;
     if (ctx) {
       status = ctx.status ?? 0;
@@ -96,6 +107,14 @@ export async function invokeClsconfigProxy<T = unknown>(
         /* ignore */
       }
     }
+    // Só faz retry para 503 transitório do runtime
+    const isTransient503 =
+      status === 503 && /SUPABASE_EDGE_RUNTIME_ERROR|temporarily unavailable/i.test(rawBody);
+    if (!isTransient503 || attempt === 1) break;
+    await new Promise((r) => setTimeout(r, 600));
+  }
+
+  if (error) {
     // Centraliza 401/403 — toast amigável já é mostrado aqui.
     handleMaybeAuthOrForbidden(new Error(`${status} ${rawBody || error.message}`));
     return { data: null, error: error instanceof Error ? error : new Error(String(error)), status, rawBody };

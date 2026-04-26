@@ -105,7 +105,7 @@ const Ctx = createContext<CtxValue>({
 export const ServerPermissionsProvider = ({ children }: { children: ReactNode }) => {
   const { session, isSuperadmin } = useAuth();
   const { active, loading: serversLoading } = useServers();
-  const { isTrial, loading: subLoading } = useSubscription();
+  const { isTrial, plan, loading: subLoading } = useSubscription();
   const [permissions, setPermissions] = useState<PermissionMap>({ ...FALSE_MAP });
   const [role, setRole] = useState<ServerRole | null>(null);
   const [loading, setLoading] = useState(true);
@@ -156,13 +156,20 @@ export const ServerPermissionsProvider = ({ children }: { children: ReactNode })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.id, tenantId, isSuperadmin, serversLoading]);
 
-  // No modo trial substituímos o mapa efetivo pelo TRIAL_MAP — independente
-  // do role no servidor (owner inclusive). Superadmin escapa do clamp para
-  // continuar testando o painel completo.
+  // Clamp por plano (aplicado APÓS o role do servidor):
+  // - trial / free  → TRIAL_MAP (já cobre tudo).
+  // - pro           → bloqueia Server Ops/Instances (manage_servers).
+  // - ultimate      → libera tudo permitido pelo role.
+  // Superadmin escapa do clamp pra continuar testando o painel completo.
   const effectivePermissions = useMemo<PermissionMap>(() => {
-    if (isTrial && !isSuperadmin) return { ...TRIAL_MAP };
-    return permissions;
-  }, [isTrial, isSuperadmin, permissions]);
+    if (isSuperadmin) return permissions;
+    if (isTrial) return { ...TRIAL_MAP };
+    if (plan === "free") return { ...TRIAL_MAP };
+    if (plan === "pro") {
+      return { ...permissions, manage_servers: false };
+    }
+    return permissions; // ultimate
+  }, [isTrial, plan, isSuperadmin, permissions]);
 
   const value = useMemo<CtxValue>(
     () => ({

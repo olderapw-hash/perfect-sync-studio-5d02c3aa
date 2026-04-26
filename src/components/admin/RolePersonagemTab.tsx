@@ -175,6 +175,15 @@ export const RolePersonagemTab = () => {
         )}
       </section>
 
+      {/* Painel GM read-only premium — Visão Geral / Inventário / Equipamentos / Banco / Status / Tasks / Progressão */}
+      {entry && (
+        <RoleOverviewPanel
+          template={entry.template}
+          roleid={entry.template.roleid}
+          online={online}
+        />
+      )}
+
       {/* Editor reutilizado em modo "role" */}
       {entry && (
         <div className="overflow-hidden rounded-xl border border-border bg-card/30">

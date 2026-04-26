@@ -956,86 +956,112 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
         </div>
       </header>
 
-      {/* ─────────── Navegação modular ─────────── */}
-      <nav className="px-3 pb-2 sm:px-5 lg:px-6">
-        {/* Mobile/tablet: scroll horizontal — evita corte de texto.
-            Desktop largo (xl): grid 9 colunas distribuído. */}
-        <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 xl:grid xl:grid-cols-9 xl:overflow-visible xl:px-0 [scrollbar-width:thin]">
-          {TABS.map((t) => {
-            const Icon = t.icon;
-            const active = tab === t.key;
-            const hasChanges = dirtyByTab[t.key];
-            return (
-              <button
-                key={t.key}
-                type="button"
-                data-active={active}
-                onClick={() => setTab(t.key)}
-                className="nav-card group !p-2 !gap-2 shrink-0 xl:shrink min-w-[110px] xl:min-w-0"
-                title={hasChanges ? `${t.label} · alterações pendentes` : t.label}
-              >
-                <span
-                  className={cn(
-                    "relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border transition",
-                    active
-                      ? "border-primary/60 bg-primary/15 text-primary shadow-[0_0_14px_hsl(38_70%_50%/0.35)]"
-                      : "border-bronze-soft bg-black/30 text-bronze-muted group-hover:text-bronze",
-                  )}
+      {/* ─────────── Navegação modular (somente em modo edição) ─────────── */}
+      {editMode && (
+        <nav className="px-3 pb-2 sm:px-5 lg:px-6">
+          {/* Mobile/tablet: scroll horizontal — evita corte de texto.
+              Desktop largo (xl): grid 9 colunas distribuído. */}
+          <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 xl:grid xl:grid-cols-9 xl:overflow-visible xl:px-0 [scrollbar-width:thin]">
+            {TABS.map((t) => {
+              const Icon = t.icon;
+              const active = tab === t.key;
+              const hasChanges = dirtyByTab[t.key];
+              return (
+                <button
+                  key={t.key}
+                  type="button"
+                  data-active={active}
+                  onClick={() => setTab(t.key)}
+                  className="nav-card group !p-2 !gap-2 shrink-0 xl:shrink min-w-[110px] xl:min-w-0"
+                  title={hasChanges ? `${t.label} · alterações pendentes` : t.label}
                 >
-                  <Icon className="h-3.5 w-3.5" />
-                  {hasChanges && (
-                    <span
-                      aria-hidden
-                      className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary shadow-[0_0_6px_hsl(38_70%_50%/0.9)] animate-pulse-glow"
-                    />
-                  )}
-                </span>
-                <span className="text-xs font-semibold tracking-wide whitespace-nowrap">{t.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </nav>
+                  <span
+                    className={cn(
+                      "relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border transition",
+                      active
+                        ? "border-primary/60 bg-primary/15 text-primary shadow-[0_0_14px_hsl(38_70%_50%/0.35)]"
+                        : "border-bronze-soft bg-black/30 text-bronze-muted group-hover:text-bronze",
+                    )}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {hasChanges && (
+                      <span
+                        aria-hidden
+                        className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary shadow-[0_0_6px_hsl(38_70%_50%/0.9)] animate-pulse-glow"
+                      />
+                    )}
+                  </span>
+                  <span className="text-xs font-semibold tracking-wide whitespace-nowrap">{t.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+      )}
 
       {/* ─────────── Painel principal ─────────── */}
       <div className="flex-1 overflow-y-auto px-3 pb-4 sm:px-5 lg:px-6">
-        <section key={tab} className="frame-bronze relative animate-fade-in-up">
-          <header className="flex flex-wrap items-center justify-between gap-2 px-4 pt-3 pb-2 sm:px-5">
-            <div className="flex items-center gap-2">
-              <ActiveTabIcon className="h-4 w-4 text-bronze" />
-              <h2
-                className="font-serif text-base font-bold tracking-wide text-bronze sm:text-lg"
-                style={{ textShadow: "0 2px 8px hsl(38 70% 40% / 0.35)" }}
-              >
-                {activeTabMeta.label}
-              </h2>
-            </div>
-            <div className="hidden text-[10px] font-semibold uppercase tracking-[0.18em] text-bronze-muted sm:block">
-              {className} · LV {template.status.level}
-            </div>
-          </header>
-          <div className="ornate-divider mx-5 mb-3 opacity-60" />
-          <div className="px-3 pb-4 sm:px-5">
-            {tab === "base" && <BaseTab template={template} onChange={setTemplate} />}
-            {tab === "status" && (
-              <StatusTab
-                template={template}
-                entry={entry}
-                onChange={setTemplate}
-                onEntryRefreshed={(next) => {
-                  entry.template = next;
-                }}
-              />
-            )}
-            {tab === "inventory" && <InventoryTab template={template} onChange={setTemplate} />}
-            {tab === "equipment" && <EquipmentTab template={template} onChange={setTemplate} />}
-            {tab === "storehouse" && <StorehouseTab template={template} onChange={setTemplate} />}
-            {tab === "task" && <TaskTab template={template} onChange={setTemplate} />}
-            {tab === "titles" && <TitlesTab template={template} onChange={setTemplate} />}
-            {tab === "reputation" && <ReputationTab template={template} onChange={setTemplate} />}
-            {tab === "skills" && <SkillsTab template={template} />}
+        {!editMode ? (
+          /* MODO VIEW · reusa o painel premium read-only do GM Panel.
+             Funciona para template e role — só lê o ClsTemplate em memória. */
+          <div className="animate-fade-in-up">
+            <RoleOverviewPanel
+              template={template}
+              roleid={entry.template.roleid}
+              online={isRoleMode ? null : null}
+            />
           </div>
-        </section>
+        ) : (
+          /* MODO EDIÇÃO · ring dourado destaca a área editável e diferencia
+             visualmente do modo leitura sem mudar a paleta. */
+          <section
+            key={tab}
+            className={cn(
+              "frame-bronze relative animate-fade-in-up",
+              "ring-2 ring-primary/40 shadow-[0_0_28px_hsl(38_70%_50%/0.18)]",
+            )}
+          >
+            <header className="flex flex-wrap items-center justify-between gap-2 px-4 pt-3 pb-2 sm:px-5">
+              <div className="flex items-center gap-2">
+                <ActiveTabIcon className="h-4 w-4 text-primary" />
+                <h2
+                  className="font-serif text-base font-bold tracking-wide text-bronze sm:text-lg"
+                  style={{ textShadow: "0 2px 8px hsl(38 70% 40% / 0.35)" }}
+                >
+                  {activeTabMeta.label}
+                </h2>
+                <span className="ml-1 inline-flex items-center gap-1 rounded-full border border-primary/50 bg-primary/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
+                  <Pencil className="h-2.5 w-2.5" />
+                  Editando
+                </span>
+              </div>
+              <div className="hidden text-[10px] font-semibold uppercase tracking-[0.18em] text-bronze-muted sm:block">
+                {className} · LV {template.status.level}
+              </div>
+            </header>
+            <div className="ornate-divider mx-5 mb-3 opacity-60" />
+            <div className="px-3 pb-4 sm:px-5">
+              {tab === "base" && <BaseTab template={template} onChange={setTemplate} />}
+              {tab === "status" && (
+                <StatusTab
+                  template={template}
+                  entry={entry}
+                  onChange={setTemplate}
+                  onEntryRefreshed={(next) => {
+                    entry.template = next;
+                  }}
+                />
+              )}
+              {tab === "inventory" && <InventoryTab template={template} onChange={setTemplate} />}
+              {tab === "equipment" && <EquipmentTab template={template} onChange={setTemplate} />}
+              {tab === "storehouse" && <StorehouseTab template={template} onChange={setTemplate} />}
+              {tab === "task" && <TaskTab template={template} onChange={setTemplate} />}
+              {tab === "titles" && <TitlesTab template={template} onChange={setTemplate} />}
+              {tab === "reputation" && <ReputationTab template={template} onChange={setTemplate} />}
+              {tab === "skills" && <SkillsTab template={template} />}
+            </div>
+          </section>
+        )}
       </div>
 
 

@@ -254,15 +254,27 @@ export default function ServerHistoryPage() {
               </p>
             </div>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => void load()}
-            disabled={loading}
-          >
-            <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
-            Atualizar
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void load()}
+              disabled={loading}
+            >
+              <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+              Atualizar
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-destructive hover:text-destructive"
+              onClick={() => setConfirmClearOpen(true)}
+              disabled={loading || list.length === 0}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Limpar histórico
+            </Button>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-end gap-3 border-t border-border px-5 py-3">

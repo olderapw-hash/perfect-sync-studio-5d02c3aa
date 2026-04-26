@@ -192,6 +192,37 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
 
   const dirty = JSON.stringify(template) !== JSON.stringify(entry.template);
 
+  // Indicador de mudanças por aba — compara apenas o slice relevante de cada
+  // tab contra o entry original. Performance OK: comparações de JSON só rodam
+  // quando `template` ou `entry.template` mudam.
+  const dirtyByTab: Record<TabKey, boolean> = {
+    base: JSON.stringify(template.base) !== JSON.stringify(entry.template.base),
+    status:
+      JSON.stringify({
+        ...template.status,
+        // exclui campos cobertos por outras abas para não duplicar marcação
+        reputation: 0,
+        title_data: "",
+        skills: "",
+      }) !==
+      JSON.stringify({
+        ...entry.template.status,
+        reputation: 0,
+        title_data: "",
+        skills: "",
+      }),
+    inventory:
+      JSON.stringify(template.inventory) !== JSON.stringify(entry.template.inventory),
+    equipment:
+      JSON.stringify(template.equipment) !== JSON.stringify(entry.template.equipment),
+    storehouse:
+      JSON.stringify(template.storehouse) !== JSON.stringify(entry.template.storehouse),
+    task: JSON.stringify(template.task) !== JSON.stringify(entry.template.task),
+    titles: template.status.title_data !== entry.template.status.title_data,
+    reputation: template.status.reputation !== entry.template.status.reputation,
+    skills: template.status.skills !== entry.template.status.skills,
+  };
+
   const handleReset = () => {
     setTemplate(entry.template);
     toast.info("Template restaurado para a versão original");

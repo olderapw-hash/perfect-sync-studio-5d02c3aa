@@ -51,6 +51,11 @@ const ALLOWED_ACTIONS = new Set([
   "sendSystemMessage",
   "getMaintenanceMode",
   "setMaintenanceMode",
+  // Server Ops v3 — controle real de servicos.
+  "getManageableServices",
+  "startService",
+  "stopService",
+  "restartService",
 ]);
 
 // Mapa Action → permissão exigida (deve refletir src/lib/serverPermissions.ts).

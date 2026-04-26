@@ -547,6 +547,22 @@ else
   warn "Teste sendSystemMessage (dry_run) falhou. Saida: $SYSMSG_OUT"
 fi
 
+# Teste do modo manutencao (get + dry_run set) — sem alterar estado real.
+MAINT_GET="$(curl -s -H "x-sync-secret: $SECRET" "$BASE_URL?action=getMaintenanceMode" 2>/dev/null || true)"
+if echo "$MAINT_GET" | grep -q '"success":true'; then
+  log "Teste getMaintenanceMode OK."
+else
+  warn "Teste getMaintenanceMode falhou. Saida: $MAINT_GET"
+fi
+MAINT_DRY="$(curl -s -X POST -H "x-sync-secret: $SECRET" -H "Content-Type: application/json" \
+  -d '{"enabled":true,"reason":"installer dry-run","eta_minutes":1,"broadcast":false,"dry_run":true}' \
+  "$BASE_URL?action=setMaintenanceMode" 2>/dev/null || true)"
+if echo "$MAINT_DRY" | grep -q '"success":true'; then
+  log "Teste setMaintenanceMode (dry_run) OK."
+else
+  warn "Teste setMaintenanceMode (dry_run) falhou. Saida: $MAINT_DRY"
+fi
+
 PUBLIC_IP="$(curl -fsS --max-time 3 https://api.ipify.org 2>/dev/null || hostname -I 2>/dev/null | awk '{print $1}' || true)"
 
 cat <<EOF

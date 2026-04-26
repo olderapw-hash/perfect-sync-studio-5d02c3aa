@@ -83,7 +83,7 @@ export const SaveChecklistDialog = ({ open, onClose, result }: Props) => {
           />
           <Item
             ok={Boolean(result.exportScheduled ?? result.exportLogFile)}
-            label="Export agendado"
+            label="Export agendado pelo backend"
             extra={
               <>
                 {result.exportLogFile && (
@@ -97,7 +97,33 @@ export const SaveChecklistDialog = ({ open, onClose, result }: Props) => {
               </>
             }
           />
-        </ul>
+          {result.autoExport?.triggered && (
+            <Item
+              ok={Boolean(result.autoExport.ok)}
+              label={
+                result.autoExport.endpointMissing
+                  ? "Auto-export não disponível nesta VPS"
+                  : result.autoExport.ok
+                    ? "Auto-export executado (exportclsconfig)"
+                    : "Auto-export falhou"
+              }
+              extra={
+                <>
+                  {result.autoExport.logFile && (
+                    <PathRow
+                      path={result.autoExport.logFile}
+                      onCopy={() => copy(result.autoExport?.logFile)}
+                    />
+                  )}
+                  {result.autoExport.error && (
+                    <div className="mt-1 rounded bg-destructive/10 px-2 py-1 text-[11px] text-destructive">
+                      {result.autoExport.error}
+                    </div>
+                  )}
+                </>
+              }
+            />
+          )}
 
         {result.error && (
           <div className="mt-3 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">

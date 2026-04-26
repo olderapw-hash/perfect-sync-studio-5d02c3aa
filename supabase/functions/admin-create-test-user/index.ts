@@ -87,7 +87,9 @@ Deno.serve(async (req) => {
     }
 
     // 5) Registra metadados + aplica plano.
-    const { error: regErr } = await admin.rpc("admin_register_test_user", {
+    // Usa o userClient (JWT do caller) porque a RPC e a admin_set_user_plan
+    // checam superadmin via auth.uid() — com service role auth.uid() é NULL.
+    const { error: regErr } = await userClient.rpc("admin_register_test_user", {
       _user_id: created.user.id,
       _email: email,
       _plan: plan,

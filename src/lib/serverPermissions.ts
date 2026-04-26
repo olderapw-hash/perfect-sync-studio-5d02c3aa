@@ -44,6 +44,7 @@ export const ACTION_PERMISSION: Record<string, ServerPermissionKey> = {
   stopService: "manage_servers",
   restartService: "manage_servers",
   getServerOperationStatus: "view",
+  getServerOperationsHistory: "view_audit",
 
   // segurança (kick/ban/unban + histórico)
   kickRole: "manage_security",

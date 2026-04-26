@@ -463,7 +463,53 @@ export const pwApi = {
       query,
     });
   },
+  /**
+   * Histórico de operações do servidor (start/stop/restart de server e
+   * services). Filtros opcionais por `type` e `success_state`. `limit`
+   * default ~50 no PHP.
+   */
+  getServerOperationsHistory(
+    params: {
+      type?: string;
+      success_state?: string;
+      limit?: number;
+    } = {},
+  ) {
+    const query: Record<string, string | number> = {};
+    if (params.type) query.type = params.type;
+    if (params.success_state) query.success_state = params.success_state;
+    if (params.limit != null) query.limit = params.limit;
+    return callAction<ServerOperationsHistoryResponse>(
+      "getServerOperationsHistory",
+      { method: "GET", query },
+    );
+  },
 };
+
+/* ─────────── Server Ops — histórico de operações ─────────── */
+
+export interface ServerOperationHistoryEntry {
+  id: string;
+  type: string;
+  stage?: ServerOperationStage | null;
+  running?: boolean;
+  success?: boolean;
+  success_state?: ServerOperationSuccessState;
+  services?: string[];
+  dry_run?: boolean;
+  reason?: string | null;
+  created_at?: string | number | null;
+  completed_at?: string | number | null;
+  log_file?: string | null;
+  error?: string | null;
+}
+
+export interface ServerOperationsHistoryResponse {
+  success: boolean;
+  count?: number;
+  operations?: ServerOperationHistoryEntry[];
+  error?: string;
+}
 
 /* ─────────── Server Ops v3 — controle real de servicos ─────────── */
 

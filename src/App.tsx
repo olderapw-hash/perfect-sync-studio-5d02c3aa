@@ -42,6 +42,7 @@ import IngameEventsPage from "./pages/admin/IngameEventsPage.tsx";
 import ServerOpsPage from "./pages/admin/ServerOpsPage.tsx";
 import ServerLogsPage from "./pages/admin/ServerLogsPage.tsx";
 import ServerActionsPage from "./pages/admin/ServerActionsPage.tsx";
+import ServerHistoryPage from "./pages/admin/ServerHistoryPage.tsx";
 import SecurityOverviewPage from "./pages/admin/SecurityOverviewPage.tsx";
 import SecurityModerationPage from "./pages/admin/SecurityModerationPage.tsx";
 import SecurityHistoryPage from "./pages/admin/SecurityHistoryPage.tsx";
@@ -111,6 +112,7 @@ const App = () => (
                     <Route path="server" element={<ServerOpsPage />}>
                       <Route path="logs" element={<ServerLogsPage />} />
                       <Route path="actions" element={<ServerActionsPage />} />
+                      <Route path="history" element={<ServerHistoryPage />} />
                     </Route>
 
                     {/* Segurança v1 — layout com tabs e Outlet. */}

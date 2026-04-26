@@ -468,6 +468,36 @@ export const pwApi = {
   restartService(body: ServiceControlPayload) {
     return callAction<ServiceControlResponse>("restartService", { method: "POST", body });
   },
+  /* ─────────── Server Ops v4 — controle do servidor inteiro ─────────── */
+  /**
+   * `startServer` — sobe o core do servidor.
+   *
+   * Comportamento (ver INSTANCE_CONTROL_V1_FRONTEND_CONTRACT.md):
+   *  - Sem `instances`: backend usa o autostart por padrão.
+   *  - Com `instances`: sobe a lista explícita.
+   *  - `use_auto_start: false`: desabilita o autostart nessa chamada
+   *    (sobe só o core, sem instâncias adicionais).
+   *  - `use_auto_start: true` + `instances`: soma a lista manual com o autostart.
+   *
+   * Importante: NÃO enviar `instances: []` como "limpar seleção" — o backend
+   * trata como "sem seleção explícita" e cai no autostart. Para desligar de
+   * fato, use `use_auto_start: false`.
+   */
+  startServer(body: ServerControlPayload = {}) {
+    return callAction<ServiceControlResponse>("startServer", { method: "POST", body });
+  },
+  /** `stopServer` — para o servidor inteiro (core + instâncias rodando). */
+  stopServer(body: ServerControlPayload = {}) {
+    return callAction<ServiceControlResponse>("stopServer", { method: "POST", body });
+  },
+  /**
+   * `restartServer` — reinicia o servidor. Mesmas regras de autostart de
+   * `startServer`. Aceita também `reason`, `countdown_seconds`, `broadcast`,
+   * `enable_maintenance`, `backup_before_restart`, `verify_after_restart`.
+   */
+  restartServer(body: ServerControlPayload = {}) {
+    return callAction<ServiceControlResponse>("restartServer", { method: "POST", body });
+  },
   /**
    * Polling do progresso de operações longas (start/stop/restart server).
    * `operation_id` é o id retornado em ServiceControlResponse.operation.id.

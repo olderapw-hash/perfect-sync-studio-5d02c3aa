@@ -53,6 +53,19 @@ $CONFIG = [
     'mail_send_max_amount'      => 2000000000,
     'mail_send_log_dir'         => __DIR__ . '/backups/mail-logs',
 
+    // === Mensagem de sistema global (sendSystemMessage) ===
+    // Wrapper sudo dedicado, sem shell arbitrario. O PHP delega para
+    // /usr/local/sbin/sendsysmsg-api.sh, que executa
+    // /usr/local/bin/pw_send_system_message.php no contexto root e
+    // fala com o gdeliveryd (ou fallback de queue, igual ao mail).
+    'system_message_enabled'      => true,
+    'system_message_command'      => '/usr/bin/sudo -n /usr/local/sbin/sendsysmsg-api.sh',
+    'system_message_workdir'      => __DIR__,
+    'system_message_min_length'   => 1,
+    'system_message_max_length'   => 200,
+    'system_message_default_kind' => 'system',     // system | broadcast | tip
+    'system_message_log_dir'      => __DIR__ . '/backups/sysmsg-logs',
+
     // === Eventos ingame (registerIngameParticipation) ===
     // Ponte NPC -> VPS -> Supabase. O NPC NUNCA fala direto com o Supabase:
     // ele chama este api_cls.php, que aqui repassa para a RPC

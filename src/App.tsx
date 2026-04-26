@@ -43,6 +43,7 @@ import ServerOpsPage from "./pages/admin/ServerOpsPage.tsx";
 import ServerLogsPage from "./pages/admin/ServerLogsPage.tsx";
 import ServerActionsPage from "./pages/admin/ServerActionsPage.tsx";
 import ServerHistoryPage from "./pages/admin/ServerHistoryPage.tsx";
+import InstancesPage from "./pages/admin/InstancesPage.tsx";
 import SecurityOverviewPage from "./pages/admin/SecurityOverviewPage.tsx";
 import SecurityModerationPage from "./pages/admin/SecurityModerationPage.tsx";
 import SecurityHistoryPage from "./pages/admin/SecurityHistoryPage.tsx";
@@ -110,6 +111,7 @@ const App = () => (
 
                     {/* Operação do Servidor v1 (status / logs / export) */}
                     <Route path="server" element={<ServerOpsPage />}>
+                      <Route path="instances" element={<InstancesPage />} />
                       <Route path="logs" element={<ServerLogsPage />} />
                       <Route path="actions" element={<ServerActionsPage />} />
                       <Route path="history" element={<ServerHistoryPage />} />

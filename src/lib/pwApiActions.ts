@@ -484,6 +484,58 @@ export const pwApi = {
       { method: "GET", query },
     );
   },
+  /* ─────────── Instance Control v1 ─────────── */
+  getManageableInstances() {
+    return callAction<ManageableInstancesResponse>("getManageableInstances", {
+      method: "GET",
+    });
+  },
+  /**
+   * Toggle individual: { code, enabled } OU lista completa: { codes }.
+   * O backend sempre devolve a lista resultante (auto_start_codes).
+   */
+  setInstanceAutoStart(body: SetInstanceAutoStartPayload) {
+    return callAction<SetInstanceAutoStartResponse>("setInstanceAutoStart", {
+      method: "POST",
+      body,
+    });
+  },
+  startInstance(body: InstanceControlSinglePayload) {
+    return callAction<InstanceControlResponse>("startInstance", {
+      method: "POST",
+      body,
+    });
+  },
+  startInstances(body: InstanceControlBatchPayload) {
+    return callAction<InstanceControlResponse>("startInstances", {
+      method: "POST",
+      body,
+    });
+  },
+  stopInstance(body: InstanceControlSinglePayload) {
+    return callAction<InstanceControlResponse>("stopInstance", {
+      method: "POST",
+      body,
+    });
+  },
+  stopInstances(body: InstanceControlBatchPayload) {
+    return callAction<InstanceControlResponse>("stopInstances", {
+      method: "POST",
+      body,
+    });
+  },
+  restartInstance(body: InstanceControlSinglePayload) {
+    return callAction<InstanceControlResponse>("restartInstance", {
+      method: "POST",
+      body,
+    });
+  },
+  restartInstances(body: InstanceControlBatchPayload) {
+    return callAction<InstanceControlResponse>("restartInstances", {
+      method: "POST",
+      body,
+    });
+  },
 };
 
 /* ─────────── Server Ops — histórico de operações ─────────── */
@@ -957,3 +1009,90 @@ export interface SecurityHistoryResponse {
   error?: string;
 }
 
+
+/* ─────────── Instance Control v1 ─────────── */
+
+export type InstanceActionType =
+  | "startInstance"
+  | "startInstances"
+  | "stopInstance"
+  | "stopInstances"
+  | "restartInstance"
+  | "restartInstances";
+
+export interface ManageableInstance {
+  code: string;
+  key: string;
+  name: string;
+  category: string;
+  scope: string;
+  configured: boolean;
+  auto_start: boolean;
+  auto_start_order: number | null;
+  running: boolean;
+  state: string; // "running" | "stopped" | ...
+  running_source: string; // "process" | "listen_port" | "none" | ...
+  pid: number | null;
+  process_count: number;
+  pids: number[];
+  command_excerpt: string;
+  batch_size: number;
+  section_types: string[];
+  section_type: string;
+  player_per_instance: number | null;
+  effect_player_per_instance: number | null;
+  instance_capacity: number | null;
+  listen_addr: string;
+  listen_port: number;
+  listening: boolean;
+  supported_actions: string[];
+  selectable: boolean;
+}
+
+export interface ManageableInstancesResponse {
+  success: boolean;
+  instances?: ManageableInstance[];
+  count?: number;
+  running_count?: number;
+  auto_start_count?: number;
+  collected_at?: string | number;
+  source_files?: string[];
+  error?: string;
+}
+
+/** Toggle individual: { code, enabled } OU lista completa: { codes }. */
+export type SetInstanceAutoStartPayload =
+  | { code: string; enabled: boolean }
+  | { codes: string[] };
+
+export interface SetInstanceAutoStartResponse {
+  success: boolean;
+  changed?: boolean;
+  auto_start_codes?: string[];
+  auto_start_count?: number;
+  auto_start_instances?: ManageableInstance[];
+  added?: string[];
+  removed?: string[];
+  previous_codes?: string[];
+  error?: string;
+}
+
+export interface InstanceControlSinglePayload {
+  code: string;
+  verify?: boolean;
+  dry_run?: boolean;
+}
+
+export interface InstanceControlBatchPayload {
+  codes: string[];
+  verify?: boolean;
+  dry_run?: boolean;
+}
+
+export interface InstanceControlResponse {
+  success: boolean;
+  dry_run?: boolean;
+  /** Operação assíncrona — usar id para abrir drawer de progresso. */
+  operation?: ServerOperationStatus;
+  error?: string;
+}

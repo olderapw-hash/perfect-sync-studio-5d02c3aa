@@ -1,7 +1,7 @@
 // Página /admin/site — editor do conteúdo público da landing (apenas superadmin).
 // Salva tudo num único registro em `site_content` (id=1, JSONB).
 import { useEffect, useState } from "react";
-import { Loader2, Plus, Save, Sparkles, Trash2, Globe } from "lucide-react";
+import { Loader2, Plus, Save, Sparkles, Trash2, Globe, Image as ImageIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
+import { ClassPhotosTab } from "@/components/admin/ClassPhotosTab";
 
 const SitePage = () => {
   const { user } = useAuth();
@@ -193,6 +194,15 @@ const SitePage = () => {
           <Field label="Título" value={form.final_cta.title} onChange={(v) => setForm({ ...form, final_cta: { ...form.final_cta, title: v } })} />
           <FieldArea label="Subtítulo" value={form.final_cta.subtitle} onChange={(v) => setForm({ ...form, final_cta: { ...form.final_cta, subtitle: v } })} />
           <Field label="Texto do botão" value={form.final_cta.cta} onChange={(v) => setForm({ ...form, final_cta: { ...form.final_cta, cta: v } })} />
+        </Section>
+
+        {/* FOTOS DAS CLASSES */}
+        <Section icon={<ImageIcon className="h-4 w-4 text-primary" />} title="Fotos das Classes">
+          <p className="-mt-1 text-[11px] text-muted-foreground">
+            Personalize a foto exibida para cada classe nos cards de personagens iniciais
+            e nas telas de equipamento. As alterações são salvas automaticamente ao enviar.
+          </p>
+          <ClassPhotosTab />
         </Section>
 
         <div className="sticky bottom-4 z-10 flex justify-end gap-2 rounded-xl border border-border bg-card/90 p-3 backdrop-blur-md">

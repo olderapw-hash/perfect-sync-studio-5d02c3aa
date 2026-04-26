@@ -45,6 +45,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useServers } from "@/hooks/useServers";
@@ -101,6 +109,8 @@ export default function InstancesPage() {
   const [autoStartBusy, setAutoStartBusy] = useState<Set<string>>(new Set());
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
   const [trackedOp, setTrackedOp] = useState<{ id: string; type?: string } | null>(null);
+  const [startDialogOpen, setStartDialogOpen] = useState(false);
+  const [startSelected, setStartSelected] = useState<Set<string>>(new Set());
 
   const canManage = isSuperadmin || can("manage_servers");
   const allowed = isSuperadmin || can("view");
@@ -157,8 +167,12 @@ export default function InstancesPage() {
   }, [active?.id, allowed]);
 
   const list = instances ?? [];
+  // Apenas instâncias rodando (visíveis por padrão na tabela principal)
   const selectableCodes = useMemo(
-    () => list.filter((i) => i.selectable !== false).map((i) => i.code),
+    () =>
+      list
+        .filter((i) => i.running === true && i.selectable !== false)
+        .map((i) => i.code),
     [list],
   );
   const allSelected =
@@ -394,6 +408,17 @@ export default function InstancesPage() {
     }
   }
 
+  const offlineCount = list.length - runningCount;
+  const runningList = useMemo(() => list.filter((i) => i.running === true), [list]);
+  const stoppedList = useMemo(() => list.filter((i) => i.running !== true), [list]);
+  const startableList = useMemo(
+    () =>
+      stoppedList.filter(
+        (i) => i.selectable !== false && (i.supported_actions ?? []).includes("start"),
+      ),
+    [stoppedList],
+  );
+
   if (!allowed) {
     return (
       <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-6 text-center text-sm text-muted-foreground">
@@ -402,7 +427,38 @@ export default function InstancesPage() {
     );
   }
 
-  const offlineCount = list.length - runningCount;
+  const allStartSelected =
+    startableList.length > 0 && startableList.every((i) => startSelected.has(i.code));
+
+  function toggleStartAll() {
+    setStartSelected(
+      allStartSelected ? new Set() : new Set(startableList.map((i) => i.code)),
+    );
+  }
+
+  function toggleStartOne(code: string) {
+    setStartSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      return next;
+    });
+  }
+
+  function openStartDialog() {
+    setStartSelected(new Set());
+    setStartDialogOpen(true);
+  }
+
+  function confirmStartFromDialog() {
+    const codes = Array.from(startSelected);
+    if (codes.length === 0) {
+      toast.error("Selecione ao menos uma instância para iniciar.");
+      return;
+    }
+    setStartDialogOpen(false);
+    requestAction("selection", "start", codes);
+  }
 
   return (
     <div className="space-y-4">
@@ -483,6 +539,25 @@ export default function InstancesPage() {
             </div>
             <Button
               size="sm"
+              variant="default"
+              onClick={openStartDialog}
+              disabled={loading || acting || !canManage || startableList.length === 0}
+              title={
+                startableList.length === 0
+                  ? "Nenhuma instância parada disponível"
+                  : `${startableList.length} parada(s) disponível(is)`
+              }
+            >
+              <Play className="h-3.5 w-3.5" />
+              Iniciar instâncias
+              {startableList.length > 0 && (
+                <span className="ml-1 rounded-full bg-primary-foreground/20 px-1.5 py-0 text-[10px] font-bold">
+                  {startableList.length}
+                </span>
+              )}
+            </Button>
+            <Button
+              size="sm"
               variant="outline"
               onClick={load}
               disabled={loading}
@@ -512,17 +587,6 @@ export default function InstancesPage() {
                 disabled={acting}
               >
                 Limpar
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() =>
-                  requestAction("selection", "start", Array.from(selected))
-                }
-                disabled={acting || !canManage}
-              >
-                <Play className="h-3.5 w-3.5" />
-                Iniciar
               </Button>
               <Button
                 size="sm"
@@ -618,21 +682,41 @@ export default function InstancesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {!loading && list.length === 0 && !endpointMissing && (
+              {!loading && runningList.length === 0 && !endpointMissing && (
                 <TableRow>
                   <TableCell colSpan={8} className="py-8 text-center text-xs text-muted-foreground">
-                    Nenhuma instância retornada pela API.
+                    {list.length === 0 ? (
+                      "Nenhuma instância retornada pela API."
+                    ) : (
+                      <>
+                        Nenhuma instância em execução.
+                        {startableList.length > 0 && (
+                          <>
+                            {" "}Use{" "}
+                            <button
+                              type="button"
+                              className="font-semibold text-primary underline-offset-2 hover:underline"
+                              onClick={openStartDialog}
+                              disabled={!canManage}
+                            >
+                              Iniciar instâncias
+                            </button>{" "}
+                            para ligar uma das {startableList.length} disponível(is).
+                          </>
+                        )}
+                      </>
+                    )}
                   </TableCell>
                 </TableRow>
               )}
-              {loading && list.length === 0 && (
+              {loading && runningList.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={8} className="py-8 text-center text-xs text-muted-foreground">
                     <Loader2 className="inline h-4 w-4 animate-spin" /> Coletando instâncias...
                   </TableCell>
                 </TableRow>
               )}
-              {list.map((inst) => (
+              {runningList.map((inst) => (
                 <InstanceRow
                   key={inst.code}
                   inst={inst}
@@ -725,6 +809,123 @@ export default function InstancesPage() {
           void load();
         }}
       />
+
+      {/* ─── Dialog: Iniciar instâncias paradas ─── */}
+      <Dialog open={startDialogOpen} onOpenChange={setStartDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Play className="h-5 w-5 text-success" />
+              Iniciar instâncias
+              {dryRun && (
+                <span className="ml-2 rounded-full border border-amber-500/50 bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-500">
+                  dry-run
+                </span>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              Selecione abaixo quais instâncias paradas você deseja iniciar.
+            </DialogDescription>
+          </DialogHeader>
+
+          {startableList.length === 0 ? (
+            <div className="rounded-lg border border-border bg-muted/20 p-6 text-center text-sm text-muted-foreground">
+              Nenhuma instância parada disponível para iniciar.
+            </div>
+          ) : (
+            <div className="max-h-[50vh] overflow-auto rounded-lg border border-border">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border hover:bg-transparent">
+                    <TableHead className="h-9 w-10 pl-4">
+                      <Checkbox
+                        checked={
+                          allStartSelected
+                            ? true
+                            : startSelected.size > 0
+                              ? "indeterminate"
+                              : false
+                        }
+                        onCheckedChange={toggleStartAll}
+                        aria-label="Selecionar todas as paradas"
+                      />
+                    </TableHead>
+                    <TableHead className="h-9 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Instância
+                    </TableHead>
+                    <TableHead className="h-9 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Categoria
+                    </TableHead>
+                    <TableHead className="h-9 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Scope
+                    </TableHead>
+                    <TableHead className="h-9 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Porta
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {startableList.map((inst) => {
+                    const checked = startSelected.has(inst.code);
+                    return (
+                      <TableRow
+                        key={inst.code}
+                        className={cn(
+                          "cursor-pointer border-border/60 hover:bg-muted/20",
+                          checked && "bg-primary/5",
+                        )}
+                        onClick={() => toggleStartOne(inst.code)}
+                      >
+                        <TableCell className="pl-4" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={() => toggleStartOne(inst.code)}
+                            aria-label={`Selecionar ${inst.code}`}
+                          />
+                        </TableCell>
+                        <TableCell className="py-2">
+                          <p className="text-sm font-semibold text-foreground">
+                            {inst.name || inst.code}
+                          </p>
+                          <p className="font-mono text-[10px] text-muted-foreground">
+                            {inst.code}
+                          </p>
+                        </TableCell>
+                        <TableCell className="py-2 font-mono text-[11px] text-muted-foreground">
+                          {inst.category || "—"}
+                        </TableCell>
+                        <TableCell className="py-2 font-mono text-[11px] text-muted-foreground">
+                          {inst.scope || "—"}
+                        </TableCell>
+                        <TableCell className="py-2 font-mono text-[11px] text-foreground">
+                          {inst.listen_port > 0 ? `:${inst.listen_port}` : "—"}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setStartDialogOpen(false)}
+              disabled={acting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={confirmStartFromDialog}
+              disabled={acting || !canManage || startSelected.size === 0}
+            >
+              <Play className="h-3.5 w-3.5" />
+              Iniciar {startSelected.size > 0 ? `(${startSelected.size})` : ""}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

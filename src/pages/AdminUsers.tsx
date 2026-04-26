@@ -13,12 +13,15 @@ import {
   CreditCard,
   ServerCog,
   MoreVertical,
+  FlaskConical,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { UserPlanDialog } from "@/components/admin/users/UserPlanDialog";
 import { UserServersDialog } from "@/components/admin/users/UserServersDialog";
 import { UserDeleteDialog } from "@/components/admin/users/UserDeleteDialog";
+import { TestUserCreateDialog } from "@/components/admin/users/TestUserCreateDialog";
+
 
 interface AdminUserRow {
   user_id: string;

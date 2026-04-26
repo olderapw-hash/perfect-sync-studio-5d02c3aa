@@ -1028,6 +1028,33 @@ export type Database = {
         }
         Relationships: []
       }
+      test_users: {
+        Row: {
+          created_at: string
+          created_by: string
+          email: string
+          expires_at: string
+          plan: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          email: string
+          expires_at: string
+          plan: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          email?: string
+          expires_at?: string
+          plan?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1063,6 +1090,17 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: undefined
       }
+      admin_list_test_users: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          expires_at: string
+          is_expired: boolean
+          plan: string
+          user_id: string
+        }[]
+      }
       admin_list_user_tenants: {
         Args: { target_user_id: string }
         Returns: {
@@ -1092,6 +1130,16 @@ export type Database = {
       }
       admin_purge_user_data: {
         Args: { target_user_id: string }
+        Returns: undefined
+      }
+      admin_register_test_user: {
+        Args: {
+          _created_by: string
+          _email: string
+          _expires_at: string
+          _plan: string
+          _user_id: string
+        }
         Returns: undefined
       }
       admin_revoke_admin: {

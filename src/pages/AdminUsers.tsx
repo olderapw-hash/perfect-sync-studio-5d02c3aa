@@ -13,12 +13,15 @@ import {
   CreditCard,
   ServerCog,
   MoreVertical,
+  FlaskConical,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { UserPlanDialog } from "@/components/admin/users/UserPlanDialog";
 import { UserServersDialog } from "@/components/admin/users/UserServersDialog";
 import { UserDeleteDialog } from "@/components/admin/users/UserDeleteDialog";
+import { TestUserCreateDialog } from "@/components/admin/users/TestUserCreateDialog";
+
 
 interface AdminUserRow {
   user_id: string;
@@ -53,6 +56,8 @@ const AdminUsers = () => {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [testDialogOpen, setTestDialogOpen] = useState(false);
+
 
   const load = async () => {
     setLoading(true);
@@ -124,14 +129,24 @@ const AdminUsers = () => {
               </p>
             </div>
           </div>
-          <button
-            onClick={load}
-            disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card/60 px-3 py-1.5 text-xs hover:border-primary/50 disabled:opacity-50"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-            Atualizar
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setTestDialogOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground hover:brightness-110"
+            >
+              <FlaskConical className="h-3.5 w-3.5" />
+              Criar usuário teste
+            </button>
+            <button
+              onClick={load}
+              disabled={loading}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card/60 px-3 py-1.5 text-xs hover:border-primary/50 disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+              Atualizar
+            </button>
+          </div>
+
         </header>
 
         {loading ? (
@@ -395,6 +410,12 @@ const AdminUsers = () => {
           email={dialog.row.email}
           onClose={() => setDialog(null)}
           onDeleted={load}
+        />
+      )}
+      {testDialogOpen && (
+        <TestUserCreateDialog
+          onClose={() => setTestDialogOpen(false)}
+          onCreated={load}
         />
       )}
     </main>

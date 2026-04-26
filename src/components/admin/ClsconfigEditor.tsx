@@ -182,6 +182,35 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
   };
 
   /**
+   * Dispara `exportclsconfig` na VPS de forma manual (botão "Exportar agora").
+   * Independe do save — útil pra ressincronizar `clsconfig.data` quando o
+   * usuário sabe que algo mudou no banco fora do editor.
+   */
+  const handleManualExport = async () => {
+    if (manualExporting || !canSave) return;
+    setManualExporting(true);
+    try {
+      const res = await pwApi.exportClsconfig();
+      if (res?.success === false) {
+        throw new Error(res.error || "exportClsconfig falhou");
+      }
+      toast.success(
+        res?.log_file
+          ? `Export disparado · ${res.log_file.split("/").pop()}`
+          : "Export disparado",
+      );
+    } catch (e) {
+      if (e instanceof EndpointMissingError) {
+        toast.error("Endpoint exportClsconfig ainda não implementado na VPS");
+      } else if (!handleMaybeAuthError(e) && !handleMaybeForbiddenError(e)) {
+        toast.error(e instanceof Error ? e.message : "Falha ao exportar");
+      }
+    } finally {
+      setManualExporting(false);
+    }
+  };
+
+  /**
    * Abre o diálogo de preview. A validação completa (inclusive avisos) é
    * mostrada dentro do `SavePreviewDialog`. Aqui só bloqueamos a abertura
    * quando há erros críticos/erros — avisos NÃO impedem abrir o preview,

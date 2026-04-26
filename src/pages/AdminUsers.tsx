@@ -56,6 +56,8 @@ const AdminUsers = () => {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [testDialogOpen, setTestDialogOpen] = useState(false);
+
 
   const load = async () => {
     setLoading(true);

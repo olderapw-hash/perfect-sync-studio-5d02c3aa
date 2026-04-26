@@ -65,6 +65,12 @@ const TYPE_OPTIONS = [
   { value: "startService", label: "startService" },
   { value: "stopService", label: "stopService" },
   { value: "restartService", label: "restartService" },
+  { value: "startInstance", label: "startInstance" },
+  { value: "startInstances", label: "startInstances" },
+  { value: "stopInstance", label: "stopInstance" },
+  { value: "stopInstances", label: "stopInstances" },
+  { value: "restartInstance", label: "restartInstance" },
+  { value: "restartInstances", label: "restartInstances" },
 ] as const;
 
 const STATE_OPTIONS = [

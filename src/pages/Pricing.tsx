@@ -252,7 +252,7 @@ const Pricing = () => {
               }`}
             >
               Anual
-              <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-extrabold text-emerald-400">
+              <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-extrabold text-primary">
                 -17%
               </span>
             </button>
@@ -361,7 +361,7 @@ const Pricing = () => {
                     <span className="text-sm text-muted-foreground">{suffix}</span>
                   </div>
                   {monthlyEquivalent !== null && (
-                    <p className="mb-2 text-xs text-emerald-400">
+                    <p className="mb-2 text-xs font-semibold text-primary">
                       ≈ {formatBRL(monthlyEquivalent)}/mês · economia de {yearlyDiscountPct(p)}%
                     </p>
                   )}

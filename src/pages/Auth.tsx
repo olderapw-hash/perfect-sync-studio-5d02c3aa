@@ -93,20 +93,23 @@ const Auth = () => {
   };
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-hero p-4">
-      {/* Background image + overlays */}
+    <main
+      className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-4"
+      style={{
+        backgroundImage: `url(${heroBg})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
+      {/* Overlays para legibilidade */}
       <div
         aria-hidden
-        className="absolute inset-0 -z-10 bg-cover bg-center"
-        style={{ backgroundImage: `url(${heroBg})` }}
+        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/60 via-background/40 to-background/80"
       />
       <div
         aria-hidden
-        className="absolute inset-0 -z-10 bg-gradient-to-b from-background/85 via-background/70 to-background/95"
-      />
-      <div
-        aria-hidden
-        className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.18),transparent_60%)]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.22),transparent_65%)]"
       />
 
       <section className="w-full max-w-sm rounded-xl border border-border bg-card/70 p-6 shadow-glow backdrop-blur-xl">

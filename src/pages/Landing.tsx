@@ -250,7 +250,7 @@ const Landing = () => {
 
         {/* PREÇO */}
         <section id="preco" className="py-20">
-          <div className="mx-auto max-w-3xl px-4">
+          <div className="mx-auto max-w-6xl px-4">
             <div className="mb-12 text-center">
               <p className="text-xs font-bold uppercase tracking-wider text-primary">
                 {content.pricing.eyebrow}
@@ -258,43 +258,108 @@ const Landing = () => {
               <h2 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
                 {content.pricing.title}
               </h2>
+              <p className="mx-auto mt-3 max-w-xl text-sm text-muted-foreground">
+                Comece grátis. Faça upgrade quando precisar de mais.
+              </p>
             </div>
 
-            <div className="relative overflow-hidden rounded-2xl border-2 border-primary/40 bg-gradient-to-br from-card via-card/80 to-card p-8 shadow-glow sm:p-10">
-              <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-primary/20 blur-3xl" />
-
-              <div className="relative">
-                <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-primary/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-primary">
-                  {content.pricing.plan_label}
-                </div>
-
-                <div className="mb-2 flex items-baseline gap-2">
-                  <span className="text-5xl font-extrabold tracking-tight">{content.pricing.price}</span>
-                  <span className="text-base text-muted-foreground">{content.pricing.price_suffix}</span>
-                </div>
-                <p className="mb-6 text-sm text-muted-foreground">{content.pricing.plan_desc}</p>
-
-                <ul className="mb-8 space-y-3">
-                  {content.pricing.features.map((f, i) => (
-                    <li key={`${f}-${i}`} className="flex items-start gap-3 text-sm">
-                      <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary">
-                        <Check className="h-3 w-3" strokeWidth={3} />
-                      </div>
-                      <span className="text-foreground/90">{f}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <Link
-                  to="/pricing"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-6 py-3.5 text-sm font-bold text-primary-foreground shadow-glow transition-smooth hover:brightness-110"
+            <div className="grid gap-5 lg:grid-cols-3">
+              {[
+                {
+                  id: "free",
+                  name: "Free",
+                  price: "R$ 0",
+                  suffix: "/sempre",
+                  desc: "Pra testar o painel sem compromisso.",
+                  features: [
+                    "Visualizar todo o painel",
+                    "Editar templates iniciais (CLS)",
+                    "Sem cartão de crédito",
+                  ],
+                  highlight: false,
+                },
+                {
+                  id: "pro",
+                  name: "Pro",
+                  price: "R$ 250",
+                  suffix: "/mês",
+                  desc: "Gestão completa de personagens e templates.",
+                  features: [
+                    "Editor completo (status, equip, inventário)",
+                    "Bulk apply, backups e histórico",
+                    "Mail in-game, eventos e kits",
+                  ],
+                  highlight: false,
+                },
+                {
+                  id: "ultimate",
+                  name: "Ultimate",
+                  price: "R$ 500",
+                  suffix: "/mês",
+                  desc: "Tudo do Pro + controle total do servidor.",
+                  features: [
+                    "Server Ops: start/stop/restart remoto",
+                    "Controle de instâncias (gs/gsalt/world)",
+                    "Múltiplos servidores + membros ilimitados",
+                  ],
+                  highlight: true,
+                },
+              ].map((p) => (
+                <div
+                  key={p.id}
+                  className={`relative flex flex-col overflow-hidden rounded-2xl p-6 ${
+                    p.highlight
+                      ? "border-2 border-primary/40 bg-gradient-to-br from-card via-card/80 to-card shadow-glow"
+                      : "border border-border bg-card/40"
+                  }`}
                 >
-                  {content.pricing.cta} <ArrowRight className="h-4 w-4" />
-                </Link>
-
-                <p className="mt-4 text-center text-xs text-muted-foreground">{content.pricing.fineprint}</p>
-              </div>
+                  {p.highlight && (
+                    <>
+                      <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-primary/20 blur-3xl" />
+                      <span className="relative mb-3 inline-flex w-fit items-center rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary-foreground">
+                        Recomendado
+                      </span>
+                    </>
+                  )}
+                  <div className="relative">
+                    <h3 className="text-lg font-extrabold">{p.name}</h3>
+                    <p className="mb-4 text-xs text-muted-foreground">{p.desc}</p>
+                    <div className="mb-5 flex items-baseline gap-1.5">
+                      <span className="text-3xl font-extrabold tracking-tight">{p.price}</span>
+                      <span className="text-sm text-muted-foreground">{p.suffix}</span>
+                    </div>
+                    <ul className="mb-6 space-y-2">
+                      {p.features.map((f) => (
+                        <li key={f} className="flex items-start gap-2 text-sm">
+                          <Check
+                            className={`mt-0.5 h-4 w-4 shrink-0 ${
+                              p.highlight ? "text-primary" : "text-muted-foreground"
+                            }`}
+                            strokeWidth={3}
+                          />
+                          <span className="text-foreground/85">{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <Link
+                      to="/pricing"
+                      className={`inline-flex w-full items-center justify-center gap-2 rounded-md px-4 py-2.5 text-xs font-bold transition-smooth ${
+                        p.highlight
+                          ? "bg-primary text-primary-foreground shadow-glow hover:brightness-110"
+                          : "border border-border bg-card hover:border-primary/40"
+                      }`}
+                    >
+                      {p.id === "free" ? "Começar grátis" : `Assinar ${p.name}`}
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </div>
+                </div>
+              ))}
             </div>
+
+            <p className="mt-6 text-center text-xs text-muted-foreground">
+              Sem fidelidade · cancele quando quiser · pagamento seguro via Paddle
+            </p>
           </div>
         </section>
 

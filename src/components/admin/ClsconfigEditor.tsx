@@ -796,7 +796,8 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
             </div>
 
             <div className="flex flex-wrap items-center justify-end gap-1.5">
-              {!isRoleMode && (
+              {/* Botões avançados de edição: só aparecem em MODO EDIÇÃO. */}
+              {editMode && !isRoleMode && (
                 <>
                   <button
                     onClick={() => setPresetsOpen(true)}
@@ -868,7 +869,7 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
                   </button>
                 </>
               )}
-              {isRoleMode && (
+              {editMode && isRoleMode && (
                 <label
                   className="inline-flex items-center gap-1 rounded-full border border-bronze-soft bg-card/50 px-2.5 py-1 text-[10px] text-bronze-muted"
                   title="Por padrão NÃO disparamos exportclsconfig em personagem real."
@@ -882,6 +883,7 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
                   exportclsconfig
                 </label>
               )}
+              {/* Sempre visíveis (auxiliares, não destrutivos). */}
               <button
                 onClick={() => setKitsOpen(true)}
                 className="inline-flex items-center gap-1 rounded-full border border-bronze-soft bg-card/50 px-2.5 py-1 text-[11px] font-semibold text-bronze-muted transition hover:border-primary/60 hover:text-bronze"
@@ -898,28 +900,57 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
                 <History className="h-3 w-3" />
                 Histórico
               </button>
-              <button
-                onClick={handleReset}
-                disabled={!dirty}
-                className="inline-flex items-center gap-1 rounded-full border border-bronze-soft bg-card/50 px-2.5 py-1 text-[11px] font-semibold text-bronze-muted transition hover:border-primary/60 hover:text-bronze disabled:opacity-40"
-              >
-                <RotateCcw className="h-3 w-3" />
-                Reset
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving || !dirty || !canSave}
-                title={canSave ? undefined : permDeniedTitle}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold tracking-wide transition disabled:cursor-not-allowed disabled:opacity-50",
-                  isRoleMode
-                    ? "bg-destructive text-destructive-foreground shadow-[0_4px_16px_hsl(0_70%_45%/0.4)] hover:brightness-110"
-                    : "bg-gradient-to-br from-[hsl(38_75%_60%)] to-[hsl(32_60%_40%)] text-[hsl(28_30%_10%)] shadow-[0_4px_18px_hsl(38_60%_40%/0.45)] hover:brightness-110",
-                )}
-              >
-                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                {saving ? "Salvando..." : isRoleMode ? "Salvar real" : "Salvar"}
-              </button>
+
+              {/* ─── View ↔ Edit ─── */}
+              {!editMode ? (
+                <button
+                  onClick={() => setEditMode(true)}
+                  disabled={!canSave}
+                  title={canSave ? "Entrar em modo edição" : permDeniedTitle}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold tracking-wide transition disabled:cursor-not-allowed disabled:opacity-50",
+                    "bg-gradient-to-br from-[hsl(38_75%_60%)] to-[hsl(32_60%_40%)] text-[hsl(28_30%_10%)] shadow-[0_4px_18px_hsl(38_60%_40%/0.45)] hover:brightness-110",
+                  )}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  Editar
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={handleReset}
+                    disabled={!dirty}
+                    className="inline-flex items-center gap-1 rounded-full border border-bronze-soft bg-card/50 px-2.5 py-1 text-[11px] font-semibold text-bronze-muted transition hover:border-primary/60 hover:text-bronze disabled:opacity-40"
+                    title="Reverter alterações desta sessão para o estado salvo"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    Reset
+                  </button>
+                  <button
+                    onClick={handleCancelEdit}
+                    disabled={saving}
+                    className="inline-flex items-center gap-1 rounded-full border border-bronze-soft bg-card/50 px-2.5 py-1 text-[11px] font-semibold text-bronze-muted transition hover:border-destructive/60 hover:text-destructive disabled:opacity-40"
+                    title={dirty ? "Descartar alterações e voltar para visualização" : "Sair do modo edição"}
+                  >
+                    <X className="h-3 w-3" />
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={saving || !dirty || !canSave}
+                    title={canSave ? undefined : permDeniedTitle}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold tracking-wide transition disabled:cursor-not-allowed disabled:opacity-50",
+                      isRoleMode
+                        ? "bg-destructive text-destructive-foreground shadow-[0_4px_16px_hsl(0_70%_45%/0.4)] hover:brightness-110"
+                        : "bg-gradient-to-br from-[hsl(38_75%_60%)] to-[hsl(32_60%_40%)] text-[hsl(28_30%_10%)] shadow-[0_4px_18px_hsl(38_60%_40%/0.45)] hover:brightness-110",
+                    )}
+                  >
+                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                    {saving ? "Salvando..." : isRoleMode ? "Salvar real" : "Salvar"}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

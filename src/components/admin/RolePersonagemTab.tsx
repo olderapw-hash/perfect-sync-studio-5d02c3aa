@@ -8,7 +8,6 @@ import { normalizeClsconfigResponse } from "@/lib/clsconfig";
 import type { ClsEntry } from "@/types/clsconfig";
 import { ClsconfigEditor } from "./ClsconfigEditor";
 import { toast } from "sonner";
-import { toast } from "sonner";
 
 /**
  * Aba "Personagem Real / Existente".

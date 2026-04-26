@@ -404,14 +404,6 @@ export default function InstancesPage() {
     }
   }
 
-  if (!allowed) {
-    return (
-      <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-6 text-center text-sm text-muted-foreground">
-        Você precisa da permissão <strong>view</strong> para acessar Instance Control.
-      </div>
-    );
-  }
-
   const offlineCount = list.length - runningCount;
   const runningList = useMemo(() => list.filter((i) => i.running === true), [list]);
   const stoppedList = useMemo(() => list.filter((i) => i.running !== true), [list]);
@@ -422,6 +414,15 @@ export default function InstancesPage() {
       ),
     [stoppedList],
   );
+
+  if (!allowed) {
+    return (
+      <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-6 text-center text-sm text-muted-foreground">
+        Você precisa da permissão <strong>view</strong> para acessar Instance Control.
+      </div>
+    );
+  }
+
   const allStartSelected =
     startableList.length > 0 && startableList.every((i) => startSelected.has(i.code));
 

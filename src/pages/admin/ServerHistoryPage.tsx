@@ -483,6 +483,28 @@ export default function ServerHistoryPage() {
         type={trackedOp?.type}
         onClose={() => setTrackedOp(null)}
       />
+
+      <AlertDialog open={confirmClearOpen} onOpenChange={setConfirmClearOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Limpar histórico?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Isso remove os registros apenas da visualização atual. Ao
+              clicar em <strong>Atualizar</strong>, o histórico real do
+              servidor será carregado novamente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleClearHistory}
+            >
+              <Trash2 className="mr-2 h-4 w-4" /> Limpar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

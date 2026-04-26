@@ -539,6 +539,25 @@ export default function InstancesPage() {
             </div>
             <Button
               size="sm"
+              variant="default"
+              onClick={openStartDialog}
+              disabled={loading || acting || !canManage || startableList.length === 0}
+              title={
+                startableList.length === 0
+                  ? "Nenhuma instância parada disponível"
+                  : `${startableList.length} parada(s) disponível(is)`
+              }
+            >
+              <Play className="h-3.5 w-3.5" />
+              Iniciar instâncias
+              {startableList.length > 0 && (
+                <span className="ml-1 rounded-full bg-primary-foreground/20 px-1.5 py-0 text-[10px] font-bold">
+                  {startableList.length}
+                </span>
+              )}
+            </Button>
+            <Button
+              size="sm"
               variant="outline"
               onClick={load}
               disabled={loading}

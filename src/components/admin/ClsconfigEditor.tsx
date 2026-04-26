@@ -753,6 +753,35 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
                     <Eraser className="h-3 w-3" />
                     Limpar
                   </button>
+                  <label
+                    className="inline-flex items-center gap-1 rounded-full border border-bronze-soft bg-card/50 px-2.5 py-1 text-[10px] font-semibold text-bronze-muted transition hover:border-primary/60 hover:text-bronze"
+                    title="Após salvar com sucesso, dispara exportclsconfig automaticamente para o servidor recarregar o clsconfig.data."
+                  >
+                    <input
+                      type="checkbox"
+                      checked={autoExportTemplate}
+                      onChange={(e) => setAutoExportTemplate(e.target.checked)}
+                      className="h-3 w-3 accent-primary"
+                    />
+                    Auto-export
+                  </label>
+                  <button
+                    onClick={handleManualExport}
+                    disabled={manualExporting || !canSave}
+                    className="inline-flex items-center gap-1 rounded-full border border-bronze-soft bg-card/50 px-2.5 py-1 text-[11px] font-semibold text-bronze-muted transition hover:border-primary/60 hover:text-bronze disabled:opacity-40"
+                    title={
+                      canSave
+                        ? "Roda exportclsconfig agora (regrava clsconfig.data a partir do gamedbd)"
+                        : permDeniedTitle
+                    }
+                  >
+                    {manualExporting ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Upload className="h-3 w-3" />
+                    )}
+                    Exportar agora
+                  </button>
                 </>
               )}
               {isRoleMode && (

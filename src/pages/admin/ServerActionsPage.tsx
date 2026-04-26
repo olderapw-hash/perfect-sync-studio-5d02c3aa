@@ -35,6 +35,7 @@ import {
 } from "@/lib/pwApiActions";
 import { logAuditEvent } from "@/lib/auditLog";
 import { EndpointMissingNotice } from "./ServerOpsPage";
+import { SystemMessageCard } from "@/components/admin/SystemMessageCard";
 
 interface ExportState {
   loading: boolean;

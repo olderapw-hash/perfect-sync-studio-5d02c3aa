@@ -15,6 +15,8 @@ const Auth = () => {
   const { session, loading: authLoading, isAdmin, isSuperadmin } = useAuth();
   const { isActive, loading: subLoading } = useSubscription();
   const { servers, active, loading: serversLoading } = useServers();
+  const { settings } = useAppSettings();
+  const bgImage = settings.background_url || heroBg;
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

@@ -57,6 +57,9 @@ import { InventoryTab } from "./InventoryTab";
 import { EquipmentTab } from "./EquipmentTab";
 import { StorehouseTab } from "./StorehouseTab";
 import { TaskTab } from "./TaskTab";
+import { TitlesTab } from "./TitlesTab";
+import { ReputationTab } from "./ReputationTab";
+import { SkillsTab } from "./SkillsTab";
 import { SavePreviewDialog } from "./SavePreviewDialog";
 import { SaveChecklistDialog, type SaveChecklistResult } from "./SaveChecklistDialog";
 import { PresetsDialog } from "./PresetsDialog";
@@ -67,6 +70,7 @@ import { RoleidHistoryDialog } from "./RoleidHistoryDialog";
 import { InitialKitsDialog } from "./InitialKitsDialog";
 import { useTenant } from "@/hooks/useTenant";
 import { useCharacterPhoto } from "@/hooks/useCharacterPhoto";
+import { Award, ScrollText as ScrollTextIcon } from "lucide-react";
 
 /**
  * Modo de operação:
@@ -87,15 +91,27 @@ interface Props {
   onReload?: () => void;
 }
 
-type TabKey = "base" | "status" | "inventory" | "equipment" | "storehouse" | "task";
+type TabKey =
+  | "base"
+  | "status"
+  | "inventory"
+  | "equipment"
+  | "storehouse"
+  | "task"
+  | "titles"
+  | "reputation"
+  | "skills";
 
 const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { key: "base", label: "Base", icon: User },
+  { key: "base", label: "Atributos", icon: User },
   { key: "status", label: "Status", icon: Activity },
   { key: "inventory", label: "Inventário", icon: Backpack },
   { key: "equipment", label: "Equipamentos", icon: Sword },
   { key: "storehouse", label: "Baú", icon: Warehouse },
   { key: "task", label: "Tarefas", icon: ScrollText },
+  { key: "titles", label: "Títulos", icon: ScrollTextIcon },
+  { key: "reputation", label: "Reputação", icon: Award },
+  { key: "skills", label: "Skills", icon: Sparkles },
 ];
 
 /** Lê um caminho aninhado em objeto destrutivo. Retorna string ou undefined. */
@@ -175,6 +191,37 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
   }, [entry.key_hex]);
 
   const dirty = JSON.stringify(template) !== JSON.stringify(entry.template);
+
+  // Indicador de mudanças por aba — compara apenas o slice relevante de cada
+  // tab contra o entry original. Performance OK: comparações de JSON só rodam
+  // quando `template` ou `entry.template` mudam.
+  const dirtyByTab: Record<TabKey, boolean> = {
+    base: JSON.stringify(template.base) !== JSON.stringify(entry.template.base),
+    status:
+      JSON.stringify({
+        ...template.status,
+        // exclui campos cobertos por outras abas para não duplicar marcação
+        reputation: 0,
+        title_data: "",
+        skills: "",
+      }) !==
+      JSON.stringify({
+        ...entry.template.status,
+        reputation: 0,
+        title_data: "",
+        skills: "",
+      }),
+    inventory:
+      JSON.stringify(template.inventory) !== JSON.stringify(entry.template.inventory),
+    equipment:
+      JSON.stringify(template.equipment) !== JSON.stringify(entry.template.equipment),
+    storehouse:
+      JSON.stringify(template.storehouse) !== JSON.stringify(entry.template.storehouse),
+    task: JSON.stringify(template.task) !== JSON.stringify(entry.template.task),
+    titles: template.status.title_data !== entry.template.status.title_data,
+    reputation: template.status.reputation !== entry.template.status.reputation,
+    skills: template.status.skills !== entry.template.status.skills,
+  };
 
   const handleReset = () => {
     setTemplate(entry.template);
@@ -403,8 +450,11 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
 
     const className = template.summary.class_name ?? `Classe ${template.summary.cls}`;
     const statusDiff = diffSimpleStatus(entry.template, template);
+    // Abas que só editam campos simples de status (reputation cai aqui também)
+    // podem usar o patch leve. titles/skills mexem em blobs raw → save completo.
+    const isSimpleStatusTab = tab === "status" || tab === "reputation";
     const useStatusPatch =
-      tab === "status" &&
+      isSimpleStatusTab &&
       Object.keys(statusDiff).length > 0 &&
       onlySimpleStatusChanged(entry.template, template);
     const useInventoryPatch =
@@ -843,10 +893,11 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
 
       {/* ─────────── Navegação modular ─────────── */}
       <nav className="px-3 pb-2 sm:px-5 lg:px-6">
-        <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6">
+        <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-5 lg:grid-cols-9">
           {TABS.map((t) => {
             const Icon = t.icon;
             const active = tab === t.key;
+            const hasChanges = dirtyByTab[t.key];
             return (
               <button
                 key={t.key}
@@ -854,16 +905,23 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
                 data-active={active}
                 onClick={() => setTab(t.key)}
                 className="nav-card group !p-2 !gap-2"
+                title={hasChanges ? `${t.label} · alterações pendentes` : t.label}
               >
                 <span
                   className={cn(
-                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border transition",
+                    "relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border transition",
                     active
                       ? "border-primary/60 bg-primary/15 text-primary shadow-[0_0_14px_hsl(38_70%_50%/0.35)]"
                       : "border-bronze-soft bg-black/30 text-bronze-muted group-hover:text-bronze",
                   )}
                 >
                   <Icon className="h-3.5 w-3.5" />
+                  {hasChanges && (
+                    <span
+                      aria-hidden
+                      className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary shadow-[0_0_6px_hsl(38_70%_50%/0.9)] animate-pulse-glow"
+                    />
+                  )}
                 </span>
                 <span className="text-xs font-semibold tracking-wide">{t.label}</span>
               </button>
@@ -906,6 +964,9 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
             {tab === "equipment" && <EquipmentTab template={template} onChange={setTemplate} />}
             {tab === "storehouse" && <StorehouseTab template={template} onChange={setTemplate} />}
             {tab === "task" && <TaskTab template={template} onChange={setTemplate} />}
+            {tab === "titles" && <TitlesTab template={template} onChange={setTemplate} />}
+            {tab === "reputation" && <ReputationTab template={template} onChange={setTemplate} />}
+            {tab === "skills" && <SkillsTab template={template} />}
           </div>
         </section>
       </div>

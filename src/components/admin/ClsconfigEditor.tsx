@@ -17,6 +17,7 @@ import {
   History,
   Sparkles,
   Eraser,
+  Upload,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -139,6 +140,23 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
   const [exportClsconfigForRole, setExportClsconfigForRole] = useState(false);
   /** Apenas modo "role": confirmação forte ANTES de chamar runSave. */
   const [roleConfirmOpen, setRoleConfirmOpen] = useState(false);
+  /**
+   * Modo "template": dispara exportclsconfig automaticamente após save bem-sucedido.
+   * Persiste a preferência em localStorage. Default ON — recomendado pra que o
+   * `clsconfig.data` no servidor reflita imediatamente o que foi editado.
+   */
+  const [autoExportTemplate, setAutoExportTemplate] = useState(() => {
+    if (typeof window === "undefined") return true;
+    const v = window.localStorage.getItem("orphea.autoExportClsconfig");
+    return v == null ? true : v === "1";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("orphea.autoExportClsconfig", autoExportTemplate ? "1" : "0");
+    }
+  }, [autoExportTemplate]);
+  /** Estado do botão "Exportar agora" (manual, fora do save). */
+  const [manualExporting, setManualExporting] = useState(false);
 
   const { can } = useServerPermissions();
   const { tenant } = useTenant();
@@ -161,6 +179,35 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
   const handleReset = () => {
     setTemplate(entry.template);
     toast.info("Template restaurado para a versão original");
+  };
+
+  /**
+   * Dispara `exportclsconfig` na VPS de forma manual (botão "Exportar agora").
+   * Independe do save — útil pra ressincronizar `clsconfig.data` quando o
+   * usuário sabe que algo mudou no banco fora do editor.
+   */
+  const handleManualExport = async () => {
+    if (manualExporting || !canSave) return;
+    setManualExporting(true);
+    try {
+      const res = await pwApi.exportClsconfig();
+      if (res?.success === false) {
+        throw new Error(res.error || "exportClsconfig falhou");
+      }
+      toast.success(
+        res?.log_file
+          ? `Export disparado · ${res.log_file.split("/").pop()}`
+          : "Export disparado",
+      );
+    } catch (e) {
+      if (e instanceof EndpointMissingError) {
+        toast.error("Endpoint exportClsconfig ainda não implementado na VPS");
+      } else if (!handleMaybeAuthError(e) && !handleMaybeForbiddenError(e)) {
+        toast.error(e instanceof Error ? e.message : "Falha ao exportar");
+      }
+    } finally {
+      setManualExporting(false);
+    }
   };
 
   /**
@@ -509,6 +556,29 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
       seenBackups.add(savedRoleid, "role_json", backupRoleJson);
       seenBackups.add(savedRoleid, "clsconfig_file", backupClsconfigFile);
 
+      // Auto-export opt-in (modo template). Roda DEPOIS do save bem-sucedido.
+      // Falha aqui não invalida o save — só vira um item "amarelo" no checklist.
+      let autoExport: SaveChecklistResult["autoExport"] | undefined;
+      if (autoExportTemplate) {
+        autoExport = { triggered: true };
+        try {
+          const exportRes = await pwApi.exportClsconfig();
+          autoExport.ok = exportRes?.success !== false;
+          autoExport.logFile = exportRes?.log_file;
+          if (!autoExport.ok && exportRes?.error) {
+            autoExport.error = exportRes.error;
+          }
+        } catch (e) {
+          autoExport.ok = false;
+          if (e instanceof EndpointMissingError) {
+            autoExport.endpointMissing = true;
+            autoExport.error = "Endpoint exportClsconfig ainda não implementado na VPS";
+          } else {
+            autoExport.error = e instanceof Error ? e.message : String(e);
+          }
+        }
+      }
+
       setPreviewOpen(false);
       setChecklistResult({
         saved: savedOk,
@@ -517,6 +587,7 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
         backupClsconfigFile,
         exportLogFile,
         exportScheduled,
+        autoExport,
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Erro desconhecido ao salvar";
@@ -681,6 +752,35 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
                   >
                     <Eraser className="h-3 w-3" />
                     Limpar
+                  </button>
+                  <label
+                    className="inline-flex items-center gap-1 rounded-full border border-bronze-soft bg-card/50 px-2.5 py-1 text-[10px] font-semibold text-bronze-muted transition hover:border-primary/60 hover:text-bronze"
+                    title="Após salvar com sucesso, dispara exportclsconfig automaticamente para o servidor recarregar o clsconfig.data."
+                  >
+                    <input
+                      type="checkbox"
+                      checked={autoExportTemplate}
+                      onChange={(e) => setAutoExportTemplate(e.target.checked)}
+                      className="h-3 w-3 accent-primary"
+                    />
+                    Auto-export
+                  </label>
+                  <button
+                    onClick={handleManualExport}
+                    disabled={manualExporting || !canSave}
+                    className="inline-flex items-center gap-1 rounded-full border border-bronze-soft bg-card/50 px-2.5 py-1 text-[11px] font-semibold text-bronze-muted transition hover:border-primary/60 hover:text-bronze disabled:opacity-40"
+                    title={
+                      canSave
+                        ? "Roda exportclsconfig agora (regrava clsconfig.data a partir do gamedbd)"
+                        : permDeniedTitle
+                    }
+                  >
+                    {manualExporting ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Upload className="h-3 w-3" />
+                    )}
+                    Exportar agora
                   </button>
                 </>
               )}

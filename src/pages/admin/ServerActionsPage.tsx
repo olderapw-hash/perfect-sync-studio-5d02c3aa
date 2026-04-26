@@ -99,13 +99,15 @@ export default function ServerActionsPage() {
     <div className="space-y-6">
       <div>
         <h2 className="text-sm font-extrabold uppercase tracking-wider text-foreground">
-          Export & Reload
+          Operação do servidor
         </h2>
         <p className="text-xs text-muted-foreground">
-          Operações idempotentes — não derrubam o servidor nem afetam jogadores
-          online.
+          Mensagem de sistema, export e reloads — todas auditadas.
         </p>
       </div>
+
+      {/* Send System Message — v2 */}
+      <SystemMessageCard />
 
       {/* Export clsconfig */}
       <section className="rounded-xl border border-border bg-card/40 p-5 backdrop-blur-md">

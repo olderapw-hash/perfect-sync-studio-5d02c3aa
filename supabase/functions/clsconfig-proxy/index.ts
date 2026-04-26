@@ -521,6 +521,9 @@ const NEW_ACTIONS_FALLBACK_MISSING = new Set([
   "banAccount",
   "unbanAccount",
   "listSecurityHistory",
+  "sendSystemMessage",
+  "getMaintenanceMode",
+  "setMaintenanceMode",
 ]);
 
 async function relay(

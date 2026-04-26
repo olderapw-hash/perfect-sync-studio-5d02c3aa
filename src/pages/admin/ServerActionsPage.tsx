@@ -110,6 +110,9 @@ export default function ServerActionsPage() {
       {/* Send System Message — v2 */}
       <SystemMessageCard />
 
+      {/* Maintenance Mode — v2 */}
+      <MaintenanceModeCard />
+
       {/* Export clsconfig */}
       <section className="rounded-xl border border-border bg-card/40 p-5 backdrop-blur-md">
         <div className="flex items-start gap-4">

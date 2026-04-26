@@ -413,6 +413,47 @@ export default function InstancesPage() {
   }
 
   const offlineCount = list.length - runningCount;
+  const runningList = useMemo(() => list.filter((i) => i.running === true), [list]);
+  const stoppedList = useMemo(() => list.filter((i) => i.running !== true), [list]);
+  const startableList = useMemo(
+    () =>
+      stoppedList.filter(
+        (i) => i.selectable !== false && (i.supported_actions ?? []).includes("start"),
+      ),
+    [stoppedList],
+  );
+  const allStartSelected =
+    startableList.length > 0 && startableList.every((i) => startSelected.has(i.code));
+
+  function toggleStartAll() {
+    setStartSelected(
+      allStartSelected ? new Set() : new Set(startableList.map((i) => i.code)),
+    );
+  }
+
+  function toggleStartOne(code: string) {
+    setStartSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      return next;
+    });
+  }
+
+  function openStartDialog() {
+    setStartSelected(new Set());
+    setStartDialogOpen(true);
+  }
+
+  function confirmStartFromDialog() {
+    const codes = Array.from(startSelected);
+    if (codes.length === 0) {
+      toast.error("Selecione ao menos uma instância para iniciar.");
+      return;
+    }
+    setStartDialogOpen(false);
+    requestAction("selection", "start", codes);
+  }
 
   return (
     <div className="space-y-4">

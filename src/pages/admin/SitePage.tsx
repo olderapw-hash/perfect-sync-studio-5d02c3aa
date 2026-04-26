@@ -1,7 +1,7 @@
 // Página /admin/site — editor do conteúdo público da landing (apenas superadmin).
 // Salva tudo num único registro em `site_content` (id=1, JSONB).
 import { useEffect, useState } from "react";
-import { Loader2, Plus, Save, Sparkles, Trash2, Globe } from "lucide-react";
+import { Loader2, Plus, Save, Sparkles, Trash2, Globe, Image as ImageIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
+import { ClassPhotosTab } from "@/components/admin/ClassPhotosTab";
 
 const SitePage = () => {
   const { user } = useAuth();

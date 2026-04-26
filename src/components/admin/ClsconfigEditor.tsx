@@ -893,7 +893,9 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
 
       {/* ─────────── Navegação modular ─────────── */}
       <nav className="px-3 pb-2 sm:px-5 lg:px-6">
-        <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-5 lg:grid-cols-9">
+        {/* Mobile/tablet: scroll horizontal — evita corte de texto.
+            Desktop largo (xl): grid 9 colunas distribuído. */}
+        <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 xl:grid xl:grid-cols-9 xl:overflow-visible xl:px-0 [scrollbar-width:thin]">
           {TABS.map((t) => {
             const Icon = t.icon;
             const active = tab === t.key;
@@ -904,7 +906,7 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
                 type="button"
                 data-active={active}
                 onClick={() => setTab(t.key)}
-                className="nav-card group !p-2 !gap-2"
+                className="nav-card group !p-2 !gap-2 shrink-0 xl:shrink min-w-[110px] xl:min-w-0"
                 title={hasChanges ? `${t.label} · alterações pendentes` : t.label}
               >
                 <span
@@ -923,7 +925,7 @@ export const ClsconfigEditor = ({ entry, allEntries = [], mode = "template", onS
                     />
                   )}
                 </span>
-                <span className="text-xs font-semibold tracking-wide">{t.label}</span>
+                <span className="text-xs font-semibold tracking-wide whitespace-nowrap">{t.label}</span>
               </button>
             );
           })}

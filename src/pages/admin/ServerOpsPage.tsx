@@ -329,24 +329,27 @@ function ServerStatusTab() {
     scope: "selection" | "server",
     action: ServerWideAction,
     explicitServices?: string[],
+    reason?: string,
   ) {
     setActing(true);
     setPendingConfirm(null);
-    // Server Ops v4: bot\u00f5es "servidor" usam os endpoints novos
+    const trimmedReason = (reason ?? "").trim();
+    // Server Ops v4: botões "servidor" usam os endpoints novos
     // (startServer/stopServer/restartServer). startServer e restartServer
-    // assumem o autostart por padr\u00e3o quando `instances` n\u00e3o \u00e9 enviado.
-    // Sele\u00e7\u00e3o granular continua usando startService/stopService/restartService.
+    // assumem o autostart por padrão quando `instances` não é enviado.
+    // Seleção granular continua usando startService/stopService/restartService.
     const isServerWide = scope === "server";
     let payload: ServiceControlPayload | ServerControlPayload;
     if (isServerWide) {
-      // N\u00c3O enviar `instances: []` (vazio) \u2014 backend trataria como "sem
-      // sele\u00e7\u00e3o" e cairia no autostart, mas a inten\u00e7\u00e3o aqui \u00e9 deixar o
-      // backend decidir. Para o bot\u00e3o "servidor", omitir o campo.
-      payload = { verify: true, dry_run: dryRun } satisfies ServerControlPayload;
+      payload = {
+        verify: true,
+        dry_run: dryRun,
+        ...(trimmedReason.length >= 3 ? { reason: trimmedReason } : {}),
+      } satisfies ServerControlPayload;
     } else {
       const list = explicitServices ?? Array.from(selected);
       if (list.length === 0) {
-        toast.error("Nenhum servi\u00e7o dispon\u00edvel para esta a\u00e7\u00e3o.");
+        toast.error("Nenhum serviço disponível para esta ação.");
         setActing(false);
         return;
       }
@@ -354,6 +357,7 @@ function ServerStatusTab() {
         verify: true,
         dry_run: dryRun,
         services: list,
+        ...(trimmedReason.length >= 3 ? { reason: trimmedReason } : {}),
       } satisfies ServiceControlPayload;
     }
     const fn = isServerWide

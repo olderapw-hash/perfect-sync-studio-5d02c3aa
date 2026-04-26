@@ -322,6 +322,7 @@ function ServerStatusTab() {
       action,
       services: scope === "selection" ? Array.from(selected) : undefined,
     });
+    setConfirmReason("");
   }
 
   async function runAction(

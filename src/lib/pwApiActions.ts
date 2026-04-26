@@ -484,6 +484,58 @@ export const pwApi = {
       { method: "GET", query },
     );
   },
+  /* ─────────── Instance Control v1 ─────────── */
+  getManageableInstances() {
+    return callAction<ManageableInstancesResponse>("getManageableInstances", {
+      method: "GET",
+    });
+  },
+  /**
+   * Toggle individual: { code, enabled } OU lista completa: { codes }.
+   * O backend sempre devolve a lista resultante (auto_start_codes).
+   */
+  setInstanceAutoStart(body: SetInstanceAutoStartPayload) {
+    return callAction<SetInstanceAutoStartResponse>("setInstanceAutoStart", {
+      method: "POST",
+      body,
+    });
+  },
+  startInstance(body: InstanceControlSinglePayload) {
+    return callAction<InstanceControlResponse>("startInstance", {
+      method: "POST",
+      body,
+    });
+  },
+  startInstances(body: InstanceControlBatchPayload) {
+    return callAction<InstanceControlResponse>("startInstances", {
+      method: "POST",
+      body,
+    });
+  },
+  stopInstance(body: InstanceControlSinglePayload) {
+    return callAction<InstanceControlResponse>("stopInstance", {
+      method: "POST",
+      body,
+    });
+  },
+  stopInstances(body: InstanceControlBatchPayload) {
+    return callAction<InstanceControlResponse>("stopInstances", {
+      method: "POST",
+      body,
+    });
+  },
+  restartInstance(body: InstanceControlSinglePayload) {
+    return callAction<InstanceControlResponse>("restartInstance", {
+      method: "POST",
+      body,
+    });
+  },
+  restartInstances(body: InstanceControlBatchPayload) {
+    return callAction<InstanceControlResponse>("restartInstances", {
+      method: "POST",
+      body,
+    });
+  },
 };
 
 /* ─────────── Server Ops — histórico de operações ─────────── */

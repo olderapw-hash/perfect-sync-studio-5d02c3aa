@@ -153,16 +153,18 @@ import { pwApi, EndpointMissingError, type ServiceInfo } from "@/lib/pwApiAction
 import { logAuditEvent } from "@/lib/auditLog";
 import { toast } from "sonner";
 
-const KNOWN_SERVICES: { key: string; label: string; port?: number }[] = [
-  { key: "gamedbd", label: "Game DB Daemon", port: 29400 },
-  { key: "gdeliveryd", label: "Delivery Daemon", port: 29100 },
-  { key: "gacd", label: "Account Daemon", port: 29000 },
-  { key: "glink", label: "Game Link", port: 29200 },
-  { key: "authd", label: "Auth Daemon", port: 29300 },
-  { key: "uniquenamed", label: "Unique Name", port: 29500 },
-  { key: "mysql", label: "MySQL/MariaDB", port: 3306 },
-  { key: "httpd", label: "Web (Apache/httpd)", port: 80 },
+const KNOWN_SERVICES: { key: string; label: string; port?: number; icon: typeof Database }[] = [
+  { key: "gamedbd", label: "Game DB Daemon", port: 29400, icon: Database },
+  { key: "gdeliveryd", label: "Delivery Daemon", port: 29100, icon: Truck },
+  { key: "gacd", label: "Account Daemon", port: 29000, icon: UserIcon },
+  { key: "glink", label: "Game Link", port: 29200, icon: Link2 },
+  { key: "authd", label: "Auth Daemon", port: 29300, icon: Shield },
+  { key: "uniquenamed", label: "Unique Name", port: 29500, icon: Fingerprint },
+  { key: "mysql", label: "MySQL/MariaDB", port: 3306, icon: Database },
+  { key: "httpd", label: "Web (Apache/httpd)", port: 80, icon: Globe },
 ];
+
+const ICON_BY_KEY = new Map(KNOWN_SERVICES.map((s) => [s.key, s.icon]));
 
 function ServerStatusTab() {
   const { active } = useServers();

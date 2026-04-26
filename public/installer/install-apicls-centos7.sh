@@ -537,6 +537,16 @@ else
   warn "Teste sendMailItem (dry_run) falhou. Saida: $MAIL_OUT"
 fi
 
+# Teste da mensagem de sistema em modo dry_run — valida rota mas nao envia.
+SYSMSG_OUT="$(curl -s -X POST -H "x-sync-secret: $SECRET" -H "Content-Type: application/json" \
+  -d '{"message":"installer dry-run","kind":"system","priority":"normal","dry_run":true}' \
+  "$BASE_URL?action=sendSystemMessage" 2>/dev/null || true)"
+if echo "$SYSMSG_OUT" | grep -q '"success":true'; then
+  log "Teste sendSystemMessage (dry_run) OK."
+else
+  warn "Teste sendSystemMessage (dry_run) falhou. Saida: $SYSMSG_OUT"
+fi
+
 PUBLIC_IP="$(curl -fsS --max-time 3 https://api.ipify.org 2>/dev/null || hostname -I 2>/dev/null | awk '{print $1}' || true)"
 
 cat <<EOF
@@ -556,6 +566,7 @@ Comandos de validacao:
   curl -s -H "x-sync-secret: $SECRET" "$BASE_URL?action=getClasses"
   curl -s -X POST -H "x-sync-secret: $SECRET" -H "Content-Type: application/json" -d '{"reason":"manual-test","force":true}' "$BASE_URL?action=backupGamedbd"
   curl -s -X POST -H "x-sync-secret: $SECRET" -H "Content-Type: application/json" -d '{"roleid":1,"dry_run":true,"item":{"item_id":11530,"count":1}}' "$BASE_URL?action=sendMailItem"
+  curl -s -X POST -H "x-sync-secret: $SECRET" -H "Content-Type: application/json" -d '{"message":"teste manual","kind":"system","dry_run":true}' "$BASE_URL?action=sendSystemMessage"
 
 Correio (sendMailItem / sendMailGold):
   Handler: /usr/local/bin/pw_send_mail.php
@@ -564,5 +575,13 @@ Correio (sendMailItem / sendMailGold):
   Queue:   $INSTALL_DIR/backups/mail-queue/
   Para entrega imediata edite /etc/pw_send_mail.conf apontando seu
   send_mail.lua / deliveryd_console.
+
+Mensagem de sistema (sendSystemMessage):
+  Handler: /usr/local/bin/pw_send_system_message.php
+  Wrapper: /usr/local/sbin/sendsysmsg-api.sh (sudo NOPASSWD)
+  Logs:    $INSTALL_DIR/backups/sysmsg-logs/
+  Queue:   $INSTALL_DIR/backups/sysmsg-queue/
+  Para entrega imediata edite /etc/pw_send_system_message.conf apontando
+  seu send_system_message.lua / deliveryd_console.
 ============================================================
 EOF

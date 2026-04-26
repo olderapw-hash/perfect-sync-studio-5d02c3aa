@@ -144,7 +144,6 @@ const SECTIONS: NavSection[] = [
     ],
   },
   {
-  {
     id: "security",
     label: "Segurança",
     icon: Shield,

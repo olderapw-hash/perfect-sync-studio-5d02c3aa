@@ -58,6 +58,7 @@ const ALLOWED_ACTIONS = new Set([
   "restartService",
   // Server Ops v3 — polling de progresso de operações longas.
   "getServerOperationStatus",
+  "getServerOperationsHistory",
 ]);
 
 // Mapa Action → permissão exigida (deve refletir src/lib/serverPermissions.ts).
@@ -96,6 +97,7 @@ const ACTION_PERMISSION: Record<string, string> = {
   restartService: "manage_servers",
   // Polling de status de operações é leitura.
   getServerOperationStatus: "view",
+  getServerOperationsHistory: "view_audit",
 };
 
 function jsonError(message: string, status: number): Response {

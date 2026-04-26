@@ -19,6 +19,7 @@ import {
   Fingerprint,
   FileText,
   Globe,
+  History as HistoryIcon,
   Link2,
   Loader2,
   Play,
@@ -69,6 +70,7 @@ const TABS = [
   { value: "status", label: "Status", icon: Activity, path: "/admin/server" },
   { value: "logs", label: "Logs", icon: FileText, path: "/admin/server/logs" },
   { value: "actions", label: "Export & Reload", icon: Wrench, path: "/admin/server/actions" },
+  { value: "history", label: "Histórico", icon: HistoryIcon, path: "/admin/server/history" },
 ] as const;
 
 const ServerOpsPage = () => {

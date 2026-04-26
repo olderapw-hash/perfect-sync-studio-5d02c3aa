@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Shield } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useServers } from "@/hooks/useServers";
 import { toast } from "sonner";
+import heroBg from "@/assets/landing-hero.jpg";
+import orpheaLogo from "@/assets/orphea-core-logo.png";
 
 const Auth = () => {
   const navigate = useNavigate();

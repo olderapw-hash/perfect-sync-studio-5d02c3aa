@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useEffect } from "react";
 import {
   ArrowRight,
@@ -16,7 +16,7 @@ import {
   Users,
   Zap,
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+// useAuth removido: a landing pública não precisa mais saber se há sessão.
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { useSiteContent } from "@/hooks/useSiteContent";
 import heroImg from "@/assets/landing-hero.jpg";
@@ -29,8 +29,6 @@ const FEATURE_ICONS = [UserCog, Database, ImageIcon, History, Users, Server];
 const STEP_ICONS = [UserCog, Server, Zap];
 
 const Landing = () => {
-  const navigate = useNavigate();
-  const { session, isAdmin } = useAuth();
   const { settings } = useAppSettings();
   const { content } = useSiteContent();
   const bgImage = settings.background_url || heroImg;
@@ -79,29 +77,18 @@ const Landing = () => {
           </nav>
 
           <div className="flex items-center gap-2">
-            {session && isAdmin ? (
-              <button
-                onClick={() => navigate("/admin")}
-                className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-glow transition-smooth hover:brightness-110"
-              >
-                Abrir painel <ArrowRight className="h-3.5 w-3.5" />
-              </button>
-            ) : (
-              <>
-                <Link
-                  to="/auth"
-                  className="hidden rounded-md border border-border bg-card/40 px-3 py-2 text-xs font-medium text-foreground transition-smooth hover:border-primary/50 sm:inline-flex"
-                >
-                  Entrar
-                </Link>
-                <Link
-                  to="/pricing"
-                  className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-glow transition-smooth hover:brightness-110"
-                >
-                  Começar
-                </Link>
-              </>
-            )}
+            <Link
+              to="/download"
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-glow transition-smooth hover:brightness-110"
+            >
+              <Download className="h-3.5 w-3.5" /> Baixar app
+            </Link>
+            <Link
+              to="/pricing"
+              className="hidden rounded-md border border-border bg-card/40 px-3 py-2 text-xs font-medium text-foreground transition-smooth hover:border-primary/50 sm:inline-flex"
+            >
+              Planos
+            </Link>
           </div>
         </div>
       </header>
@@ -434,7 +421,7 @@ const Landing = () => {
             <a href="#recursos" className="hover:text-foreground">Recursos</a>
             <a href="#preco" className="hover:text-foreground">Preço</a>
             <a href="#faq" className="hover:text-foreground">FAQ</a>
-            <Link to="/auth" className="hover:text-foreground">Entrar</Link>
+            <Link to="/download" className="hover:text-foreground">Baixar app</Link>
           </div>
         </div>
       </footer>

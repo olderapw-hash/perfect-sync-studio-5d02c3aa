@@ -83,6 +83,7 @@ const Onboarding = () => {
     isActive,
     bypassPayment,
     active,
+    postOnboardingRoute,
     navigate,
   ]);
 

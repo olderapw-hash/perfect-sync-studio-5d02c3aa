@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useEffect } from "react";
 import {
   ArrowRight,
@@ -16,7 +16,7 @@ import {
   Users,
   Zap,
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+// useAuth removido: a landing pública não precisa mais saber se há sessão.
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { useSiteContent } from "@/hooks/useSiteContent";
 import heroImg from "@/assets/landing-hero.jpg";
@@ -29,8 +29,6 @@ const FEATURE_ICONS = [UserCog, Database, ImageIcon, History, Users, Server];
 const STEP_ICONS = [UserCog, Server, Zap];
 
 const Landing = () => {
-  const navigate = useNavigate();
-  const { session, isAdmin } = useAuth();
   const { settings } = useAppSettings();
   const { content } = useSiteContent();
   const bgImage = settings.background_url || heroImg;

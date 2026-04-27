@@ -149,14 +149,6 @@ const DownloadPage = () => {
           </ul>
         </div>
 
-        <div className="mt-8 text-center">
-          <Link
-            to="/auth"
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground shadow-glow hover:brightness-110"
-          >
-            Entrar no painel <ArrowLeft className="h-3.5 w-3.5 rotate-180" />
-          </Link>
-        </div>
       </main>
     </div>
   );

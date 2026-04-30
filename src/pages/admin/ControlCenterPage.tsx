@@ -515,19 +515,19 @@ function MetricCard({
           ? "text-muted-foreground"
           : "text-emerald-500";
   return (
-    <div className={cn("rounded-xl border p-4 backdrop-blur-md transition-colors", ring)}>
+    <div className={cn("flex h-[88px] flex-col rounded-lg border px-3 py-2 backdrop-blur-md transition-colors", ring)}>
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">
+        <span className="text-[9px] font-extrabold uppercase tracking-widest text-muted-foreground">
           {label}
         </span>
-        <Icon className={cn("h-4 w-4", accent)} />
+        <Icon className={cn("h-3.5 w-3.5", accent)} />
       </div>
-      <div className="mt-2 font-mono text-xl font-bold text-foreground">{value}</div>
-      {sub && <div className="mt-1 text-[11px] text-muted-foreground">{sub}</div>}
+      <div className="mt-0.5 font-mono text-lg font-bold leading-tight text-foreground">{value}</div>
+      {sub && <div className="text-[10px] leading-tight text-muted-foreground">{sub}</div>}
       {progress != null && Number.isFinite(progress) && (
         <Progress
           value={Math.max(0, Math.min(100, progress))}
-          className={cn("mt-3 h-1.5", tone === "danger" && "[&>div]:bg-destructive", tone === "warn" && "[&>div]:bg-amber-500")}
+          className={cn("mt-auto h-1", tone === "danger" && "[&>div]:bg-destructive", tone === "warn" && "[&>div]:bg-amber-500")}
         />
       )}
     </div>

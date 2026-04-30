@@ -617,8 +617,8 @@ export const pwApi = {
   disableWatchdog() {
     return callAction<WatchdogConfigResponse>("disableWatchdog", { method: "POST", body: {} });
   },
-  runWatchdogCheckNow() {
-    return callAction<WatchdogCheckResponse>("runWatchdogCheckNow", { method: "POST", body: {} });
+  runWatchdogCheckNow(body: { dry_run?: boolean } = {}) {
+    return callAction<WatchdogCheckResponse>("runWatchdogCheckNow", { method: "POST", body });
   },
 };
 

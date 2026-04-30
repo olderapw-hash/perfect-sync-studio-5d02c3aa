@@ -734,18 +734,19 @@ function ServicesSummaryPanel({
   snapshot: ControlCenterSnapshot | null;
   loading: boolean;
 }) {
-  // Tabela ÚNICA de serviços. Preferimos `manageable` quando vier (é o
-  // superconjunto operável); caímos pra `all` quando o backend só envia
-  // a listagem genérica. Nunca renderizamos as duas listas separadas.
+  // Por padrão mostramos apenas serviços `manageable` (operacionais).
+  // Toggle "Incluir todos" mescla com `services.all` (infra completa) sem duplicar.
+  const [includeAll, setIncludeAll] = useState(false);
   const services = useMemo(() => {
     const m = snapshot?.services?.manageable ?? [];
     const a = snapshot?.services?.all ?? [];
+    if (!includeAll) return m.length > 0 ? m : a;
     if (m.length > 0 && a.length > 0) {
       const seen = new Set(m.map((s) => s.key));
       return [...m, ...a.filter((s) => !seen.has(s.key))];
     }
     return m.length > 0 ? m : a;
-  }, [snapshot]);
+  }, [snapshot, includeAll]);
   const summary = snapshot?.services?.summary;
 
   // Ordena: críticos offline → offline → online (estável dentro de cada grupo).
@@ -761,33 +762,43 @@ function ServicesSummaryPanel({
 
   return (
     <Card className="border-border bg-card/60 backdrop-blur-md">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-        <div>
-          <CardTitle className="text-sm font-extrabold uppercase tracking-widest text-foreground">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3">
+        <div className="flex items-center gap-3">
+          <CardTitle className="text-xs font-extrabold uppercase tracking-widest text-foreground">
             Serviços
           </CardTitle>
           {summary && (
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              <span className="text-emerald-500">● {summary.online ?? 0} online</span>
-              {" · "}
-              <span className="text-destructive">● {summary.offline ?? 0} offline</span>
+            <span className="text-[10px] text-muted-foreground">
+              <span className="text-emerald-500">●{summary.online ?? 0}</span>
+              {" "}
+              <span className="text-destructive">●{summary.offline ?? 0}</span>
               {summary.critical_offline ? (
-                <>
-                  {" · "}
-                  <span className="font-bold text-destructive">
-                    {summary.critical_offline} críticos!
-                  </span>
-                </>
+                <span className="ml-1 font-bold text-destructive">
+                  ({summary.critical_offline} críticos)
+                </span>
               ) : null}
-            </p>
+            </span>
           )}
         </div>
-        <Button asChild size="sm" variant="outline" className="gap-1.5">
-          <a href="/admin/server">
-            Operação
-            <ChevronRight className="h-3.5 w-3.5" />
-          </a>
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 rounded-md border border-border/60 bg-background/40 px-2 py-1">
+            <Switch
+              id="svc-include-all"
+              checked={includeAll}
+              onCheckedChange={setIncludeAll}
+              className="scale-75"
+            />
+            <Label htmlFor="svc-include-all" className="cursor-pointer text-[9px] font-bold uppercase tracking-wider">
+              Todos
+            </Label>
+          </div>
+          <Button asChild size="sm" variant="outline" className="h-7 gap-1.5 text-[10px]">
+            <a href="/admin/server">
+              Operação
+              <ChevronRight className="h-3 w-3" />
+            </a>
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="p-0">
         {loading && ordered.length === 0 ? (

@@ -77,6 +77,7 @@ import {
   type ServerLogSource,
   type WatchdogConfig,
   type WatchdogHistoryEntry,
+  type WatchdogHistoryResponse,
   type WatchdogStatusBlock,
 } from "@/lib/pwApiActions";
 import { logAuditEvent } from "@/lib/auditLog";
@@ -1179,13 +1180,16 @@ function WatchdogMiniPanel({
 
 function LogsTab() {
   const [source, setSource] = useState<ServerLogSource>("gamedbd");
-  const [lines, setLines] = useState(20);
+  const [lines, setLines] = useState<20 | 50 | 100>(50);
   const [data, setData] = useState<ServerLogEntry[]>([]);
   const [file, setFile] = useState<string | undefined>();
   const [warning, setWarning] = useState<string | undefined>();
+  const [available, setAvailable] = useState<ServerLogSource[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [endpointMissing, setEndpointMissing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const sources = available && available.length > 0 ? available : LOG_SOURCES;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1196,6 +1200,9 @@ function LogsTab() {
       setData(res.entries ?? []);
       setFile(res.file);
       setWarning(res.warning);
+      if (res.available_sources && res.available_sources.length > 0) {
+        setAvailable(res.available_sources);
+      }
     } catch (e) {
       if (e instanceof EndpointMissingError) setEndpointMissing(true);
       else setError(e instanceof Error ? e.message : String(e));
@@ -1210,9 +1217,21 @@ function LogsTab() {
 
   if (endpointMissing) return <EndpointMissingNotice action="getServerLogs" />;
 
+  // Heurística de severidade quando o backend não classifica.
+  const classify = (e: ServerLogEntry): "fatal" | "error" | "warn" | "info" => {
+    const lvl = (e.level ?? "").toLowerCase();
+    if (lvl === "error") return "error";
+    if (lvl === "warn") return "warn";
+    const text = e.line.toLowerCase();
+    if (/\b(fatal|panic|segfault|coredump)\b/.test(text)) return "fatal";
+    if (/\b(error|err|fail|failed|exception|critical|crit)\b/.test(text)) return "error";
+    if (/\b(warn|warning)\b/.test(text)) return "warn";
+    return "info";
+  };
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3">
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-end gap-2">
         <div className="space-y-1">
           <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
             Fonte
@@ -1222,7 +1241,7 @@ function LogsTab() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {LOG_SOURCES.map((s) => (
+              {sources.map((s) => (
                 <SelectItem key={s} value={s} className="font-mono text-xs">
                   {s}
                 </SelectItem>
@@ -1234,23 +1253,26 @@ function LogsTab() {
           <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
             Linhas
           </Label>
-          <Input
-            type="number"
-            min={1}
-            max={500}
-            value={lines}
-            onChange={(e) => setLines(Math.max(1, Math.min(500, Number(e.target.value) || 20)))}
-            className="h-9 w-[100px]"
-          />
+          <Select value={String(lines)} onValueChange={(v) => setLines(Number(v) as 20 | 50 | 100)}>
+            <SelectTrigger className="h-9 w-[100px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="20">20</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+              <SelectItem value="100">100</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <Button size="sm" variant="outline" onClick={() => void load()} disabled={loading}>
+        <Button size="sm" variant="outline" onClick={() => void load()} disabled={loading} className="h-9">
           <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
           Atualizar
         </Button>
         {file && (
-          <span className="ml-auto truncate font-mono text-[10px] text-muted-foreground">
-            {file}
-          </span>
+          <div className="ml-auto flex items-center gap-1.5 truncate font-mono text-[10px] text-muted-foreground">
+            <FileText className="h-3 w-3" />
+            <span className="truncate">{file}</span>
+          </div>
         )}
       </div>
 
@@ -1265,7 +1287,7 @@ function LogsTab() {
         </div>
       )}
 
-      <div className="rounded-xl border border-border bg-black/40 p-1 backdrop-blur-md">
+      <div className="rounded-lg border border-border bg-black/40 backdrop-blur-md">
         <ScrollArea className="h-[60vh] w-full">
           {loading && data.length === 0 ? (
             <div className="flex items-center justify-center gap-2 p-6 text-xs text-muted-foreground">
@@ -1273,16 +1295,44 @@ function LogsTab() {
               Carregando...
             </div>
           ) : data.length === 0 ? (
-            <div className="flex items-center justify-center gap-2 p-6 text-xs text-muted-foreground">
-              <FileText className="h-3.5 w-3.5" />
-              Nenhuma linha disponível.
+            <div className="flex flex-col items-center justify-center gap-1.5 p-10 text-xs text-muted-foreground">
+              <FileText className="h-4 w-4" />
+              <span>Nenhuma linha disponível para <span className="font-mono">{source}</span>.</span>
+              <span className="text-[10px]">Verifique se o serviço está ativo ou tente outra fonte.</span>
             </div>
           ) : (
-            <pre className="whitespace-pre-wrap break-words p-3 font-mono text-[11px] leading-relaxed text-foreground/90">
-              {data
-                .map((e) => (e.ts ? `[${e.ts}] ${e.line}` : e.line))
-                .join("\n")}
-            </pre>
+            <div className="p-2 font-mono text-[11px] leading-relaxed">
+              {data.map((e, i) => {
+                const sev = classify(e);
+                const tone =
+                  sev === "fatal"
+                    ? "border-l-destructive bg-destructive/10 text-destructive"
+                    : sev === "error"
+                      ? "border-l-destructive/70 bg-destructive/5 text-destructive"
+                      : sev === "warn"
+                        ? "border-l-amber-500/70 bg-amber-500/5 text-amber-500"
+                        : "border-l-transparent text-foreground/85";
+                return (
+                  <div
+                    key={i}
+                    className={cn(
+                      "flex gap-2 whitespace-pre-wrap break-words border-l-2 px-2 py-0.5",
+                      tone,
+                    )}
+                  >
+                    {e.ts && (
+                      <span className="shrink-0 text-[10px] text-muted-foreground">[{e.ts}]</span>
+                    )}
+                    {sev !== "info" && (
+                      <span className="shrink-0 text-[9px] font-extrabold uppercase tracking-wider opacity-80">
+                        {sev}
+                      </span>
+                    )}
+                    <span className="min-w-0 flex-1">{e.line}</span>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </ScrollArea>
       </div>
@@ -1304,6 +1354,10 @@ function BackupsTab() {
   const [creating, setCreating] = useState<PanelBackupKind | null>(null);
   const [endpointMissing, setEndpointMissing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dryRun, setDryRun] = useState(false);
+  const [lastResult, setLastResult] = useState<
+    { type: PanelBackupKind; ok: boolean; message: string } | null
+  >(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1339,28 +1393,100 @@ function BackupsTab() {
   const create = async (type: PanelBackupKind) => {
     if (!canAct) return;
     setCreating(type);
+    setLastResult(null);
     try {
-      await pwApi.backupNow({ type });
-      toast.success(`Backup ${type} disparado`);
+      const res = await pwApi.backupNow({ type, dry_run: dryRun });
+      const msg = dryRun
+        ? `Dry-run ${type} ok`
+        : res.backup?.name
+          ? `Backup ${type} criado: ${res.backup.name}`
+          : `Backup ${type} disparado`;
+      toast.success(msg);
+      setLastResult({ type, ok: true, message: msg });
       void load();
     } catch (e) {
-      if (e instanceof EndpointMissingError) {
-        toast.error(`backupNow ainda não implementado nesta VPS`);
-      } else {
-        toast.error(`Backup ${type}: ${e instanceof Error ? e.message : String(e)}`);
-      }
+      const msg = e instanceof EndpointMissingError
+        ? `backupNow ainda não implementado nesta VPS`
+        : e instanceof Error
+          ? e.message
+          : String(e);
+      toast.error(`Backup ${type}: ${msg}`);
+      setLastResult({ type, ok: false, message: msg });
     } finally {
       setCreating(null);
     }
   };
 
+  // Resumo por tipo a partir da lista carregada (sem pedir filtro).
+  const summaryByType = useMemo(() => {
+    const map = new Map<string, { count: number; latest?: PanelBackupRecord; bytes: number }>();
+    for (const b of items) {
+      const t = String(b.type ?? "unknown");
+      const cur = map.get(t) ?? { count: 0, bytes: 0 };
+      cur.count += 1;
+      cur.bytes += b.bytes ?? b.size ?? 0;
+      const cTs =
+        typeof cur.latest?.created_at === "number"
+          ? cur.latest.created_at
+          : Date.parse(String(cur.latest?.created_at ?? 0)) / 1000;
+      const bTs =
+        typeof b.created_at === "number"
+          ? b.created_at
+          : Date.parse(String(b.created_at ?? 0)) / 1000;
+      if (!cur.latest || (bTs || 0) > (cTs || 0)) cur.latest = b;
+      map.set(t, cur);
+    }
+    return map;
+  }, [items]);
+
   if (endpointMissing) return <EndpointMissingNotice action="listBackups" />;
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
+      {/* Resumo por tipo */}
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        {BACKUP_TYPES.map((t) => {
+          const s = summaryByType.get(t);
+          const critical = BACKUP_CRITICAL.has(t);
+          return (
+            <div
+              key={t}
+              className={cn(
+                "flex flex-col rounded-lg border px-3 py-2 backdrop-blur-md",
+                critical
+                  ? "border-primary/30 bg-primary/5"
+                  : "border-border bg-card/40",
+              )}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-[10px] font-extrabold uppercase tracking-widest text-foreground">
+                  {t}
+                </span>
+                {critical ? (
+                  <Badge variant="outline" className="border-primary/40 px-1 py-0 text-[8px] text-primary">
+                    CRÍT
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="border-border px-1 py-0 text-[8px] text-muted-foreground">
+                    LEVE
+                  </Badge>
+                )}
+              </div>
+              <div className="mt-1 font-mono text-base font-bold leading-tight text-foreground">
+                {s?.count ?? 0}
+              </div>
+              <div className="text-[10px] leading-tight text-muted-foreground">
+                {s?.latest ? fmtDate(s.latest.created_at ?? s.latest.mtime) : "sem backup"}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Toolbar de criação + filtro */}
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card/40 p-2">
         <Select value={filter} onValueChange={(v) => setFilter(v as typeof filter)}>
-          <SelectTrigger className="h-9 w-[180px]">
+          <SelectTrigger className="h-8 w-[160px] text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -1372,33 +1498,61 @@ function BackupsTab() {
             ))}
           </SelectContent>
         </Select>
-        <Button size="sm" variant="outline" onClick={() => void load()} disabled={loading}>
+        <Button size="sm" variant="outline" onClick={() => void load()} disabled={loading} className="h-8">
           <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
           Atualizar
         </Button>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1.5 rounded-md border border-border bg-background/40 px-2 py-1">
+          <Switch
+            id="bk-dry-run"
+            checked={dryRun}
+            onCheckedChange={setDryRun}
+            disabled={!canAct || creating != null}
+            className="scale-75"
+          />
+          <Label htmlFor="bk-dry-run" className="cursor-pointer text-[9px] font-bold uppercase tracking-wider">
+            Dry-run
+          </Label>
+        </div>
+        <div className="ml-auto flex flex-wrap items-center gap-1.5">
           <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            Disparar backup:
+            Disparar:
           </span>
-          {BACKUP_TYPES.map((t) => (
-            <Button
-              key={t}
-              size="sm"
-              variant="secondary"
-              disabled={!canAct || creating != null}
-              onClick={() => create(t)}
-              className="h-8 font-mono text-xs"
-            >
-              {creating === t ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Archive className="h-3.5 w-3.5" />
-              )}
-              {t}
-            </Button>
-          ))}
+          {BACKUP_TYPES.map((t) => {
+            const critical = BACKUP_CRITICAL.has(t);
+            return (
+              <Button
+                key={t}
+                size="sm"
+                variant={critical ? "default" : "secondary"}
+                disabled={!canAct || creating != null}
+                onClick={() => create(t)}
+                className="h-7 font-mono text-[11px]"
+              >
+                {creating === t ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Archive className="h-3 w-3" />
+                )}
+                {t}
+              </Button>
+            );
+          })}
         </div>
       </div>
+
+      {lastResult && (
+        <div
+          className={cn(
+            "rounded-md border px-3 py-2 text-xs",
+            lastResult.ok
+              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
+              : "border-destructive/40 bg-destructive/10 text-destructive",
+          )}
+        >
+          <span className="font-mono">[{lastResult.type}]</span> {lastResult.message}
+        </div>
+      )}
 
       {error && (
         <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
@@ -1407,9 +1561,14 @@ function BackupsTab() {
       )}
 
       <Card className="border-border bg-card/60 backdrop-blur-md">
+        <CardHeader className="pb-2 pt-3">
+          <CardTitle className="text-xs font-extrabold uppercase tracking-widest text-foreground">
+            Backups recentes
+          </CardTitle>
+        </CardHeader>
         <CardContent className="p-0">
           {loading && items.length === 0 ? (
-            <div className="p-6">
+            <div className="p-4">
               <Skeleton className="h-32 rounded-lg" />
             </div>
           ) : items.length === 0 ? (
@@ -1420,21 +1579,35 @@ function BackupsTab() {
             <ul className="divide-y divide-border/60">
               {items.map((b, i) => {
                 const size = b.bytes ?? b.size;
+                const critical = BACKUP_CRITICAL.has(String(b.type ?? ""));
                 return (
                   <li
                     key={b.id ?? b.file ?? `${b.name}-${i}`}
-                    className="flex flex-wrap items-center gap-3 px-4 py-3 hover:bg-accent/30"
+                    className={cn(
+                      "flex flex-wrap items-center gap-3 px-4 py-2 hover:bg-accent/30",
+                      critical && "border-l-2 border-l-primary/50",
+                    )}
                   >
-                    <Archive className="h-4 w-4 text-primary" />
-                    <Badge variant="outline" className="font-mono text-[10px] uppercase">
+                    <Archive className={cn("h-3.5 w-3.5", critical ? "text-primary" : "text-muted-foreground")} />
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "font-mono text-[10px] uppercase",
+                        critical
+                          ? "border-primary/40 text-primary"
+                          : "border-border text-muted-foreground",
+                      )}
+                    >
                       {b.type ?? "?"}
                     </Badge>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-mono text-xs text-foreground">
                         {b.name ?? b.file ?? "—"}
                       </p>
-                      {b.file && b.name && (
-                        <p className="truncate font-mono text-[10px] text-muted-foreground">{b.file}</p>
+                      {b.sha1 && (
+                        <p className="truncate font-mono text-[10px] text-muted-foreground">
+                          sha1 {b.sha1.slice(0, 16)}…
+                        </p>
                       )}
                     </div>
                     {size != null && (
@@ -1446,7 +1619,7 @@ function BackupsTab() {
                       <Badge
                         variant="outline"
                         className={cn(
-                          "text-[10px] uppercase",
+                          "px-1.5 py-0 text-[9px] uppercase",
                           b.status === "ok"
                             ? "border-emerald-500/40 text-emerald-500"
                             : b.status === "failed"
@@ -1471,6 +1644,8 @@ function BackupsTab() {
   );
 }
 
+const BACKUP_CRITICAL = new Set<string>(["gamedbd", "mysql", "full"]);
+
 /* -------------------------------------------------------------------------- */
 /* Watchdog Tab                                                                */
 /* -------------------------------------------------------------------------- */
@@ -1486,10 +1661,27 @@ function WatchdogTab() {
   const [acting, setActing] = useState<string | null>(null);
   const [endpointMissing, setEndpointMissing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // editable config
+
+  // editable config (todos os campos do contrato)
   const [criticalText, setCriticalText] = useState("");
   const [cooldown, setCooldown] = useState<number>(60);
+  const [failureThreshold, setFailureThreshold] = useState<number>(2);
+  const [maxRestartAttempts, setMaxRestartAttempts] = useState<number>(3);
+  const [verifyRestart, setVerifyRestart] = useState(true);
+  const [pauseDuringMaintenance, setPauseDuringMaintenance] = useState(true);
   const [autoRestart, setAutoRestart] = useState(true);
+  const [dryRunCheck, setDryRunCheck] = useState(false);
+
+  const applyConfigToForm = useCallback((c?: WatchdogConfig) => {
+    if (!c) return;
+    setCriticalText((c.critical_services ?? []).join(", "));
+    if (c.cooldown_seconds != null) setCooldown(c.cooldown_seconds);
+    if (c.failure_threshold != null) setFailureThreshold(c.failure_threshold);
+    if (c.max_restart_attempts != null) setMaxRestartAttempts(c.max_restart_attempts);
+    if (c.verify_restart != null) setVerifyRestart(c.verify_restart);
+    if (c.pause_during_maintenance != null) setPauseDuringMaintenance(c.pause_during_maintenance);
+    if (c.auto_restart != null) setAutoRestart(c.auto_restart);
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1498,21 +1690,21 @@ function WatchdogTab() {
     try {
       const [s, h] = await Promise.all([
         pwApi.getWatchdogStatus(),
-        pwApi.getWatchdogHistory({ limit: 20 }).catch(() => ({ success: false, entries: [] }) as never),
+        pwApi
+          .getWatchdogHistory({ limit: 20 })
+          .catch(() => ({ success: false, entries: [] }) as WatchdogHistoryResponse),
       ]);
       setStatus(s.status);
       setConfig(s.config);
-      setCriticalText((s.config?.critical_services ?? []).join(", "));
-      if (s.config?.cooldown_seconds != null) setCooldown(s.config.cooldown_seconds);
-      if (s.config?.auto_restart != null) setAutoRestart(s.config.auto_restart);
-      setHistory((h as WatchdogHistoryEntry[] extends never ? never : { entries?: WatchdogHistoryEntry[] }).entries ?? []);
+      applyConfigToForm(s.config);
+      setHistory(h.entries ?? []);
     } catch (e) {
       if (e instanceof EndpointMissingError) setEndpointMissing(true);
       else setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [applyConfigToForm]);
 
   useEffect(() => {
     void load();
@@ -1537,9 +1729,9 @@ function WatchdogTab() {
     if (!canAct) return;
     setActing("run");
     try {
-      const r = await pwApi.runWatchdogCheckNow();
+      const r = await pwApi.runWatchdogCheckNow({ dry_run: dryRunCheck });
       if (r.status) setStatus(r.status);
-      toast.success(`Checagem: ${r.result ?? "ok"}`);
+      toast.success(`Checagem${dryRunCheck ? " (dry-run)" : ""}: ${r.result ?? "ok"}`);
       void load();
     } catch (e) {
       toast.error(`${e instanceof Error ? e.message : String(e)}`);
@@ -1559,6 +1751,10 @@ function WatchdogTab() {
       const r = await pwApi.saveWatchdogConfig({
         critical_services,
         cooldown_seconds: cooldown,
+        failure_threshold: failureThreshold,
+        max_restart_attempts: maxRestartAttempts,
+        verify_restart: verifyRestart,
+        pause_during_maintenance: pauseDuringMaintenance,
         auto_restart: autoRestart,
       });
       setConfig(r.config);
@@ -1574,11 +1770,12 @@ function WatchdogTab() {
   if (endpointMissing) return <EndpointMissingNotice action="getWatchdogStatus" />;
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-6 lg:grid-cols-2">
+    <div className="space-y-4">
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* ─── Estado atual ─── */}
         <Card className="border-border bg-card/60 backdrop-blur-md">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-extrabold uppercase tracking-widest text-foreground">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3">
+            <CardTitle className="text-xs font-extrabold uppercase tracking-widest text-foreground">
               Estado atual
             </CardTitle>
             {status?.enabled ? (
@@ -1587,7 +1784,7 @@ function WatchdogTab() {
               <ShieldAlert className="h-4 w-4 text-muted-foreground" />
             )}
           </CardHeader>
-          <CardContent className="space-y-3 text-xs">
+          <CardContent className="space-y-2 pb-3 text-xs">
             {loading && !status ? (
               <Skeleton className="h-32 rounded-lg" />
             ) : (
@@ -1595,6 +1792,7 @@ function WatchdogTab() {
                 <Field label="Habilitado" value={status?.enabled ? "SIM" : "NÃO"} />
                 <Field label="Último resultado" valueNode={<ResultBadge result={status?.last_result} />} />
                 <Field label="Última checagem" value={fmtDate(status?.last_check_at)} />
+                <Field label="Último sucesso" value={fmtDate(status?.last_success_at)} />
                 <Field
                   label="Cooldown"
                   value={
@@ -1604,32 +1802,43 @@ function WatchdogTab() {
                   }
                 />
                 <Field label="Falha crítica" value={status?.critical_failure ? "SIM" : "não"} />
-                {status?.unhealthy_services && status.unhealthy_services.length > 0 && (
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                      Não saudáveis
-                    </p>
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {status.unhealthy_services.map((s) => (
-                        <Badge
-                          key={s}
-                          variant="outline"
-                          className="border-destructive/50 font-mono text-[10px] text-destructive"
-                        >
-                          {s}
-                        </Badge>
-                      ))}
-                    </div>
+
+                <ServiceTagList
+                  label="Saudáveis"
+                  items={status?.healthy_services}
+                  tone="ok"
+                />
+                <ServiceTagList
+                  label="Não saudáveis"
+                  items={status?.unhealthy_services}
+                  tone="danger"
+                />
+                <ServiceTagList
+                  label="Triggers"
+                  items={status?.trigger_services}
+                  tone="warn"
+                />
+
+                <div className="flex flex-wrap items-center gap-2 pt-2">
+                  <div className="flex items-center gap-1.5 rounded-md border border-border bg-background/40 px-2 py-1">
+                    <Switch
+                      id="wd-dry-run"
+                      checked={dryRunCheck}
+                      onCheckedChange={setDryRunCheck}
+                      disabled={!canAct || acting != null}
+                      className="scale-75"
+                    />
+                    <Label htmlFor="wd-dry-run" className="cursor-pointer text-[9px] font-bold uppercase tracking-wider">
+                      Dry-run
+                    </Label>
                   </div>
-                )}
-                <div className="flex flex-wrap gap-2 pt-2">
-                  <Button size="sm" disabled={!canAct || acting != null} onClick={runNow} variant="default">
+                  <Button size="sm" disabled={!canAct || acting != null} onClick={runNow} variant="default" className="h-8">
                     {acting === "run" ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
                       <Activity className="h-3.5 w-3.5" />
                     )}
-                    Rodar checagem agora
+                    Rodar checagem
                   </Button>
                   {status?.enabled ? (
                     <Button
@@ -1637,6 +1846,7 @@ function WatchdogTab() {
                       disabled={!canAct || acting != null}
                       onClick={() => toggle(false)}
                       variant="destructive"
+                      className="h-8"
                     >
                       {acting === "disable" ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1650,7 +1860,7 @@ function WatchdogTab() {
                       size="sm"
                       disabled={!canAct || acting != null}
                       onClick={() => toggle(true)}
-                      className="bg-emerald-600 text-white hover:bg-emerald-600/90"
+                      className="h-8 bg-emerald-600 text-white hover:bg-emerald-600/90"
                     >
                       {acting === "enable" ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1666,13 +1876,14 @@ function WatchdogTab() {
           </CardContent>
         </Card>
 
+        {/* ─── Configuração ─── */}
         <Card className="border-border bg-card/60 backdrop-blur-md">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-extrabold uppercase tracking-widest text-foreground">
+          <CardHeader className="pb-2 pt-3">
+            <CardTitle className="text-xs font-extrabold uppercase tracking-widest text-foreground">
               Configuração
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4 text-xs">
+          <CardContent className="space-y-3 pb-3 text-xs">
             <div className="space-y-1">
               <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                 Serviços críticos (separados por vírgula)
@@ -1680,12 +1891,12 @@ function WatchdogTab() {
               <Input
                 value={criticalText}
                 onChange={(e) => setCriticalText(e.target.value)}
-                className="font-mono"
+                className="h-8 font-mono text-xs"
                 placeholder="gamedbd, gdeliveryd, authd, mysql"
                 disabled={!canAct}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-2">
               <div className="space-y-1">
                 <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                   Cooldown (s)
@@ -1695,18 +1906,63 @@ function WatchdogTab() {
                   min={0}
                   value={cooldown}
                   onChange={(e) => setCooldown(Math.max(0, Number(e.target.value) || 0))}
-                  className="font-mono"
+                  className="h-8 font-mono text-xs"
                   disabled={!canAct}
                 />
               </div>
-              <div className="flex items-center gap-2 pt-5">
-                <Switch checked={autoRestart} onCheckedChange={setAutoRestart} disabled={!canAct} id="autoR" />
-                <Label htmlFor="autoR" className="text-xs">
-                  Auto-restart
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Falhas p/ acionar
                 </Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={failureThreshold}
+                  onChange={(e) => setFailureThreshold(Math.max(1, Number(e.target.value) || 1))}
+                  className="h-8 font-mono text-xs"
+                  disabled={!canAct}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Max restarts
+                </Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={maxRestartAttempts}
+                  onChange={(e) => setMaxRestartAttempts(Math.max(0, Number(e.target.value) || 0))}
+                  className="h-8 font-mono text-xs"
+                  disabled={!canAct}
+                />
               </div>
             </div>
-            <Button size="sm" disabled={!canAct || acting != null} onClick={saveConfig}>
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <ToggleRow
+                id="wd-auto"
+                checked={autoRestart}
+                onChange={setAutoRestart}
+                disabled={!canAct}
+                label="Auto-restart"
+              />
+              <ToggleRow
+                id="wd-verify"
+                checked={verifyRestart}
+                onChange={setVerifyRestart}
+                disabled={!canAct}
+                label="Verificar após restart"
+              />
+              <ToggleRow
+                id="wd-pause-maint"
+                checked={pauseDuringMaintenance}
+                onChange={setPauseDuringMaintenance}
+                disabled={!canAct}
+                label="Pausar em manutenção"
+              />
+            </div>
+
+            <Button size="sm" disabled={!canAct || acting != null} onClick={saveConfig} className="h-8">
               {acting === "save" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ChevronRight className="h-3.5 w-3.5" />}
               Salvar configuração
             </Button>
@@ -1714,42 +1970,55 @@ function WatchdogTab() {
         </Card>
       </div>
 
+      {/* ─── Histórico ─── */}
       <Card className="border-border bg-card/60 backdrop-blur-md">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-          <CardTitle className="text-sm font-extrabold uppercase tracking-widest text-foreground">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3">
+          <CardTitle className="text-xs font-extrabold uppercase tracking-widest text-foreground">
             Histórico recente
           </CardTitle>
           <HistoryIcon className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
-        <CardContent>
+        <CardContent className="pb-3">
           {loading && history.length === 0 ? (
             <Skeleton className="h-24 rounded-lg" />
           ) : history.length === 0 ? (
             <EmptyHint icon={HistoryIcon}>Sem histórico de checagens.</EmptyHint>
           ) : (
-            <div className="space-y-1.5">
-              {history.map((h, i) => (
-                <div
-                  key={h.id ?? i}
-                  className="flex flex-wrap items-center gap-3 rounded-md border border-border/60 bg-background/40 px-3 py-2 text-xs"
-                >
-                  <ResultBadge result={h.result} />
-                  <span className="font-mono text-[10px] text-muted-foreground">{fmtDate(h.ts)}</span>
-                  {h.duration_ms != null && (
-                    <span className="font-mono text-[10px] text-muted-foreground">{h.duration_ms}ms</span>
-                  )}
-                  {h.unhealthy_services && h.unhealthy_services.length > 0 && (
-                    <span className="truncate font-mono text-[10px] text-destructive">
-                      {h.unhealthy_services.join(", ")}
-                    </span>
-                  )}
-                  {h.actions && h.actions.length > 0 && (
-                    <span className="ml-auto truncate font-mono text-[10px] text-amber-500">
-                      → {h.actions.join(", ")}
-                    </span>
-                  )}
-                </div>
-              ))}
+            <div className="space-y-1">
+              {history.map((h, i) => {
+                const message = (h as { message?: string; source?: string }).message;
+                const sourceTag = (h as { source?: string }).source;
+                return (
+                  <div
+                    key={h.id ?? i}
+                    className="flex flex-wrap items-center gap-2 rounded-md border border-border/60 bg-background/40 px-3 py-1.5 text-xs"
+                  >
+                    <ResultBadge result={h.result} />
+                    <span className="font-mono text-[10px] text-muted-foreground">{fmtDate(h.ts)}</span>
+                    {sourceTag && (
+                      <Badge variant="outline" className="border-border px-1 py-0 text-[9px] font-mono uppercase">
+                        {sourceTag}
+                      </Badge>
+                    )}
+                    {h.duration_ms != null && (
+                      <span className="font-mono text-[10px] text-muted-foreground">{h.duration_ms}ms</span>
+                    )}
+                    {message && (
+                      <span className="min-w-0 flex-1 truncate text-[11px] text-foreground/85">{message}</span>
+                    )}
+                    {h.unhealthy_services && h.unhealthy_services.length > 0 && (
+                      <span className="truncate font-mono text-[10px] text-destructive">
+                        {h.unhealthy_services.join(", ")}
+                      </span>
+                    )}
+                    {h.actions && h.actions.length > 0 && (
+                      <span className="ml-auto truncate font-mono text-[10px] text-amber-500">
+                        → {h.actions.join(", ")}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>
@@ -1760,6 +2029,61 @@ function WatchdogTab() {
           {error}
         </div>
       )}
+    </div>
+  );
+}
+
+function ToggleRow({
+  id,
+  checked,
+  onChange,
+  disabled,
+  label,
+}: {
+  id: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
+  label: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-background/40 px-2 py-1.5">
+      <Label htmlFor={id} className="cursor-pointer text-[11px] text-foreground">
+        {label}
+      </Label>
+      <Switch id={id} checked={checked} onCheckedChange={onChange} disabled={disabled} />
+    </div>
+  );
+}
+
+function ServiceTagList({
+  label,
+  items,
+  tone,
+}: {
+  label: string;
+  items?: string[];
+  tone: "ok" | "warn" | "danger";
+}) {
+  if (!items || items.length === 0) return null;
+  const cls =
+    tone === "danger"
+      ? "border-destructive/50 text-destructive"
+      : tone === "warn"
+        ? "border-amber-500/40 text-amber-500"
+        : "border-emerald-500/40 text-emerald-500";
+  return (
+    <div>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+        {label} <span className="text-muted-foreground/60">({items.length})</span>
+      </p>
+      <div className="mt-1 flex flex-wrap gap-1">
+        {items.map((s) => (
+          <Badge key={s} variant="outline" className={cn("font-mono text-[10px]", cls)}>
+            {s}
+          </Badge>
+        ))}
+      </div>
     </div>
   );
 }

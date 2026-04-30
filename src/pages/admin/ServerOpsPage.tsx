@@ -72,6 +72,7 @@ const TABS = [
   { value: "status", label: "Status", icon: Activity, path: "/admin/server" },
   { value: "instances", label: "Instâncias", icon: CircuitBoard, path: "/admin/server/instances" },
   { value: "logs", label: "Logs", icon: FileText, path: "/admin/server/logs" },
+  { value: "messages", label: "Mensagens", icon: Megaphone, path: "/admin/server/messages" },
   { value: "actions", label: "Export & Reload", icon: Wrench, path: "/admin/server/actions" },
   { value: "history", label: "Histórico", icon: HistoryIcon, path: "/admin/server/history" },
 ] as const;

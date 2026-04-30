@@ -397,28 +397,25 @@ function HostHealthGrid({
   const h = snapshot?.host;
   if (loading) {
     return (
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
         {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-28 rounded-xl" />
+          <Skeleton key={i} className="h-[88px] rounded-lg" />
         ))}
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xs font-extrabold uppercase tracking-widest text-muted-foreground">
-          Saúde do host
-        </h2>
-        {h?.hostname && (
+    <div className="space-y-1.5">
+      {h?.hostname && (
+        <div className="flex items-center justify-end">
           <span className="font-mono text-[10px] text-muted-foreground">
             {h.hostname}
             {h.ip ? ` · ${h.ip}` : ""}
           </span>
-        )}
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        </div>
+      )}
+      <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
         <MetricCard
           icon={Cpu}
           label="CPU"
@@ -459,7 +456,7 @@ function HostHealthGrid({
         />
         <MetricCard
           icon={Activity}
-          label="Load avg"
+          label="Load"
           value={
             Array.isArray(h?.load_average) && h.load_average.length > 0
               ? h.load_average
@@ -475,7 +472,7 @@ function HostHealthGrid({
           icon={Wifi}
           label="Latência"
           value={h?.ping_ms != null ? `${h.ping_ms.toFixed(0)} ms` : "—"}
-          sub={h?.response_time_ms != null ? `resposta ${h.response_time_ms.toFixed(0)} ms` : undefined}
+          sub={h?.response_time_ms != null ? `resp ${h.response_time_ms.toFixed(0)} ms` : undefined}
           tone={toneFor(h?.ping_ms ?? undefined, 100, 250)}
         />
       </div>
@@ -515,19 +512,19 @@ function MetricCard({
           ? "text-muted-foreground"
           : "text-emerald-500";
   return (
-    <div className={cn("rounded-xl border p-4 backdrop-blur-md transition-colors", ring)}>
+    <div className={cn("flex h-[88px] flex-col rounded-lg border px-3 py-2 backdrop-blur-md transition-colors", ring)}>
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">
+        <span className="text-[9px] font-extrabold uppercase tracking-widest text-muted-foreground">
           {label}
         </span>
-        <Icon className={cn("h-4 w-4", accent)} />
+        <Icon className={cn("h-3.5 w-3.5", accent)} />
       </div>
-      <div className="mt-2 font-mono text-xl font-bold text-foreground">{value}</div>
-      {sub && <div className="mt-1 text-[11px] text-muted-foreground">{sub}</div>}
+      <div className="mt-0.5 font-mono text-lg font-bold leading-tight text-foreground">{value}</div>
+      {sub && <div className="text-[10px] leading-tight text-muted-foreground">{sub}</div>}
       {progress != null && Number.isFinite(progress) && (
         <Progress
           value={Math.max(0, Math.min(100, progress))}
-          className={cn("mt-3 h-1.5", tone === "danger" && "[&>div]:bg-destructive", tone === "warn" && "[&>div]:bg-amber-500")}
+          className={cn("mt-auto h-1", tone === "danger" && "[&>div]:bg-destructive", tone === "warn" && "[&>div]:bg-amber-500")}
         />
       )}
     </div>
@@ -737,18 +734,19 @@ function ServicesSummaryPanel({
   snapshot: ControlCenterSnapshot | null;
   loading: boolean;
 }) {
-  // Tabela ÚNICA de serviços. Preferimos `manageable` quando vier (é o
-  // superconjunto operável); caímos pra `all` quando o backend só envia
-  // a listagem genérica. Nunca renderizamos as duas listas separadas.
+  // Por padrão mostramos apenas serviços `manageable` (operacionais).
+  // Toggle "Incluir todos" mescla com `services.all` (infra completa) sem duplicar.
+  const [includeAll, setIncludeAll] = useState(false);
   const services = useMemo(() => {
     const m = snapshot?.services?.manageable ?? [];
     const a = snapshot?.services?.all ?? [];
+    if (!includeAll) return m.length > 0 ? m : a;
     if (m.length > 0 && a.length > 0) {
       const seen = new Set(m.map((s) => s.key));
       return [...m, ...a.filter((s) => !seen.has(s.key))];
     }
     return m.length > 0 ? m : a;
-  }, [snapshot]);
+  }, [snapshot, includeAll]);
   const summary = snapshot?.services?.summary;
 
   // Ordena: críticos offline → offline → online (estável dentro de cada grupo).
@@ -764,33 +762,43 @@ function ServicesSummaryPanel({
 
   return (
     <Card className="border-border bg-card/60 backdrop-blur-md">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-        <div>
-          <CardTitle className="text-sm font-extrabold uppercase tracking-widest text-foreground">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3">
+        <div className="flex items-center gap-3">
+          <CardTitle className="text-xs font-extrabold uppercase tracking-widest text-foreground">
             Serviços
           </CardTitle>
           {summary && (
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              <span className="text-emerald-500">● {summary.online ?? 0} online</span>
-              {" · "}
-              <span className="text-destructive">● {summary.offline ?? 0} offline</span>
+            <span className="text-[10px] text-muted-foreground">
+              <span className="text-emerald-500">●{summary.online ?? 0}</span>
+              {" "}
+              <span className="text-destructive">●{summary.offline ?? 0}</span>
               {summary.critical_offline ? (
-                <>
-                  {" · "}
-                  <span className="font-bold text-destructive">
-                    {summary.critical_offline} críticos!
-                  </span>
-                </>
+                <span className="ml-1 font-bold text-destructive">
+                  ({summary.critical_offline} críticos)
+                </span>
               ) : null}
-            </p>
+            </span>
           )}
         </div>
-        <Button asChild size="sm" variant="outline" className="gap-1.5">
-          <a href="/admin/server">
-            Operação
-            <ChevronRight className="h-3.5 w-3.5" />
-          </a>
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 rounded-md border border-border/60 bg-background/40 px-2 py-1">
+            <Switch
+              id="svc-include-all"
+              checked={includeAll}
+              onCheckedChange={setIncludeAll}
+              className="scale-75"
+            />
+            <Label htmlFor="svc-include-all" className="cursor-pointer text-[9px] font-bold uppercase tracking-wider">
+              Todos
+            </Label>
+          </div>
+          <Button asChild size="sm" variant="outline" className="h-7 gap-1.5 text-[10px]">
+            <a href="/admin/server">
+              Operação
+              <ChevronRight className="h-3 w-3" />
+            </a>
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="p-0">
         {loading && ordered.length === 0 ? (
@@ -1097,10 +1105,11 @@ function WatchdogMiniPanel({
         : tone === "muted"
           ? "border-border bg-card/40"
           : "border-emerald-500/30 bg-emerald-500/10";
+  const unhealthyCount = watchdog?.unhealthy_services?.length ?? 0;
   return (
     <Card className={cn("backdrop-blur-md", ring)}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-        <CardTitle className="text-sm font-extrabold uppercase tracking-widest text-foreground">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3">
+        <CardTitle className="text-xs font-extrabold uppercase tracking-widest text-foreground">
           Watchdog
         </CardTitle>
         {enabled ? (
@@ -1109,7 +1118,7 @@ function WatchdogMiniPanel({
           <ShieldAlert className="h-4 w-4 text-muted-foreground" />
         )}
       </CardHeader>
-      <CardContent className="space-y-2 text-xs">
+      <CardContent className="space-y-1.5 pb-3 text-[11px]">
         {loading && !watchdog ? (
           <Skeleton className="h-16 rounded-lg" />
         ) : (
@@ -1119,44 +1128,38 @@ function WatchdogMiniPanel({
               <Badge
                 variant="outline"
                 className={cn(
+                  "px-1.5 py-0 text-[9px]",
                   enabled ? "border-emerald-500/40 text-emerald-500" : "border-border text-muted-foreground",
                 )}
               >
-                {enabled ? "ATIVO" : "DESATIVADO"}
+                {enabled ? "ATIVO" : "OFF"}
               </Badge>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Último resultado</span>
+              <span className="text-muted-foreground">Resultado</span>
               <ResultBadge result={result} />
             </div>
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Última checagem</span>
-              <span className="font-mono text-[11px]">{fmtDate(watchdog?.last_check_at)}</span>
+              <span className="font-mono text-[10px]">{fmtDate(watchdog?.last_check_at)}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Cooldown</span>
-              <span className="font-mono text-[11px]">
-                {watchdog?.cooldown_seconds ? `${watchdog.cooldown_seconds}s` : "—"}
+              <span className="text-muted-foreground">Não saudáveis</span>
+              <span
+                className={cn(
+                  "font-mono text-[10px] font-bold",
+                  unhealthyCount > 0 ? "text-destructive" : "text-muted-foreground",
+                )}
+              >
+                {unhealthyCount}
               </span>
             </div>
-            {watchdog?.unhealthy_services && watchdog.unhealthy_services.length > 0 && (
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                  Não saudáveis
-                </p>
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {watchdog.unhealthy_services.map((s) => (
-                    <Badge
-                      key={s}
-                      variant="outline"
-                      className="border-destructive/50 font-mono text-[10px] text-destructive"
-                    >
-                      {s}
-                    </Badge>
-                  ))}
-                </div>
+            {watchdog?.cooldown_seconds ? (
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Cooldown</span>
+                <span className="font-mono text-[10px]">{watchdog.cooldown_seconds}s</span>
               </div>
-            )}
+            ) : null}
           </>
         )}
         <a

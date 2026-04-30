@@ -36,6 +36,7 @@ import {
   Truck,
   User as UserIcon,
   Wrench,
+  Megaphone,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -71,6 +72,7 @@ const TABS = [
   { value: "status", label: "Status", icon: Activity, path: "/admin/server" },
   { value: "instances", label: "Instâncias", icon: CircuitBoard, path: "/admin/server/instances" },
   { value: "logs", label: "Logs", icon: FileText, path: "/admin/server/logs" },
+  { value: "messages", label: "Mensagens", icon: Megaphone, path: "/admin/server/messages" },
   { value: "actions", label: "Export & Reload", icon: Wrench, path: "/admin/server/actions" },
   { value: "history", label: "Histórico", icon: HistoryIcon, path: "/admin/server/history" },
 ] as const;
@@ -85,6 +87,7 @@ const ServerOpsPage = () => {
   const currentTab = useMemo(() => {
     if (location.pathname.startsWith("/admin/server/instances")) return "instances";
     if (location.pathname.startsWith("/admin/server/logs")) return "logs";
+    if (location.pathname.startsWith("/admin/server/messages")) return "messages";
     if (location.pathname.startsWith("/admin/server/actions")) return "actions";
     if (location.pathname.startsWith("/admin/server/history")) return "history";
     return "status";

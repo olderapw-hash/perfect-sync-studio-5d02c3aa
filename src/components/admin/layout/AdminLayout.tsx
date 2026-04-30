@@ -27,7 +27,7 @@ import {
   Globe,
   LogOut,
   Mail,
-  Server,
+  
   Shield,
   ShieldCheck,
   UserCog,
@@ -92,17 +92,10 @@ const SECTIONS: NavSection[] = [
     basePath: "/admin/control-center",
     children: [
       { to: "/admin/control-center", label: "Dashboard NOC", end: true },
-    ],
-  },
-  {
-    id: "server",
-    label: "Operação do Servidor",
-    icon: Server,
-    basePath: "/admin/server",
-    children: [
-      { to: "/admin/server", label: "Status", end: true },
+      { to: "/admin/server", label: "Status do servidor", end: true },
       { to: "/admin/server/logs", label: "Logs" },
-      { to: "/admin/server/actions", label: "Export & Reload" },
+      { to: "/admin/server/messages", label: "Mensagens & manutenção" },
+      { to: "/admin/server/actions", label: "Export & reload" },
     ],
   },
   {
@@ -265,7 +258,11 @@ const NavSectionGroup = ({
   const { isTrial } = useServerPermissions();
   const showProBadge = isTrial && section.proInTrial === true;
   const location = useLocation();
-  const isActiveSection = location.pathname.startsWith(section.basePath);
+  const isActiveSection =
+    location.pathname.startsWith(section.basePath) ||
+    section.children.some((c) =>
+      c.end ? location.pathname === c.to : location.pathname.startsWith(c.to),
+    );
   const [open, setOpen] = useState(isActiveSection);
 
   // Reabre automaticamente se a rota mudar para dentro deste grupo.

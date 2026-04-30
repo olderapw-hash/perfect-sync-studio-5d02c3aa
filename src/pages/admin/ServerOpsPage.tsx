@@ -69,6 +69,8 @@ import { NoActiveServerState } from "@/components/admin/NoActiveServerState";
 import { cn } from "@/lib/utils";
 
 const TABS = [
+  { value: "status", label: "Status", icon: Activity, path: "/admin/server" },
+  { value: "instances", label: "Instâncias", icon: CircuitBoard, path: "/admin/server/instances" },
   { value: "logs", label: "Logs", icon: FileText, path: "/admin/server/logs" },
   { value: "messages", label: "Mensagens", icon: Megaphone, path: "/admin/server/messages" },
   { value: "actions", label: "Export & Reload", icon: Wrench, path: "/admin/server/actions" },
@@ -83,11 +85,12 @@ const ServerOpsPage = () => {
   const navigate = useNavigate();
 
   const currentTab = useMemo(() => {
+    if (location.pathname.startsWith("/admin/server/instances")) return "instances";
     if (location.pathname.startsWith("/admin/server/logs")) return "logs";
     if (location.pathname.startsWith("/admin/server/messages")) return "messages";
     if (location.pathname.startsWith("/admin/server/actions")) return "actions";
     if (location.pathname.startsWith("/admin/server/history")) return "history";
-    return "logs";
+    return "status";
   }, [location.pathname]);
 
   const allowed = isSuperadmin || can("view");
@@ -159,6 +162,10 @@ const ServerOpsPage = () => {
 
       <main className="flex-1 overflow-y-auto p-6">
         <Outlet />
+        {/* index → renderiza Status inline */}
+        {currentTab === "status" && location.pathname === "/admin/server" && (
+          <ServerStatusTab />
+        )}
       </main>
     </div>
   );

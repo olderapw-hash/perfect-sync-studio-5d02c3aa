@@ -57,7 +57,7 @@ export const SettingsTab = () => {
       if (isSuperadmin) {
         const { data, error } = await supabase
           .from("app_settings")
-          .select("server_name, logo_url, primary_color, background_url, favicon_url")
+          .select("server_name, logo_url, primary_color, background_url, favicon_url, footer_text, footer_link_label, footer_link_url")
           .eq("id", 1)
           .maybeSingle();
         if (error) {
@@ -72,6 +72,9 @@ export const SettingsTab = () => {
             primary_color: data.primary_color ?? "",
             background_url: data.background_url ?? "",
             favicon_url: data.favicon_url ?? "",
+            footer_text: data.footer_text ?? "",
+            footer_link_label: data.footer_link_label ?? "",
+            footer_link_url: data.footer_link_url ?? "",
           });
         }
         setLoading(false);
@@ -88,6 +91,9 @@ export const SettingsTab = () => {
         primary_color: tenant?.primary_color ?? "",
         background_url: "",
         favicon_url: "",
+        footer_text: "",
+        footer_link_label: "",
+        footer_link_url: "",
       });
       setLoading(false);
     })();

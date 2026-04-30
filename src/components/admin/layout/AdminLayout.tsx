@@ -203,6 +203,7 @@ export const AdminLayout = () => {
         <div className="flex min-w-0 flex-1 flex-col">
           <PendingInvitesBanner />
           <TrialBanner />
+          <InstallerUpdateBanner />
           <AdminTopBar />
           <main className="flex-1 overflow-hidden">
             <Outlet />

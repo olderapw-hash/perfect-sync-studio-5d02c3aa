@@ -66,6 +66,7 @@ import { useServers } from "@/hooks/useServers";
 import { useServerPermissions } from "@/hooks/useServerPermissions";
 import {
   EndpointMissingError,
+  PwApiActionError,
   pwApi,
   type ControlCenterSnapshot,
   type ManageableInstance,
@@ -80,6 +81,7 @@ import {
 } from "@/lib/pwApiActions";
 import { logAuditEvent } from "@/lib/auditLog";
 import { cn } from "@/lib/utils";
+import { ServerOperationProgressDrawer } from "@/components/admin/ServerOperationProgressDrawer";
 
 const POLL_MS = 15_000;
 
@@ -542,6 +544,7 @@ function ServerWideOpsPanel({ onChange }: { onChange: () => void }) {
   const [busy, setBusy] = useState<"start" | "stop" | "restart" | null>(null);
   const [confirm, setConfirm] = useState<"stop" | "restart" | null>(null);
   const [reason, setReason] = useState("");
+  const [trackedOp, setTrackedOp] = useState<{ id: string; type?: string } | null>(null);
 
   const run = async (action: "start" | "stop" | "restart", reasonText?: string) => {
     if (!canManage) {
@@ -574,9 +577,27 @@ function ServerWideOpsPanel({ onChange }: { onChange: () => void }) {
       } else {
         toast.success(`${action}${dryRun ? " (dry-run)" : ""}: ${summary}`);
       }
+      // Operação assíncrona → abre drawer com barra de progresso (não em dry-run).
+      if (!dryRun && res.operation?.id) {
+        setTrackedOp({ id: res.operation.id, type: res.operation.type });
+      }
       if (!dryRun) setTimeout(onChange, 800);
     } catch (e) {
-      toast.error(`${action} falhou: ${e instanceof Error ? e.message : String(e)}`, {
+      let shortMsg = e instanceof Error ? e.message : String(e);
+      if (!dryRun && e instanceof PwApiActionError) {
+        const payloadObj = e.payload as {
+          error?: string;
+          operation?: { id?: string; type?: string };
+        };
+        if (payloadObj?.operation?.id) {
+          setTrackedOp({
+            id: payloadObj.operation.id,
+            type: payloadObj.operation.type,
+          });
+        }
+        if (payloadObj?.error) shortMsg = payloadObj.error;
+      }
+      toast.error(`${action} falhou: ${shortMsg}`, {
         duration: 8000,
       });
     } finally {
@@ -695,6 +716,16 @@ function ServerWideOpsPanel({ onChange }: { onChange: () => void }) {
           </div>
         </div>
       )}
+
+      <ServerOperationProgressDrawer
+        open={trackedOp !== null}
+        operationId={trackedOp?.id ?? null}
+        type={trackedOp?.type}
+        onClose={() => {
+          setTrackedOp(null);
+          onChange();
+        }}
+      />
     </>
   );
 }

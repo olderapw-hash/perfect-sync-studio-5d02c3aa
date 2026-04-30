@@ -283,7 +283,7 @@ function DashboardTab() {
 
       <div className="grid gap-6 xl:grid-cols-3">
         <div className="xl:col-span-2">
-          <ServicesPanel snapshot={snapshot} loading={loading && !snapshot} onChange={() => void load()} />
+          <ServicesSummaryPanel snapshot={snapshot} loading={loading && !snapshot} />
         </div>
         <WatchdogMiniPanel watchdog={snapshot?.watchdog} loading={loading && !snapshot} />
       </div>

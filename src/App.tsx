@@ -40,6 +40,7 @@ import MailHistoryPage from "./pages/admin/MailHistoryPage.tsx";
 import EventsPage from "./pages/admin/EventsPage.tsx";
 import IngameEventsPage from "./pages/admin/IngameEventsPage.tsx";
 import ServerOpsPage from "./pages/admin/ServerOpsPage.tsx";
+import ControlCenterPage from "./pages/admin/ControlCenterPage.tsx";
 import ServerLogsPage from "./pages/admin/ServerLogsPage.tsx";
 import ServerActionsPage from "./pages/admin/ServerActionsPage.tsx";
 import ServerHistoryPage from "./pages/admin/ServerHistoryPage.tsx";

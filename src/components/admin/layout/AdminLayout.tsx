@@ -391,6 +391,7 @@ const AdminTopBar = () => {
   const { user, signOut, isSuperadmin } = useAuth();
   const { settings } = useAppSettings();
   const { active: activeServer } = useServers();
+  const { current: currentRelease, hasUpdate } = useInstallerRelease();
 
   return (
     <header className="flex flex-wrap items-center gap-3 border-b border-border bg-card/60 px-5 py-3 backdrop-blur-md">

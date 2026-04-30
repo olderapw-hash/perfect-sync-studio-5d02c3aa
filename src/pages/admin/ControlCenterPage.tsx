@@ -706,15 +706,30 @@ function ServicesSummaryPanel({
   snapshot: ControlCenterSnapshot | null;
   loading: boolean;
 }) {
-  const services =
-    snapshot?.services?.manageable ?? snapshot?.services?.all ?? [];
+  // Tabela ÚNICA de serviços. Preferimos `manageable` quando vier (é o
+  // superconjunto operável); caímos pra `all` quando o backend só envia
+  // a listagem genérica. Nunca renderizamos as duas listas separadas.
+  const services = useMemo(() => {
+    const m = snapshot?.services?.manageable ?? [];
+    const a = snapshot?.services?.all ?? [];
+    if (m.length > 0 && a.length > 0) {
+      const seen = new Set(m.map((s) => s.key));
+      return [...m, ...a.filter((s) => !seen.has(s.key))];
+    }
+    return m.length > 0 ? m : a;
+  }, [snapshot]);
   const summary = snapshot?.services?.summary;
-  const offlineCritical = services.filter(
-    (s) => s.state === "offline" && CRITICAL_SERVICES.has(s.key),
-  );
-  const offlineOther = services.filter(
-    (s) => s.state === "offline" && !CRITICAL_SERVICES.has(s.key),
-  );
+
+  // Ordena: críticos offline → offline → online (estável dentro de cada grupo).
+  const ordered = useMemo(() => {
+    const rank = (s: ManageableService) => {
+      if (s.state === "offline" && CRITICAL_SERVICES.has(s.key)) return 0;
+      if (s.state === "offline") return 1;
+      if (s.state === "online") return 3;
+      return 2;
+    };
+    return [...services].sort((a, b) => rank(a) - rank(b));
+  }, [services]);
 
   return (
     <Card className="border-border bg-card/60 backdrop-blur-md">
@@ -746,79 +761,81 @@ function ServicesSummaryPanel({
           </a>
         </Button>
       </CardHeader>
-      <CardContent className="space-y-2">
-        {loading && services.length === 0 ? (
-          <Skeleton className="h-20 rounded-lg" />
-        ) : services.length === 0 ? (
-          <EmptyHint icon={Database}>Nenhum serviço gerenciável.</EmptyHint>
-        ) : offlineCritical.length === 0 && offlineOther.length === 0 ? (
-          <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-xs text-emerald-500">
-            <CheckCircle2 className="h-4 w-4" />
-            Todos os serviços estão online.
+      <CardContent className="p-0">
+        {loading && ordered.length === 0 ? (
+          <Skeleton className="m-4 h-20 rounded-lg" />
+        ) : ordered.length === 0 ? (
+          <div className="p-4">
+            <EmptyHint icon={Database}>Nenhum serviço reportado.</EmptyHint>
           </div>
         ) : (
-          <>
-            {offlineCritical.map((svc) => (
-              <ServiceStatusRow key={svc.key} svc={svc} critical />
-            ))}
-            {offlineOther.map((svc) => (
-              <ServiceStatusRow key={svc.key} svc={svc} />
-            ))}
-            <p className="pt-1 text-[10px] text-muted-foreground">
-              Para iniciar / parar / reiniciar serviços, abra{" "}
-              <a href="/admin/server" className="font-semibold text-primary hover:underline">
-                Operação do Servidor
-              </a>
-              .
-            </p>
-          </>
+          <div className="max-h-[360px] overflow-y-auto">
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur">
+                <tr className="border-b border-border/60 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  <th className="w-6 py-2 pl-4" />
+                  <th className="py-2 text-left">Serviço</th>
+                  <th className="py-2 text-left">Detalhes</th>
+                  <th className="py-2 pr-4 text-right">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ordered.map((svc) => {
+                  const offline = svc.state === "offline";
+                  const critical = offline && CRITICAL_SERVICES.has(svc.key);
+                  return (
+                    <tr
+                      key={svc.key}
+                      className={cn(
+                        "border-b border-border/30 last:border-0",
+                        critical && "bg-destructive/5",
+                        offline && !critical && "bg-amber-500/5",
+                      )}
+                    >
+                      <td className="py-1.5 pl-4">
+                        <StateDot state={svc.state} pulse={critical} />
+                      </td>
+                      <td className="py-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono font-bold text-foreground">{svc.key}</span>
+                          {critical && (
+                            <Badge
+                              variant="outline"
+                              className="border-destructive/60 px-1 py-0 text-[9px] text-destructive"
+                            >
+                              CRÍT
+                            </Badge>
+                          )}
+                        </div>
+                      </td>
+                      <td className="truncate py-1.5 text-[11px] text-muted-foreground">
+                        {svc.label ?? svc.process_name ?? "—"}
+                        {svc.pid ? ` · pid ${svc.pid}` : ""}
+                        {svc.port ? ` · :${svc.port}` : ""}
+                      </td>
+                      <td className="py-1.5 pr-4 text-right">
+                        <span
+                          className={cn(
+                            "font-mono text-[10px] uppercase",
+                            svc.state === "online"
+                              ? "text-emerald-500"
+                              : svc.state === "offline"
+                                ? "text-destructive"
+                                : "text-muted-foreground",
+                          )}
+                        >
+                          {svc.state ?? "—"}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </CardContent>
     </Card>
-  );
-}
-
-function ServiceStatusRow({
-  svc,
-  critical,
-}: {
-  svc: ManageableService;
-  critical?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "flex flex-wrap items-center gap-3 rounded-lg border px-3 py-2",
-        critical
-          ? "border-destructive/60 bg-destructive/10"
-          : "border-amber-500/40 bg-amber-500/5",
-      )}
-    >
-      <StateDot state={svc.state} pulse={critical} />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-sm font-bold text-foreground">{svc.key}</span>
-          {critical && (
-            <Badge variant="outline" className="border-destructive/60 text-destructive">
-              CRÍTICO
-            </Badge>
-          )}
-          {svc.systemd_state && (
-            <span className="font-mono text-[10px] text-muted-foreground">
-              systemd:{svc.systemd_state}
-            </span>
-          )}
-        </div>
-        {(svc.label || svc.process_name || svc.message) && (
-          <p className="text-[11px] text-muted-foreground">
-            {svc.label ?? svc.process_name}
-            {svc.pid ? ` · pid ${svc.pid}` : ""}
-            {svc.port ? ` · :${svc.port}` : ""}
-            {svc.message ? ` · ${svc.message}` : ""}
-          </p>
-        )}
-      </div>
-    </div>
   );
 }
 

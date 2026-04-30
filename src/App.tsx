@@ -114,10 +114,9 @@ const App = () => (
                     {/* Central de Controle (NOC) — dashboard premium do snapshot. */}
                     <Route path="control-center" element={<ControlCenterPage />} />
 
-                    {/* Operação do Servidor — abas auxiliares (status/instâncias migraram pro NOC). */}
+                    {/* Operação do Servidor (start/stop/restart + instâncias). */}
                     <Route path="server" element={<ServerOpsPage />}>
-                      <Route index element={<Navigate to="/admin/control-center" replace />} />
-                      <Route path="instances" element={<Navigate to="/admin/control-center" replace />} />
+                      <Route path="instances" element={<InstancesPage />} />
                       <Route path="logs" element={<ServerLogsPage />} />
                       <Route path="messages" element={<ServerMessagesPage />} />
                       <Route path="actions" element={<ServerActionsPage />} />

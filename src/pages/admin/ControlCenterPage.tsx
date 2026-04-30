@@ -1105,10 +1105,11 @@ function WatchdogMiniPanel({
         : tone === "muted"
           ? "border-border bg-card/40"
           : "border-emerald-500/30 bg-emerald-500/10";
+  const unhealthyCount = watchdog?.unhealthy_services?.length ?? 0;
   return (
     <Card className={cn("backdrop-blur-md", ring)}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-        <CardTitle className="text-sm font-extrabold uppercase tracking-widest text-foreground">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3">
+        <CardTitle className="text-xs font-extrabold uppercase tracking-widest text-foreground">
           Watchdog
         </CardTitle>
         {enabled ? (
@@ -1117,7 +1118,7 @@ function WatchdogMiniPanel({
           <ShieldAlert className="h-4 w-4 text-muted-foreground" />
         )}
       </CardHeader>
-      <CardContent className="space-y-2 text-xs">
+      <CardContent className="space-y-1.5 pb-3 text-[11px]">
         {loading && !watchdog ? (
           <Skeleton className="h-16 rounded-lg" />
         ) : (
@@ -1127,44 +1128,38 @@ function WatchdogMiniPanel({
               <Badge
                 variant="outline"
                 className={cn(
+                  "px-1.5 py-0 text-[9px]",
                   enabled ? "border-emerald-500/40 text-emerald-500" : "border-border text-muted-foreground",
                 )}
               >
-                {enabled ? "ATIVO" : "DESATIVADO"}
+                {enabled ? "ATIVO" : "OFF"}
               </Badge>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Último resultado</span>
+              <span className="text-muted-foreground">Resultado</span>
               <ResultBadge result={result} />
             </div>
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Última checagem</span>
-              <span className="font-mono text-[11px]">{fmtDate(watchdog?.last_check_at)}</span>
+              <span className="font-mono text-[10px]">{fmtDate(watchdog?.last_check_at)}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Cooldown</span>
-              <span className="font-mono text-[11px]">
-                {watchdog?.cooldown_seconds ? `${watchdog.cooldown_seconds}s` : "—"}
+              <span className="text-muted-foreground">Não saudáveis</span>
+              <span
+                className={cn(
+                  "font-mono text-[10px] font-bold",
+                  unhealthyCount > 0 ? "text-destructive" : "text-muted-foreground",
+                )}
+              >
+                {unhealthyCount}
               </span>
             </div>
-            {watchdog?.unhealthy_services && watchdog.unhealthy_services.length > 0 && (
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                  Não saudáveis
-                </p>
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {watchdog.unhealthy_services.map((s) => (
-                    <Badge
-                      key={s}
-                      variant="outline"
-                      className="border-destructive/50 font-mono text-[10px] text-destructive"
-                    >
-                      {s}
-                    </Badge>
-                  ))}
-                </div>
+            {watchdog?.cooldown_seconds ? (
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Cooldown</span>
+                <span className="font-mono text-[10px]">{watchdog.cooldown_seconds}s</span>
               </div>
-            )}
+            ) : null}
           </>
         )}
         <a

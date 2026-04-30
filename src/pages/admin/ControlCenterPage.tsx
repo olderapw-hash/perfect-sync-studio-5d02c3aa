@@ -521,43 +521,22 @@ function MetricCard({
 
 /* ---- Services ---- */
 
-function ServicesPanel({
+function ServicesSummaryPanel({
   snapshot,
   loading,
-  onChange,
 }: {
   snapshot: ControlCenterSnapshot | null;
   loading: boolean;
-  onChange: () => void;
 }) {
   const services =
     snapshot?.services?.manageable ?? snapshot?.services?.all ?? [];
   const summary = snapshot?.services?.summary;
-  const { isSuperadmin } = useAuth();
-  const { can } = useServerPermissions();
-  const canAct = isSuperadmin || can("manage_servers");
-  const [busy, setBusy] = useState<string | null>(null);
-
-  const act = async (svc: ManageableService, action: "start" | "stop" | "restart") => {
-    if (!canAct) return;
-    const key = `${svc.key}:${action}`;
-    setBusy(key);
-    try {
-      const fn =
-        action === "start"
-          ? pwApi.startService
-          : action === "stop"
-            ? pwApi.stopService
-            : pwApi.restartService;
-      await fn({ service: svc.key });
-      toast.success(`${action} ${svc.key}: ok`);
-      onChange();
-    } catch (e) {
-      toast.error(`${action} ${svc.key}: ${e instanceof Error ? e.message : String(e)}`);
-    } finally {
-      setBusy(null);
-    }
-  };
+  const offlineCritical = services.filter(
+    (s) => s.state === "offline" && CRITICAL_SERVICES.has(s.key),
+  );
+  const offlineOther = services.filter(
+    (s) => s.state === "offline" && !CRITICAL_SERVICES.has(s.key),
+  );
 
   return (
     <Card className="border-border bg-card/60 backdrop-blur-md">
@@ -582,52 +561,59 @@ function ServicesPanel({
             </p>
           )}
         </div>
-        <Database className="h-4 w-4 text-muted-foreground" />
+        <Button asChild size="sm" variant="outline" className="gap-1.5">
+          <a href="/admin/server">
+            Operação
+            <ChevronRight className="h-3.5 w-3.5" />
+          </a>
+        </Button>
       </CardHeader>
       <CardContent className="space-y-2">
         {loading && services.length === 0 ? (
           <Skeleton className="h-20 rounded-lg" />
         ) : services.length === 0 ? (
           <EmptyHint icon={Database}>Nenhum serviço gerenciável.</EmptyHint>
+        ) : offlineCritical.length === 0 && offlineOther.length === 0 ? (
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-xs text-emerald-500">
+            <CheckCircle2 className="h-4 w-4" />
+            Todos os serviços estão online.
+          </div>
         ) : (
-          services.map((svc) => (
-            <ServiceRow
-              key={svc.key}
-              svc={svc}
-              busyKey={busy}
-              canAct={canAct}
-              onAct={act}
-            />
-          ))
+          <>
+            {offlineCritical.map((svc) => (
+              <ServiceStatusRow key={svc.key} svc={svc} critical />
+            ))}
+            {offlineOther.map((svc) => (
+              <ServiceStatusRow key={svc.key} svc={svc} />
+            ))}
+            <p className="pt-1 text-[10px] text-muted-foreground">
+              Para iniciar / parar / reiniciar serviços, abra{" "}
+              <a href="/admin/server" className="font-semibold text-primary hover:underline">
+                Operação do Servidor
+              </a>
+              .
+            </p>
+          </>
         )}
       </CardContent>
     </Card>
   );
 }
 
-function ServiceRow({
+function ServiceStatusRow({
   svc,
-  busyKey,
-  canAct,
-  onAct,
+  critical,
 }: {
   svc: ManageableService;
-  busyKey: string | null;
-  canAct: boolean;
-  onAct: (s: ManageableService, a: "start" | "stop" | "restart") => void;
+  critical?: boolean;
 }) {
-  const offline = svc.state === "offline";
-  const critical = offline && CRITICAL_SERVICES.has(svc.key);
-  const supported = svc.supported_actions ?? ["start", "stop", "restart"];
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-3 rounded-lg border px-3 py-2 transition-colors",
+        "flex flex-wrap items-center gap-3 rounded-lg border px-3 py-2",
         critical
           ? "border-destructive/60 bg-destructive/10"
-          : offline
-            ? "border-amber-500/40 bg-amber-500/5"
-            : "border-emerald-500/30 bg-emerald-500/5",
+          : "border-amber-500/40 bg-amber-500/5",
       )}
     >
       <StateDot state={svc.state} pulse={critical} />
@@ -652,53 +638,6 @@ function ServiceRow({
             {svc.port ? ` · :${svc.port}` : ""}
             {svc.message ? ` · ${svc.message}` : ""}
           </p>
-        )}
-      </div>
-      <div className="flex items-center gap-1">
-        {supported.includes("start") && (
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={!canAct || busyKey != null}
-            onClick={() => onAct(svc, "start")}
-            title="Start"
-          >
-            {busyKey === `${svc.key}:start` ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <PlayCircle className="h-3.5 w-3.5 text-emerald-500" />
-            )}
-          </Button>
-        )}
-        {supported.includes("restart") && (
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={!canAct || busyKey != null}
-            onClick={() => onAct(svc, "restart")}
-            title="Restart"
-          >
-            {busyKey === `${svc.key}:restart` ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <RotateCcw className="h-3.5 w-3.5 text-amber-500" />
-            )}
-          </Button>
-        )}
-        {supported.includes("stop") && (
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={!canAct || busyKey != null}
-            onClick={() => onAct(svc, "stop")}
-            title="Stop"
-          >
-            {busyKey === `${svc.key}:stop` ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Square className="h-3.5 w-3.5 text-destructive" />
-            )}
-          </Button>
         )}
       </div>
     </div>

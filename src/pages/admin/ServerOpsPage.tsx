@@ -159,10 +159,6 @@ const ServerOpsPage = () => {
 
       <main className="flex-1 overflow-y-auto p-6">
         <Outlet />
-        {/* index → renderiza Status inline */}
-        {currentTab === "status" && location.pathname === "/admin/server" && (
-          <ServerStatusTab />
-        )}
       </main>
     </div>
   );

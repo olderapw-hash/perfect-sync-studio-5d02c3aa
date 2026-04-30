@@ -434,6 +434,30 @@ const AdminTopBar = () => {
           </Link>
         )}
 
+        <Link
+          to="/install"
+          className="relative inline-flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-smooth hover:bg-primary/20"
+          title={
+            currentRelease
+              ? `Installer da API · v${currentRelease.version}${hasUpdate ? " (nova versão!)" : ""}`
+              : "Instalar API no servidor"
+          }
+        >
+          <Download className="h-3.5 w-3.5" />
+          Install
+          {currentRelease && (
+            <span className="rounded bg-primary/20 px-1 py-0.5 text-[9px] font-mono">
+              v{currentRelease.version}
+            </span>
+          )}
+          {hasUpdate && (
+            <span className="absolute -right-1 -top-1 flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" />
+            </span>
+          )}
+        </Link>
+
         {isSuperadmin && (
           <Link
             to="/admin/users"

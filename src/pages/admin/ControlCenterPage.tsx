@@ -1126,22 +1126,14 @@ function WatchdogMiniPanel({
                 </div>
               </div>
             )}
-            {watchdog?.critical_services && watchdog.critical_services.length > 0 && (
-              <div className="border-t border-border/60 pt-2">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                  Críticos monitorados
-                </p>
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {watchdog.critical_services.map((s) => (
-                    <Badge key={s} variant="outline" className="font-mono text-[10px]">
-                      {s}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
           </>
         )}
+        <a
+          href="/admin/control-center?tab=watchdog"
+          className="block pt-1 text-right text-[10px] text-muted-foreground hover:text-primary"
+        >
+          Configurar →
+        </a>
       </CardContent>
     </Card>
   );

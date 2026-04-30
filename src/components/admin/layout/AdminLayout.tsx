@@ -258,7 +258,11 @@ const NavSectionGroup = ({
   const { isTrial } = useServerPermissions();
   const showProBadge = isTrial && section.proInTrial === true;
   const location = useLocation();
-  const isActiveSection = location.pathname.startsWith(section.basePath);
+  const isActiveSection =
+    location.pathname.startsWith(section.basePath) ||
+    section.children.some((c) =>
+      c.end ? location.pathname === c.to : location.pathname.startsWith(c.to),
+    );
   const [open, setOpen] = useState(isActiveSection);
 
   // Reabre automaticamente se a rota mudar para dentro deste grupo.

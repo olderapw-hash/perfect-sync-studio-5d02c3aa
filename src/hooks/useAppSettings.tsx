@@ -10,6 +10,9 @@ export interface AppSettings {
   primary_color: string | null;
   background_url: string | null;
   favicon_url: string | null;
+  footer_text: string | null;
+  footer_link_label: string | null;
+  footer_link_url: string | null;
 }
 
 interface Ctx {
@@ -26,6 +29,9 @@ const DEFAULTS: AppSettings = {
   primary_color: null,
   background_url: null,
   favicon_url: null,
+  footer_text: "Desenvolvido por:",
+  footer_link_label: "Sath~",
+  footer_link_url: "https://discord.gg/lovable-dev",
 };
 
 const AppSettingsContext = createContext<Ctx>({

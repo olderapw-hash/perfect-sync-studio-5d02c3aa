@@ -110,6 +110,9 @@ const App = () => (
                     <Route path="events" element={<EventsPage />} />
                     <Route path="events/ingame" element={<IngameEventsPage />} />
 
+                    {/* Central de Controle (NOC) — dashboard premium do snapshot. */}
+                    <Route path="control-center" element={<ControlCenterPage />} />
+
                     {/* Operação do Servidor v1 (status / logs / export) */}
                     <Route path="server" element={<ServerOpsPage />}>
                       <Route path="instances" element={<InstancesPage />} />

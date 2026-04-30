@@ -289,7 +289,7 @@ function DashboardTab() {
         <WatchdogMiniPanel watchdog={snapshot?.watchdog} loading={loading && !snapshot} />
       </div>
 
-      <InstancesPanel snapshot={snapshot} loading={loading && !snapshot} onChange={() => void load()} />
+      <InstancesPanel snapshot={snapshot} loading={loading && !snapshot} />
 
       <RecentOperationsPanel snapshot={snapshot} loading={loading && !snapshot} />
     </div>
@@ -301,72 +301,84 @@ function DashboardTab() {
 function MaintenanceBanner({ snapshot }: { snapshot: ControlCenterSnapshot | null }) {
   const m = snapshot?.maintenance;
   if (!m?.enabled) return null;
+  const tooltip = [
+    m.reason && `Motivo: ${m.reason}`,
+    m.started_at && `Início: ${fmtDate(m.started_at)}`,
+    m.ends_at && `Fim previsto: ${fmtDate(m.ends_at)}`,
+    m.updated_by && `Por: ${m.updated_by}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
   return (
-    <div className="rounded-xl border border-amber-500/50 bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent p-4">
-      <div className="flex flex-wrap items-start gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/20 text-amber-500">
-          <Wrench className="h-4 w-4" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-extrabold uppercase tracking-widest text-amber-500">
-              Manutenção ativa
-            </span>
-            {m.eta_minutes != null && (
-              <Badge variant="outline" className="border-amber-500/60 text-amber-500">
-                ETA {m.eta_minutes} min
-              </Badge>
-            )}
-          </div>
-          {m.reason && <p className="mt-1 text-sm text-foreground/90">{m.reason}</p>}
-          <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-muted-foreground sm:grid-cols-4">
-            <Field label="Início" value={fmtDate(m.started_at)} />
-            <Field label="Previsão fim" value={fmtDate(m.ends_at)} />
-            <Field label="Atualizado" value={fmtDate(m.updated_at)} />
-            <Field label="Por" value={m.updated_by ?? "—"} />
-          </div>
-        </div>
-      </div>
+    <div
+      className="flex flex-wrap items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-500"
+      title={tooltip || undefined}
+    >
+      <Wrench className="h-3.5 w-3.5 shrink-0" />
+      <span className="font-extrabold uppercase tracking-widest">Manutenção ativa</span>
+      {m.eta_minutes != null && (
+        <Badge variant="outline" className="border-amber-500/60 text-amber-500">
+          ETA {m.eta_minutes} min
+        </Badge>
+      )}
+      {m.reason && (
+        <span className="truncate text-foreground/80">— {m.reason}</span>
+      )}
+      <a
+        href="/admin/server/messages"
+        className="ml-auto inline-flex items-center gap-1 text-[11px] font-semibold text-amber-500 hover:underline"
+      >
+        Gerenciar <ChevronRight className="h-3 w-3" />
+      </a>
     </div>
   );
 }
 
 function AlertsBanner({ alerts }: { alerts?: ControlCenterSnapshot["alerts"] }) {
   if (!alerts || alerts.length === 0) return null;
+  const order: Record<string, number> = { critical: 3, error: 3, warn: 2, warning: 2, info: 1 };
+  const sorted = [...alerts].sort(
+    (a, b) =>
+      (order[(b.severity ?? "info").toLowerCase()] ?? 0) -
+      (order[(a.severity ?? "info").toLowerCase()] ?? 0),
+  );
+  const worst = (sorted[0]?.severity ?? "info").toLowerCase();
+  const tone =
+    worst === "critical" || worst === "error"
+      ? "border-destructive/50 bg-destructive/10 text-destructive"
+      : worst.startsWith("warn")
+        ? "border-amber-500/50 bg-amber-500/10 text-amber-500"
+        : "border-primary/40 bg-primary/10 text-primary";
+  const Icon =
+    worst === "critical" || worst === "error"
+      ? XCircle
+      : worst.startsWith("warn")
+        ? AlertTriangle
+        : AlertCircle;
+  const visible = sorted.slice(0, 3);
+  const extra = sorted.length - visible.length;
+
   return (
-    <div className="space-y-2">
-      {alerts.map((a, i) => {
-        const sev = (a.severity ?? "info").toLowerCase();
-        const tone =
-          sev === "critical" || sev === "error"
-            ? "border-destructive/50 bg-destructive/10 text-destructive"
-            : sev === "warn" || sev === "warning"
-              ? "border-amber-500/50 bg-amber-500/10 text-amber-500"
-              : "border-primary/40 bg-primary/10 text-primary";
-        const Icon = sev === "critical" || sev === "error" ? XCircle : sev.startsWith("warn") ? AlertTriangle : AlertCircle;
-        return (
-          <div key={a.id ?? i} className={cn("rounded-lg border p-3 text-xs", tone)}>
-            <div className="flex items-start gap-2">
-              <Icon className="mt-0.5 h-4 w-4 shrink-0" />
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[10px] font-extrabold uppercase tracking-widest">{sev}</span>
-                  {a.title && <span className="font-semibold text-foreground">{a.title}</span>}
-                  {a.source && (
-                    <Badge variant="outline" className="border-current/40 text-current">
-                      {a.source}
-                    </Badge>
-                  )}
-                </div>
-                {a.message && <p className="mt-1 text-foreground/90">{a.message}</p>}
-                {a.created_at && (
-                  <p className="mt-1 text-[10px] opacity-70">{fmtDate(a.created_at)}</p>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })}
+    <div className={cn("rounded-md border p-2.5 text-xs", tone)}>
+      <div className="flex items-center gap-2">
+        <Icon className="h-3.5 w-3.5 shrink-0" />
+        <span className="text-[10px] font-extrabold uppercase tracking-widest">
+          {sorted.length} alerta{sorted.length > 1 ? "s" : ""}
+        </span>
+        <span className="opacity-70">· pior: {worst}</span>
+      </div>
+      <ul className="mt-1.5 space-y-0.5">
+        {visible.map((a, i) => (
+          <li key={a.id ?? i} className="flex flex-wrap items-center gap-1.5 text-[11px]">
+            <span className="font-semibold text-foreground">{a.title ?? a.message ?? "—"}</span>
+            {a.source && <span className="font-mono text-[10px] opacity-70">[{a.source}]</span>}
+            {a.created_at && (
+              <span className="ml-auto text-[10px] opacity-60">{fmtDate(a.created_at)}</span>
+            )}
+          </li>
+        ))}
+        {extra > 0 && <li className="text-[10px] opacity-70">+{extra} alerta(s)…</li>}
+      </ul>
     </div>
   );
 }
@@ -694,15 +706,30 @@ function ServicesSummaryPanel({
   snapshot: ControlCenterSnapshot | null;
   loading: boolean;
 }) {
-  const services =
-    snapshot?.services?.manageable ?? snapshot?.services?.all ?? [];
+  // Tabela ÚNICA de serviços. Preferimos `manageable` quando vier (é o
+  // superconjunto operável); caímos pra `all` quando o backend só envia
+  // a listagem genérica. Nunca renderizamos as duas listas separadas.
+  const services = useMemo(() => {
+    const m = snapshot?.services?.manageable ?? [];
+    const a = snapshot?.services?.all ?? [];
+    if (m.length > 0 && a.length > 0) {
+      const seen = new Set(m.map((s) => s.key));
+      return [...m, ...a.filter((s) => !seen.has(s.key))];
+    }
+    return m.length > 0 ? m : a;
+  }, [snapshot]);
   const summary = snapshot?.services?.summary;
-  const offlineCritical = services.filter(
-    (s) => s.state === "offline" && CRITICAL_SERVICES.has(s.key),
-  );
-  const offlineOther = services.filter(
-    (s) => s.state === "offline" && !CRITICAL_SERVICES.has(s.key),
-  );
+
+  // Ordena: críticos offline → offline → online (estável dentro de cada grupo).
+  const ordered = useMemo(() => {
+    const rank = (s: ManageableService) => {
+      if (s.state === "offline" && CRITICAL_SERVICES.has(s.key)) return 0;
+      if (s.state === "offline") return 1;
+      if (s.state === "online") return 3;
+      return 2;
+    };
+    return [...services].sort((a, b) => rank(a) - rank(b));
+  }, [services]);
 
   return (
     <Card className="border-border bg-card/60 backdrop-blur-md">
@@ -734,79 +761,81 @@ function ServicesSummaryPanel({
           </a>
         </Button>
       </CardHeader>
-      <CardContent className="space-y-2">
-        {loading && services.length === 0 ? (
-          <Skeleton className="h-20 rounded-lg" />
-        ) : services.length === 0 ? (
-          <EmptyHint icon={Database}>Nenhum serviço gerenciável.</EmptyHint>
-        ) : offlineCritical.length === 0 && offlineOther.length === 0 ? (
-          <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-xs text-emerald-500">
-            <CheckCircle2 className="h-4 w-4" />
-            Todos os serviços estão online.
+      <CardContent className="p-0">
+        {loading && ordered.length === 0 ? (
+          <Skeleton className="m-4 h-20 rounded-lg" />
+        ) : ordered.length === 0 ? (
+          <div className="p-4">
+            <EmptyHint icon={Database}>Nenhum serviço reportado.</EmptyHint>
           </div>
         ) : (
-          <>
-            {offlineCritical.map((svc) => (
-              <ServiceStatusRow key={svc.key} svc={svc} critical />
-            ))}
-            {offlineOther.map((svc) => (
-              <ServiceStatusRow key={svc.key} svc={svc} />
-            ))}
-            <p className="pt-1 text-[10px] text-muted-foreground">
-              Para iniciar / parar / reiniciar serviços, abra{" "}
-              <a href="/admin/server" className="font-semibold text-primary hover:underline">
-                Operação do Servidor
-              </a>
-              .
-            </p>
-          </>
+          <div className="max-h-[360px] overflow-y-auto">
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur">
+                <tr className="border-b border-border/60 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  <th className="w-6 py-2 pl-4" />
+                  <th className="py-2 text-left">Serviço</th>
+                  <th className="py-2 text-left">Detalhes</th>
+                  <th className="py-2 pr-4 text-right">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ordered.map((svc) => {
+                  const offline = svc.state === "offline";
+                  const critical = offline && CRITICAL_SERVICES.has(svc.key);
+                  return (
+                    <tr
+                      key={svc.key}
+                      className={cn(
+                        "border-b border-border/30 last:border-0",
+                        critical && "bg-destructive/5",
+                        offline && !critical && "bg-amber-500/5",
+                      )}
+                    >
+                      <td className="py-1.5 pl-4">
+                        <StateDot state={svc.state} pulse={critical} />
+                      </td>
+                      <td className="py-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono font-bold text-foreground">{svc.key}</span>
+                          {critical && (
+                            <Badge
+                              variant="outline"
+                              className="border-destructive/60 px-1 py-0 text-[9px] text-destructive"
+                            >
+                              CRÍT
+                            </Badge>
+                          )}
+                        </div>
+                      </td>
+                      <td className="truncate py-1.5 text-[11px] text-muted-foreground">
+                        {svc.label ?? svc.process_name ?? "—"}
+                        {svc.pid ? ` · pid ${svc.pid}` : ""}
+                        {svc.port ? ` · :${svc.port}` : ""}
+                      </td>
+                      <td className="py-1.5 pr-4 text-right">
+                        <span
+                          className={cn(
+                            "font-mono text-[10px] uppercase",
+                            svc.state === "online"
+                              ? "text-emerald-500"
+                              : svc.state === "offline"
+                                ? "text-destructive"
+                                : "text-muted-foreground",
+                          )}
+                        >
+                          {svc.state ?? "—"}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </CardContent>
     </Card>
-  );
-}
-
-function ServiceStatusRow({
-  svc,
-  critical,
-}: {
-  svc: ManageableService;
-  critical?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "flex flex-wrap items-center gap-3 rounded-lg border px-3 py-2",
-        critical
-          ? "border-destructive/60 bg-destructive/10"
-          : "border-amber-500/40 bg-amber-500/5",
-      )}
-    >
-      <StateDot state={svc.state} pulse={critical} />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-sm font-bold text-foreground">{svc.key}</span>
-          {critical && (
-            <Badge variant="outline" className="border-destructive/60 text-destructive">
-              CRÍTICO
-            </Badge>
-          )}
-          {svc.systemd_state && (
-            <span className="font-mono text-[10px] text-muted-foreground">
-              systemd:{svc.systemd_state}
-            </span>
-          )}
-        </div>
-        {(svc.label || svc.process_name || svc.message) && (
-          <p className="text-[11px] text-muted-foreground">
-            {svc.label ?? svc.process_name}
-            {svc.pid ? ` · pid ${svc.pid}` : ""}
-            {svc.port ? ` · :${svc.port}` : ""}
-            {svc.message ? ` · ${svc.message}` : ""}
-          </p>
-        )}
-      </div>
-    </div>
   );
 }
 
@@ -826,39 +855,23 @@ const CRITICAL_SERVICES = new Set([
 function InstancesPanel({
   snapshot,
   loading,
-  onChange,
 }: {
   snapshot: ControlCenterSnapshot | null;
   loading: boolean;
-  onChange: () => void;
+  /** Mantido por compatibilidade — o painel é read-only agora. */
+  onChange?: () => void;
 }) {
   const items = snapshot?.instances?.items ?? [];
   const summary = snapshot?.instances?.summary;
-  const { isSuperadmin } = useAuth();
-  const { can } = useServerPermissions();
-  const canAct = isSuperadmin || can("manage_servers");
-  const [busy, setBusy] = useState<string | null>(null);
-
-  const act = async (i: ManageableInstance, action: "start" | "stop" | "restart") => {
-    if (!canAct) return;
-    const k = `${i.code}:${action}`;
-    setBusy(k);
-    try {
-      const fn =
-        action === "start"
-          ? pwApi.startInstance
-          : action === "stop"
-            ? pwApi.stopInstance
-            : pwApi.restartInstance;
-      await fn({ code: i.code });
-      toast.success(`${action} ${i.code}: ok`);
-      onChange();
-    } catch (e) {
-      toast.error(`${action} ${i.code}: ${e instanceof Error ? e.message : String(e)}`);
-    } finally {
-      setBusy(null);
+  const groups = useMemo(() => {
+    const g = new Map<string, ManageableInstance[]>();
+    for (const i of items) {
+      const cat = i.category ?? "outras";
+      if (!g.has(cat)) g.set(cat, []);
+      g.get(cat)!.push(i);
     }
-  };
+    return Array.from(g.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [items]);
 
   return (
     <Card className="border-border bg-card/60 backdrop-blur-md">
@@ -876,7 +889,12 @@ function InstancesPanel({
             </p>
           )}
         </div>
-        <CircuitBoard className="h-4 w-4 text-muted-foreground" />
+        <Button asChild size="sm" variant="outline" className="gap-1.5">
+          <a href="/admin/server/instances">
+            Gerenciar
+            <ChevronRight className="h-3.5 w-3.5" />
+          </a>
+        </Button>
       </CardHeader>
       <CardContent>
         {loading && items.length === 0 ? (
@@ -884,75 +902,48 @@ function InstancesPanel({
         ) : items.length === 0 ? (
           <EmptyHint icon={CircuitBoard}>Nenhuma instância configurada.</EmptyHint>
         ) : (
-          <div className="grid gap-2 md:grid-cols-2">
-            {items.map((i) => {
-              const running = i.running || i.state === "running";
+          <div className="space-y-3">
+            {groups.map(([cat, list]) => {
+              const running = list.filter((i) => i.running || i.state === "running").length;
               return (
-                <div
-                  key={i.code}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg border px-3 py-2",
-                    running
-                      ? "border-emerald-500/30 bg-emerald-500/5"
-                      : "border-border bg-card/40",
-                  )}
-                >
-                  <StateDot state={running ? "online" : "offline"} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-sm font-bold text-foreground">{i.code}</span>
-                      {i.auto_start && (
-                        <Badge
-                          variant="outline"
-                          className="border-primary/40 text-[9px] uppercase text-primary"
-                        >
-                          auto
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="truncate text-[11px] text-muted-foreground">
-                      {i.name || i.category}
-                      {i.listen_port ? ` · :${i.listen_port}` : ""}
-                      {i.pid ? ` · pid ${i.pid}` : ""}
-                    </p>
+                <div key={cat}>
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">
+                      {cat}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      <span className="text-emerald-500">{running}</span>/{list.length}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={!canAct || busy != null}
-                      onClick={() => act(i, "start")}
-                    >
-                      {busy === `${i.code}:start` ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <PlayCircle className="h-3.5 w-3.5 text-emerald-500" />
-                      )}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={!canAct || busy != null}
-                      onClick={() => act(i, "restart")}
-                    >
-                      {busy === `${i.code}:restart` ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <RotateCcw className="h-3.5 w-3.5 text-amber-500" />
-                      )}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={!canAct || busy != null}
-                      onClick={() => act(i, "stop")}
-                    >
-                      {busy === `${i.code}:stop` ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Square className="h-3.5 w-3.5 text-destructive" />
-                      )}
-                    </Button>
+                  <div className="flex flex-wrap gap-1.5">
+                    {list.map((i) => {
+                      const isRunning = i.running || i.state === "running";
+                      return (
+                        <div
+                          key={i.code}
+                          title={[
+                            i.name && `Nome: ${i.name}`,
+                            i.listen_port && `Porta: ${i.listen_port}`,
+                            i.pid && `PID: ${i.pid}`,
+                            i.auto_start && "Auto-start",
+                          ]
+                            .filter(Boolean)
+                            .join("\n")}
+                          className={cn(
+                            "inline-flex items-center gap-1.5 rounded-md border px-2 py-1 font-mono text-[11px]",
+                            isRunning
+                              ? "border-emerald-500/30 bg-emerald-500/5 text-foreground"
+                              : "border-border bg-background/40 text-muted-foreground",
+                          )}
+                        >
+                          <StateDot state={isRunning ? "online" : "offline"} />
+                          <span className="font-bold">{i.code}</span>
+                          {i.auto_start && (
+                            <span className="text-[9px] uppercase text-primary">auto</span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -973,14 +964,21 @@ function RecentOperationsPanel({
   snapshot: ControlCenterSnapshot | null;
   loading: boolean;
 }) {
-  const ops = snapshot?.operations?.recent ?? [];
+  const allOps = snapshot?.operations?.recent ?? [];
+  const ops = allOps.slice(0, 6);
+  const extra = allOps.length - ops.length;
   return (
     <Card className="border-border bg-card/60 backdrop-blur-md">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
         <CardTitle className="text-sm font-extrabold uppercase tracking-widest text-foreground">
           Operações recentes
         </CardTitle>
-        <HistoryIcon className="h-4 w-4 text-muted-foreground" />
+        <Button asChild size="sm" variant="outline" className="gap-1.5">
+          <a href="/admin/server/history">
+            Histórico
+            <ChevronRight className="h-3.5 w-3.5" />
+          </a>
+        </Button>
       </CardHeader>
       <CardContent>
         {loading && ops.length === 0 ? (
@@ -1026,6 +1024,14 @@ function RecentOperationsPanel({
                 </div>
               );
             })}
+            {extra > 0 && (
+              <a
+                href="/admin/server/history"
+                className="block pt-1 text-center text-[10px] text-muted-foreground hover:text-primary"
+              >
+                +{extra} operação(ões) — ver histórico completo
+              </a>
+            )}
           </div>
         )}
       </CardContent>
@@ -1120,22 +1126,14 @@ function WatchdogMiniPanel({
                 </div>
               </div>
             )}
-            {watchdog?.critical_services && watchdog.critical_services.length > 0 && (
-              <div className="border-t border-border/60 pt-2">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                  Críticos monitorados
-                </p>
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {watchdog.critical_services.map((s) => (
-                    <Badge key={s} variant="outline" className="font-mono text-[10px]">
-                      {s}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
           </>
         )}
+        <a
+          href="/admin/control-center?tab=watchdog"
+          className="block pt-1 text-right text-[10px] text-muted-foreground hover:text-primary"
+        >
+          Configurar →
+        </a>
       </CardContent>
     </Card>
   );

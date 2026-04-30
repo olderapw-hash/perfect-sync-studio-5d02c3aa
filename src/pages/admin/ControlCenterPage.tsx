@@ -1179,13 +1179,16 @@ function WatchdogMiniPanel({
 
 function LogsTab() {
   const [source, setSource] = useState<ServerLogSource>("gamedbd");
-  const [lines, setLines] = useState(20);
+  const [lines, setLines] = useState<20 | 50 | 100>(50);
   const [data, setData] = useState<ServerLogEntry[]>([]);
   const [file, setFile] = useState<string | undefined>();
   const [warning, setWarning] = useState<string | undefined>();
+  const [available, setAvailable] = useState<ServerLogSource[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [endpointMissing, setEndpointMissing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const sources = available && available.length > 0 ? available : LOG_SOURCES;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1196,6 +1199,9 @@ function LogsTab() {
       setData(res.entries ?? []);
       setFile(res.file);
       setWarning(res.warning);
+      if (res.available_sources && res.available_sources.length > 0) {
+        setAvailable(res.available_sources);
+      }
     } catch (e) {
       if (e instanceof EndpointMissingError) setEndpointMissing(true);
       else setError(e instanceof Error ? e.message : String(e));
@@ -1210,9 +1216,21 @@ function LogsTab() {
 
   if (endpointMissing) return <EndpointMissingNotice action="getServerLogs" />;
 
+  // Heurística de severidade quando o backend não classifica.
+  const classify = (e: ServerLogEntry): "fatal" | "error" | "warn" | "info" => {
+    const lvl = (e.level ?? "").toLowerCase();
+    if (lvl === "error") return "error";
+    if (lvl === "warn") return "warn";
+    const text = e.line.toLowerCase();
+    if (/\b(fatal|panic|segfault|coredump)\b/.test(text)) return "fatal";
+    if (/\b(error|err|fail|failed|exception|critical|crit)\b/.test(text)) return "error";
+    if (/\b(warn|warning)\b/.test(text)) return "warn";
+    return "info";
+  };
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3">
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-end gap-2">
         <div className="space-y-1">
           <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
             Fonte
@@ -1222,7 +1240,7 @@ function LogsTab() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {LOG_SOURCES.map((s) => (
+              {sources.map((s) => (
                 <SelectItem key={s} value={s} className="font-mono text-xs">
                   {s}
                 </SelectItem>
@@ -1234,23 +1252,26 @@ function LogsTab() {
           <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
             Linhas
           </Label>
-          <Input
-            type="number"
-            min={1}
-            max={500}
-            value={lines}
-            onChange={(e) => setLines(Math.max(1, Math.min(500, Number(e.target.value) || 20)))}
-            className="h-9 w-[100px]"
-          />
+          <Select value={String(lines)} onValueChange={(v) => setLines(Number(v) as 20 | 50 | 100)}>
+            <SelectTrigger className="h-9 w-[100px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="20">20</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+              <SelectItem value="100">100</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <Button size="sm" variant="outline" onClick={() => void load()} disabled={loading}>
+        <Button size="sm" variant="outline" onClick={() => void load()} disabled={loading} className="h-9">
           <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
           Atualizar
         </Button>
         {file && (
-          <span className="ml-auto truncate font-mono text-[10px] text-muted-foreground">
-            {file}
-          </span>
+          <div className="ml-auto flex items-center gap-1.5 truncate font-mono text-[10px] text-muted-foreground">
+            <FileText className="h-3 w-3" />
+            <span className="truncate">{file}</span>
+          </div>
         )}
       </div>
 
@@ -1265,7 +1286,7 @@ function LogsTab() {
         </div>
       )}
 
-      <div className="rounded-xl border border-border bg-black/40 p-1 backdrop-blur-md">
+      <div className="rounded-lg border border-border bg-black/40 backdrop-blur-md">
         <ScrollArea className="h-[60vh] w-full">
           {loading && data.length === 0 ? (
             <div className="flex items-center justify-center gap-2 p-6 text-xs text-muted-foreground">
@@ -1273,16 +1294,44 @@ function LogsTab() {
               Carregando...
             </div>
           ) : data.length === 0 ? (
-            <div className="flex items-center justify-center gap-2 p-6 text-xs text-muted-foreground">
-              <FileText className="h-3.5 w-3.5" />
-              Nenhuma linha disponível.
+            <div className="flex flex-col items-center justify-center gap-1.5 p-10 text-xs text-muted-foreground">
+              <FileText className="h-4 w-4" />
+              <span>Nenhuma linha disponível para <span className="font-mono">{source}</span>.</span>
+              <span className="text-[10px]">Verifique se o serviço está ativo ou tente outra fonte.</span>
             </div>
           ) : (
-            <pre className="whitespace-pre-wrap break-words p-3 font-mono text-[11px] leading-relaxed text-foreground/90">
-              {data
-                .map((e) => (e.ts ? `[${e.ts}] ${e.line}` : e.line))
-                .join("\n")}
-            </pre>
+            <div className="p-2 font-mono text-[11px] leading-relaxed">
+              {data.map((e, i) => {
+                const sev = classify(e);
+                const tone =
+                  sev === "fatal"
+                    ? "border-l-destructive bg-destructive/10 text-destructive"
+                    : sev === "error"
+                      ? "border-l-destructive/70 bg-destructive/5 text-destructive"
+                      : sev === "warn"
+                        ? "border-l-amber-500/70 bg-amber-500/5 text-amber-500"
+                        : "border-l-transparent text-foreground/85";
+                return (
+                  <div
+                    key={i}
+                    className={cn(
+                      "flex gap-2 whitespace-pre-wrap break-words border-l-2 px-2 py-0.5",
+                      tone,
+                    )}
+                  >
+                    {e.ts && (
+                      <span className="shrink-0 text-[10px] text-muted-foreground">[{e.ts}]</span>
+                    )}
+                    {sev !== "info" && (
+                      <span className="shrink-0 text-[9px] font-extrabold uppercase tracking-wider opacity-80">
+                        {sev}
+                      </span>
+                    )}
+                    <span className="min-w-0 flex-1">{e.line}</span>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </ScrollArea>
       </div>

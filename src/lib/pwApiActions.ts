@@ -1301,10 +1301,13 @@ export interface WatchdogStatusBlock {
   enabled?: boolean;
   critical_services?: string[];
   last_check_at?: string | number | null;
+  last_success_at?: string | number | null;
   last_result?: "ok" | "degraded" | "failed" | string | null;
   cooldown_seconds?: number;
   cooldown_remaining?: number;
   unhealthy_services?: string[];
+  healthy_services?: string[];
+  trigger_services?: string[];
   critical_failure?: boolean;
   [k: string]: unknown;
 }

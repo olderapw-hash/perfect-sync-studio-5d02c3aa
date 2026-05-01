@@ -130,9 +130,12 @@ const App = () => (
                     {/* GM Commander — compensação, moderação e comunicação. */}
                     <Route path="gm" element={<GmCommanderPage />} />
 
-                    {/* Segurança v1 — layout com tabs e Outlet. */}
+                    {/* Segurança v1 — moderação operacional (kick/ban/mute) consolidada em GM Commander. */}
                     <Route path="security" element={<SecurityOverviewPage />}>
-                      <Route path="moderation" element={<SecurityModerationPage />} />
+                      <Route
+                        path="moderation"
+                        element={<Navigate to="/admin/gm?tab=moderation" replace />}
+                      />
                       <Route path="history" element={<SecurityHistoryPage />} />
                       <Route path="settings" element={<SecuritySettingsPage />} />
                     </Route>

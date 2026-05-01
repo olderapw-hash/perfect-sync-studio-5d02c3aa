@@ -121,6 +121,11 @@ const FALLBACK_SUPPORTED = new Set([
   "muteAccount",
   "muteRole",
   "sendSystemMessage",
+  // GM Permissions v2 — backend confirmado.
+  "getGmPermissionCatalog",
+  "getGmPermissionState",
+  "grantGmPermission",
+  "revokeGmPermission",
 ]);
 
 const FALLBACK_UNSUPPORTED = new Set([
@@ -130,7 +135,6 @@ const FALLBACK_UNSUPPORTED = new Set([
   "clearRolePk",
   "reviveRole",
   "resetRoleQuest",
-  "grantGmPermission",
 ]);
 
 function normalizeCatalog(

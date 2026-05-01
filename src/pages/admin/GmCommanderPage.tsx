@@ -281,6 +281,10 @@ export default function GmCommanderPage() {
               <MessageSquare className="h-3.5 w-3.5" />
               Comunicação
             </TabsTrigger>
+            <TabsTrigger value="permissions" className="gap-2">
+              <Shield className="h-3.5 w-3.5" />
+              Permissões GM
+            </TabsTrigger>
             <TabsTrigger value="history" className="gap-2">
               <HistoryIcon className="h-3.5 w-3.5" />
               Histórico
@@ -295,6 +299,9 @@ export default function GmCommanderPage() {
           </TabsContent>
           <TabsContent value="communication" className="space-y-4">
             <CommunicationTab caps={caps} onActed={refreshHistory} />
+          </TabsContent>
+          <TabsContent value="permissions" className="space-y-4">
+            <GmPermissionsTab caps={caps} onActed={refreshHistory} />
           </TabsContent>
           <TabsContent value="history">
             <HistoryTab tick={historyTick} />

@@ -26,7 +26,7 @@ import {
   Gauge,
   Globe,
   LogOut,
-  Mail,
+  
   Shield,
   ShieldCheck,
   UserCog,

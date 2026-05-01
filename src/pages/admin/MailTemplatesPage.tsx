@@ -148,8 +148,8 @@ const MailTemplatesPage = () => {
             </h1>
             <p className="text-xs text-muted-foreground">
               Modelos reutilizáveis para envio rápido em{" "}
-              <Link to="/admin/mail" className="text-primary hover:underline">
-                Enviar recompensa
+              <Link to="/admin/gm?tab=compensation" className="text-primary hover:underline">
+                GM Commander → Compensação
               </Link>
             </p>
           </div>

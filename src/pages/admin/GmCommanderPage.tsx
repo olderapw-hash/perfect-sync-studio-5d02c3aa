@@ -1138,14 +1138,41 @@ function ModerationTab({
   caps: Map<string, GmCommandCapability>;
   onActed: () => void;
 }) {
-  return (
-    <>
-      <div className="grid gap-4 lg:grid-cols-3">
-        <KickRoleCard caps={caps} onActed={onActed} />
-        <BanAccountCard caps={caps} onActed={onActed} />
-        <UnbanAccountCard caps={caps} onActed={onActed} />
-      </div>
-      <div className="grid gap-4 lg:grid-cols-2">
+  const items: ActionItem[] = [
+    {
+      id: "kick",
+      action: "kickRole",
+      title: "Kick",
+      subtitle: "Desconecta o personagem online (não bane).",
+      icon: LogOut,
+      tone: "warning",
+      render: () => <KickRoleCard caps={caps} onActed={onActed} />,
+    },
+    {
+      id: "ban",
+      action: "banAccount",
+      title: "Ban",
+      subtitle: "Bane uma conta — temporário ou permanente.",
+      icon: Ban,
+      tone: "danger",
+      render: () => <BanAccountCard caps={caps} onActed={onActed} />,
+    },
+    {
+      id: "unban",
+      action: "unbanAccount",
+      title: "Unban",
+      subtitle: "Remove o ban de uma conta.",
+      icon: ShieldOff,
+      render: () => <UnbanAccountCard caps={caps} onActed={onActed} />,
+    },
+    {
+      id: "mute-account",
+      action: "muteAccount",
+      title: "Mute Account",
+      subtitle: "Silencia uma conta inteira no chat global.",
+      icon: VolumeX,
+      tone: "warning",
+      render: () => (
         <MuteCard
           caps={caps}
           onActed={onActed}
@@ -1154,6 +1181,16 @@ function ModerationTab({
           title="Mute Account"
           subtitle="Silencia uma conta inteira no chat global."
         />
+      ),
+    },
+    {
+      id: "mute-role",
+      action: "muteRole",
+      title: "Mute Role",
+      subtitle: "Silencia apenas um personagem específico.",
+      icon: VolumeX,
+      tone: "warning",
+      render: () => (
         <MuteCard
           caps={caps}
           onActed={onActed}
@@ -1162,16 +1199,63 @@ function ModerationTab({
           title="Mute Role"
           subtitle="Silencia apenas um personagem específico."
         />
-      </div>
-      <div className="grid gap-4 lg:grid-cols-3">
-        <UnsupportedCard caps={caps} action="teleportRole" icon={Zap} title="Teleport" />
-        <UnsupportedCard caps={caps} action="summonRole" icon={Zap} title="Summon" />
-        <UnsupportedCard caps={caps} action="prisonRole" icon={ShieldOff} title="Prison" />
-        <UnsupportedCard caps={caps} action="clearRolePk" icon={ShieldOff} title="Clear PK" />
-        <UnsupportedCard caps={caps} action="reviveRole" icon={Sparkles} title="Revive" />
-        <UnsupportedCard caps={caps} action="resetRoleQuest" icon={Sparkles} title="Reset Quest" />
-      </div>
-    </>
+      ),
+    },
+    {
+      id: "teleport",
+      action: "teleportRole",
+      title: "Teleport",
+      subtitle: "Aguardando suporte na VPS.",
+      icon: Zap,
+      render: () => <UnsupportedCard caps={caps} action="teleportRole" icon={Zap} title="Teleport" />,
+    },
+    {
+      id: "summon",
+      action: "summonRole",
+      title: "Summon",
+      subtitle: "Aguardando suporte na VPS.",
+      icon: Zap,
+      render: () => <UnsupportedCard caps={caps} action="summonRole" icon={Zap} title="Summon" />,
+    },
+    {
+      id: "prison",
+      action: "prisonRole",
+      title: "Prison",
+      subtitle: "Aguardando suporte na VPS.",
+      icon: ShieldOff,
+      render: () => <UnsupportedCard caps={caps} action="prisonRole" icon={ShieldOff} title="Prison" />,
+    },
+    {
+      id: "clearpk",
+      action: "clearRolePk",
+      title: "Clear PK",
+      subtitle: "Aguardando suporte na VPS.",
+      icon: ShieldOff,
+      render: () => <UnsupportedCard caps={caps} action="clearRolePk" icon={ShieldOff} title="Clear PK" />,
+    },
+    {
+      id: "revive",
+      action: "reviveRole",
+      title: "Revive",
+      subtitle: "Aguardando suporte na VPS.",
+      icon: Sparkles,
+      render: () => <UnsupportedCard caps={caps} action="reviveRole" icon={Sparkles} title="Revive" />,
+    },
+    {
+      id: "reset-quest",
+      action: "resetRoleQuest",
+      title: "Reset Quest",
+      subtitle: "Aguardando suporte na VPS.",
+      icon: Sparkles,
+      render: () => <UnsupportedCard caps={caps} action="resetRoleQuest" icon={Sparkles} title="Reset Quest" />,
+    },
+  ];
+  return (
+    <ActionPicker
+      items={items}
+      caps={caps}
+      emptyHint="Selecione uma ação de moderação para abrir o formulário."
+    />
   );
 }
 

@@ -1440,13 +1440,27 @@ function BanAccountCard({
         }
         onSuccess={(res) => {
           if (res.success) {
-            toast.success(`Conta #${useridNum} banida`);
+            const gm = res.gm_action;
+            const backendLabel =
+              gm?.account_forbid_backend === "forbid_table"
+                ? "Backend: tabela forbid"
+                : gm?.account_forbid_backend === "gamedbd"
+                  ? "Backend: gamedbd"
+                  : undefined;
+            toast.success(
+              gm?.message ?? `Conta #${useridNum} banida`,
+              backendLabel ? { description: backendLabel } : undefined,
+            );
             void logAuditEvent({
               action: "gm.banAccount",
               tenantId: active?.id ?? null,
               target: `userid:${useridNum}`,
               status: "ok",
-              metadata: { permanent, duration_seconds: durationNum },
+              metadata: {
+                permanent,
+                duration_seconds: durationNum,
+                account_forbid_backend: gm?.account_forbid_backend ?? null,
+              },
             });
             onActed();
           } else {
@@ -1458,6 +1472,7 @@ function BanAccountCard({
             <Row label="state" value={res.state ?? "—"} />
             <Row label="ban_until" value={res.ban_until ?? "—"} />
             <Row label="seconds" value={res.seconds ?? "—"} />
+            <DeliveryDetails gm={res.gm_action} variant="ban" />
           </div>
         )}
       />

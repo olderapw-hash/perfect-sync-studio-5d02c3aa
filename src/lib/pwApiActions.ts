@@ -1407,6 +1407,27 @@ export interface UnbanAccountPayload {
   dry_run?: boolean;
 }
 
+/** Detalhes de delivery retornados pelo backend para ban/unban. */
+export interface ForbidDelivery {
+  success?: boolean;
+  action?: string;
+  forbid_table?: string;
+  before_type_ids?: number[];
+  applied_type_ids?: number[];
+  after_type_ids?: number[];
+  inserted_type_ids?: number[];
+  deleted_type_ids?: number[];
+}
+
+/** Bloco gm_action retornado pelo backend em ban/unban. */
+export interface GmActionBlock {
+  action?: string;
+  userid?: number;
+  account_forbid_backend?: "forbid_table" | "gamedbd" | string;
+  message?: string;
+  delivery?: ForbidDelivery | { account?: ForbidDelivery };
+}
+
 export interface SecurityActionResponse {
   success: boolean;
   /** Eco da action executada (kick/ban/unban). */
@@ -1430,6 +1451,8 @@ export interface SecurityActionResponse {
   dry_run?: boolean;
   message?: string;
   error?: string;
+  /** Bloco detalhado retornado pelo backend real (ban/unban). */
+  gm_action?: GmActionBlock;
 }
 
 export type SecurityHistoryAction = "kick" | "ban" | "unban";

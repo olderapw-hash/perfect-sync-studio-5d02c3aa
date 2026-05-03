@@ -521,8 +521,8 @@ function GmCard({
       {/* Accent glow — top-left radial */}
       <div
         className={cn(
-          "pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-gradient-radial opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-100",
-          s.accent,
+          "pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-100",
+          tone === "danger" ? "bg-destructive/20" : tone === "warning" ? "bg-amber-500/20" : tone === "premium" ? "bg-purple-500/20" : "bg-primary/20",
         )}
       />
       {/* Top accent line */}

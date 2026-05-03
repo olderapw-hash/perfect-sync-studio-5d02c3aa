@@ -1485,7 +1485,7 @@ function BanAccountCard({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [kickAfterBan, setKickAfterBan] = useState(true);
   const [kickSeconds, setKickSeconds] = useState("10");
-  const [kicking] = useState(false);
+  
 
   const useridNum = Number(userid);
   const useridValid = Number.isFinite(useridNum) && useridNum > 0;

@@ -95,6 +95,8 @@ import { cn } from "@/lib/utils";
 import {
   EndpointMissingError,
   pwApi,
+  type ForbidDelivery,
+  type GmActionBlock,
   type GmActionHistoryEntry,
   type GmCommandCapability,
   type GmCommandCatalogResponse,
@@ -105,6 +107,7 @@ import {
   type GrantMallCashResponse,
   type MallCashBalanceResponse,
   type MallCashWallet,
+  type SecurityActionResponse,
 } from "@/lib/pwApiActions";
 
 /* -------------------------------------------------------------------------- */
@@ -1437,13 +1440,27 @@ function BanAccountCard({
         }
         onSuccess={(res) => {
           if (res.success) {
-            toast.success(`Conta #${useridNum} banida`);
+            const gm = res.gm_action;
+            const backendLabel =
+              gm?.account_forbid_backend === "forbid_table"
+                ? "Backend: tabela forbid"
+                : gm?.account_forbid_backend === "gamedbd"
+                  ? "Backend: gamedbd"
+                  : undefined;
+            toast.success(
+              gm?.message ?? `Conta #${useridNum} banida`,
+              backendLabel ? { description: backendLabel } : undefined,
+            );
             void logAuditEvent({
               action: "gm.banAccount",
               tenantId: active?.id ?? null,
               target: `userid:${useridNum}`,
               status: "ok",
-              metadata: { permanent, duration_seconds: durationNum },
+              metadata: {
+                permanent,
+                duration_seconds: durationNum,
+                account_forbid_backend: gm?.account_forbid_backend ?? null,
+              },
             });
             onActed();
           } else {
@@ -1455,6 +1472,7 @@ function BanAccountCard({
             <Row label="state" value={res.state ?? "—"} />
             <Row label="ban_until" value={res.ban_until ?? "—"} />
             <Row label="seconds" value={res.seconds ?? "—"} />
+            <DeliveryDetails gm={res.gm_action} variant="ban" />
           </div>
         )}
       />
@@ -1472,37 +1490,10 @@ function UnbanAccountCard({
   const { active } = useServers();
   const [userid, setUserid] = useState("");
   const [reason, setReason] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const useridNum = Number(userid);
   const useridValid = Number.isFinite(useridNum) && useridNum > 0;
-
-  const submit = async () => {
-    if (!useridValid) {
-      toast.error("Userid da conta obrigatório");
-      return;
-    }
-    setBusy(true);
-    try {
-      const res = await pwApi.unbanAccount({ userid: useridNum, reason });
-      if (res.success) {
-        toast.success(`Ban removido da Conta #${useridNum}`);
-        void logAuditEvent({
-          action: "gm.unbanAccount",
-          tenantId: active?.id ?? null,
-          target: `userid:${useridNum}`,
-          status: "ok",
-        });
-        onActed();
-      } else {
-        toast.error(res.error ?? "Falhou");
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
-    }
-  };
 
   return (
     <GmCard
@@ -1529,14 +1520,60 @@ function UnbanAccountCard({
         <Input value={reason} onChange={(e) => setReason(e.target.value)} />
       </FieldRow>
       <Button
-        onClick={submit}
-        disabled={busy || !useridValid}
+        onClick={() => setConfirmOpen(true)}
+        disabled={!useridValid}
         className="w-full"
         variant="outline"
       >
-        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldOff className="h-3.5 w-3.5" />}
+        <ShieldOff className="h-3.5 w-3.5" />
         Desbanir Conta #{useridValid ? useridNum : "—"}
       </Button>
+      <ConfirmActionDialog<SecurityActionResponse>
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={`Desbanir Conta #${useridNum}`}
+        description={`Remover ban da Conta #${useridNum}?`}
+        exec={async (dryRun) =>
+          pwApi.unbanAccount({
+            userid: useridNum,
+            reason: reason || undefined,
+            dry_run: dryRun,
+          })
+        }
+        onSuccess={(res) => {
+          if (res.success) {
+            const gm = res.gm_action;
+            const backendLabel =
+              gm?.account_forbid_backend === "forbid_table"
+                ? "Backend: tabela forbid"
+                : gm?.account_forbid_backend === "gamedbd"
+                  ? "Backend: gamedbd"
+                  : undefined;
+            toast.success(
+              gm?.message ?? `Ban removido da Conta #${useridNum}`,
+              backendLabel ? { description: backendLabel } : undefined,
+            );
+            void logAuditEvent({
+              action: "gm.unbanAccount",
+              tenantId: active?.id ?? null,
+              target: `userid:${useridNum}`,
+              status: "ok",
+              metadata: {
+                account_forbid_backend: gm?.account_forbid_backend ?? null,
+              },
+            });
+            onActed();
+          } else {
+            toast.error(res.error ?? "Falhou");
+          }
+        }}
+        renderPreview={(res) => (
+          <div className="space-y-1 text-xs">
+            <Row label="state" value={res.state ?? "—"} />
+            <DeliveryDetails gm={res.gm_action} variant="unban" />
+          </div>
+        )}
+      />
     </GmCard>
   );
 }
@@ -2557,6 +2594,62 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
         {label}
       </span>
       <span className="font-mono text-xs font-semibold">{value}</span>
+    </div>
+  );
+}
+
+/** Extracts the flat ForbidDelivery from gm_action.delivery (ban has it flat, unban nests under .account) */
+function extractDelivery(gm: GmActionBlock | undefined): ForbidDelivery | undefined {
+  if (!gm?.delivery) return undefined;
+  const d = gm.delivery as Record<string, unknown>;
+  if ("account" in d && typeof d.account === "object" && d.account !== null) {
+    return d.account as ForbidDelivery;
+  }
+  return gm.delivery as ForbidDelivery;
+}
+
+/** Renders backend label + delivery type_ids for ban/unban results */
+function DeliveryDetails({
+  gm,
+  variant,
+}: {
+  gm?: GmActionBlock;
+  variant: "ban" | "unban";
+}) {
+  if (!gm) return null;
+  const backend = gm.account_forbid_backend;
+  const delivery = extractDelivery(gm);
+  const backendLabel =
+    backend === "forbid_table"
+      ? "tabela forbid"
+      : backend === "gamedbd"
+        ? "gamedbd"
+        : backend ?? "—";
+
+  return (
+    <div className="space-y-1">
+      {gm.message && <Row label="mensagem" value={gm.message} />}
+      <Row
+        label="backend"
+        value={
+          <span className="inline-flex items-center gap-1.5 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium">
+            {backendLabel}
+          </span>
+        }
+      />
+      {delivery && (
+        <>
+          <Row label="before_type_ids" value={delivery.before_type_ids?.join(", ") ?? "—"} />
+          <Row label="applied_type_ids" value={delivery.applied_type_ids?.join(", ") ?? "—"} />
+          <Row label="after_type_ids" value={delivery.after_type_ids?.join(", ") ?? "—"} />
+          {variant === "ban" && delivery.inserted_type_ids !== undefined && (
+            <Row label="inserted_type_ids" value={delivery.inserted_type_ids?.join(", ") ?? "—"} />
+          )}
+          {variant === "unban" && delivery.deleted_type_ids !== undefined && (
+            <Row label="deleted_type_ids" value={delivery.deleted_type_ids?.join(", ") ?? "—"} />
+          )}
+        </>
+      )}
     </div>
   );
 }

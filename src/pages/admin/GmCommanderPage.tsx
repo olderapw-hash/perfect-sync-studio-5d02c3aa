@@ -1868,6 +1868,7 @@ function UnbanAccountCard({
           const delivery = extractDelivery(gm);
           const afterEmpty = !delivery?.after_type_ids?.length;
           const roleCleared = gm?.role_clear?.cleared === true;
+          const lcr = gm?.login_cache_refresh;
 
           return (
             <div className="space-y-2 text-xs">
@@ -1904,6 +1905,32 @@ function UnbanAccountCard({
                     <Row label="mensagem" value={gm.role_clear.message} />
                   )}
                 </div>
+              )}
+
+              {/* Login cache refresh section */}
+              {lcr && (
+                <div className="rounded-md border border-border/40 p-2 space-y-1">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Cache de Login
+                  </p>
+                  {lcr.requested && (
+                    <Row label="serviços solicitados" value={Array.isArray(lcr.requested) ? lcr.requested.join(", ") : String(lcr.requested)} />
+                  )}
+                  {lcr.results && Object.entries(lcr.results).map(([svc, r]) => (
+                    <Row
+                      key={svc}
+                      label={svc}
+                      value={r?.success ? "✅ reiniciado" : `⚠ ${r?.message ?? "falhou"}`}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Pending refresh warning */}
+              {refreshLogin && !lcr && (
+                <p className="text-[10px] text-amber-400">
+                  ⚠ Refresh de authd + gdeliveryd será executado após confirmação.
+                </p>
               )}
             </div>
           );

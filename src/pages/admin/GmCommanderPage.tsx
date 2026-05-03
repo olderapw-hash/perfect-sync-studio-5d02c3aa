@@ -1565,7 +1565,7 @@ function BanAccountCard({
           <strong>Nota:</strong> Em servidores legados, o ban da conta pode valer apenas no próximo login.
           {roleidValid
             ? " Use o kick automático para remover a sessão atual."
-            : " Informe o roleid acima para derrubar o personagem online após o ban."}
+            : " A conta será bloqueada, mas a sessão online atual pode continuar sem kick. Informe o roleid para derrubar o personagem."}
         </p>
       </div>
       <Button

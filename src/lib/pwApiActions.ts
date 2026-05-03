@@ -1447,6 +1447,19 @@ export interface ClearRolePkResponse {
   };
 }
 
+export interface ForbidDelivery {
+  account?: {
+    before_type_ids?: number[];
+    after_type_ids?: number[];
+  };
+  role_clear?: {
+    cleared?: boolean;
+    roleid?: number;
+    message?: string;
+  };
+  [key: string]: unknown;
+}
+
 export interface GmActionBlock {
   action?: string;
   userid?: number;

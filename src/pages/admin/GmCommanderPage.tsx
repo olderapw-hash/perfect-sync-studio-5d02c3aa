@@ -1806,6 +1806,7 @@ function UnbanAccountCard({
             userid: useridNum,
             roleid: roleidValid ? roleidNum : undefined,
             reason: reason || undefined,
+            refresh_services: refreshLogin ? ["authd", "gdeliveryd"] : undefined,
             dry_run: dryRun,
           })
         }

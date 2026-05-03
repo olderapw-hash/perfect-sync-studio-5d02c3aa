@@ -328,20 +328,24 @@ function GmCommanderPageInner() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-background">
-      <header className="border-b border-border bg-gradient-to-r from-card/80 via-card/60 to-card/80 px-6 py-4 backdrop-blur-md">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-purple-500/40 bg-purple-500/10 text-purple-400">
-            <Wand2 className="h-5 w-5" />
+      <header className="relative overflow-hidden border-b border-border/50 bg-gradient-to-r from-card/90 via-card/60 to-card/40 px-6 py-5 backdrop-blur-xl">
+        {/* Subtle ambient glow */}
+        <div className="pointer-events-none absolute -right-20 -top-20 h-60 w-60 rounded-full bg-purple-500/5 blur-3xl" />
+        <div className="pointer-events-none absolute -left-10 bottom-0 h-40 w-40 rounded-full bg-primary/5 blur-3xl" />
+        
+        <div className="relative flex flex-wrap items-center gap-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-purple-500/30 bg-purple-500/10 text-purple-400 ring-1 ring-purple-500/10 transition-transform hover:scale-105">
+            <Wand2 className="h-6 w-6" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="mb-1 inline-flex items-center gap-1.5 rounded-full border border-purple-500/40 bg-purple-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-purple-400">
+            <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-purple-400 shadow-[0_0_12px_-3px_hsl(270_60%_55%/0.3)]">
               <Zap className="h-3 w-3" />
               GM · v1
             </div>
             <h1 className="truncate text-xl font-extrabold tracking-tight text-foreground">
               GM Commander
             </h1>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs leading-relaxed text-muted-foreground">
               Compensação, moderação e comunicação operacional. Toda ação
               destrutiva passa por preview (dry_run) antes da execução real.
             </p>
@@ -351,6 +355,7 @@ function GmCommanderPageInner() {
             variant="outline"
             onClick={() => void loadCatalog()}
             disabled={catalogLoading}
+            className="border-border/60 bg-card/60 backdrop-blur-sm transition-all hover:border-primary/40 hover:bg-primary/5"
           >
             <RefreshCw className={cn("h-3.5 w-3.5", catalogLoading && "animate-spin")} />
             Capacidades
@@ -358,7 +363,7 @@ function GmCommanderPageInner() {
         </div>
 
         {catalogMissing && (
-          <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-500">
+          <div className="relative mt-4 flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-2.5 text-[11px] text-amber-400 backdrop-blur-sm">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <span>
               <strong>getGmCommandCatalog</strong> não existe nesta VPS — usando

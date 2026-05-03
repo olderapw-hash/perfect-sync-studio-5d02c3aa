@@ -412,7 +412,7 @@ export default function GmCommanderPage() {
           </TabsContent>
         </Tabs>
       </main>
-    </div>
+    </div></FeedbackProvider>
   );
 }
 

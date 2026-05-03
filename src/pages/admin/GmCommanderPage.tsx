@@ -95,6 +95,7 @@ import { cn } from "@/lib/utils";
 import {
   EndpointMissingError,
   pwApi,
+  type ClearRolePkResponse,
   type ForbidDelivery,
   type GmActionBlock,
   type GmActionHistoryEntry,

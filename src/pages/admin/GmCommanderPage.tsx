@@ -272,6 +272,7 @@ function isSupported(
 /* -------------------------------------------------------------------------- */
 
 export default function GmCommanderPage() {
+  const toast = useFeedback();
   const { active } = useServers();
   const { isSuperadmin } = useAuth();
   const { can, loading: permLoading } = useServerPermissions();
@@ -843,6 +844,7 @@ function SendMailItemCard({
   caps: Map<string, GmCommandCapability>;
   onActed: () => void;
 }) {
+  const toast = useFeedback();
   const { active } = useServers();
   const [roleid, setRoleid] = useState("");
   const [itemId, setItemId] = useState("");
@@ -936,6 +938,7 @@ function SendMailGoldCard({
   caps: Map<string, GmCommandCapability>;
   onActed: () => void;
 }) {
+  const toast = useFeedback();
   const { active } = useServers();
   const [roleid, setRoleid] = useState("");
   const [amount, setAmount] = useState("");
@@ -1015,6 +1018,7 @@ function GrantMallCashCard({
   caps: Map<string, GmCommandCapability>;
   onActed: () => void;
 }) {
+  const toast = useFeedback();
   const { active } = useServers();
   const [roleid, setRoleid] = useState("");
   const [amount, setAmount] = useState("");
@@ -1386,6 +1390,7 @@ function KickRoleCard({
   caps: Map<string, GmCommandCapability>;
   onActed: () => void;
 }) {
+  const toast = useFeedback();
   const { active } = useServers();
   const [roleid, setRoleid] = useState("");
   const [reason, setReason] = useState("");
@@ -1462,6 +1467,7 @@ function BanAccountCard({
   caps: Map<string, GmCommandCapability>;
   onActed: () => void;
 }) {
+  const toast = useFeedback();
   const { active } = useServers();
   const [userid, setUserid] = useState("");
   const [roleid, setRoleid] = useState("");
@@ -1685,6 +1691,7 @@ function UnbanAccountCard({
   caps: Map<string, GmCommandCapability>;
   onActed: () => void;
 }) {
+  const toast = useFeedback();
   const { active } = useServers();
   const [userid, setUserid] = useState("");
   const [reason, setReason] = useState("");
@@ -1791,6 +1798,7 @@ function MuteCard({
   title: string;
   subtitle: string;
 }) {
+  const toast = useFeedback();
   const { active } = useServers();
   const [target, setTarget] = useState("");
   const [reason, setReason] = useState("");
@@ -1951,6 +1959,7 @@ function CommunicationTab({
   caps: Map<string, GmCommandCapability>;
   onActed: () => void;
 }) {
+  const toast = useFeedback();
   const { active } = useServers();
   const [message, setMessage] = useState("");
   const [kind, setKind] = useState<"system" | "broadcast" | "tip" | "world">("system");
@@ -2146,6 +2155,7 @@ function GmPermissionsTab({
   caps: Map<string, GmCommandCapability>;
   onActed: () => void;
 }) {
+  const toast = useFeedback();
   const { active } = useServers();
   const [target, setTarget] = useState<{ kind: "userid" | "roleid"; value: string }>(
     { kind: "userid", value: "" },

@@ -95,6 +95,8 @@ const ALLOWED_ACTIONS = new Set([
   "getGmPermissionState",
   "grantGmPermission",
   "revokeGmPermission",
+  // GM Commander — moderação extra.
+  "clearRolePk",
 ]);
 
 // Mapa Action → permissão exigida (deve refletir src/lib/serverPermissions.ts).

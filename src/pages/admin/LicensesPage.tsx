@@ -175,8 +175,7 @@ export default function LicensesPage() {
         toast({ title: "Licença atualizada" });
       }
     } else {
-      payload.created_by = user?.id;
-      const { error } = await supabase.from("licenses").insert(payload as any);
+      const { error } = await supabase.from("licenses").insert({ ...payload, created_by: user?.id ?? "" });
       if (error) {
         toast({ title: "Erro ao criar", description: error.message, variant: "destructive" });
       } else {

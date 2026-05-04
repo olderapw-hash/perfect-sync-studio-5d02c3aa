@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ItemCatalogProvider } from "@/context/ItemCatalogContext";
+import { LicenseGate } from "@/components/LicenseGate";
 import { AuthProvider } from "@/hooks/useAuth";
 import { AppSettingsProvider } from "@/hooks/useAppSettings";
 import { ServerPermissionsProvider } from "@/hooks/useServerPermissions";
@@ -59,6 +60,7 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+    <LicenseGate>
     <TooltipProvider>
       <BrowserRouter>
         <AuthProvider>
@@ -242,6 +244,7 @@ const App = () => (
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
+    </LicenseGate>
   </QueryClientProvider>
 );
 

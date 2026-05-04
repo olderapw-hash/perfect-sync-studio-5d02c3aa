@@ -29,6 +29,8 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock,
+  Eye,
+  EyeOff,
   Coins,
   Crown,
   Crosshair,

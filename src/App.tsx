@@ -53,6 +53,7 @@ import SecuritySettingsPage from "./pages/admin/SecuritySettingsPage.tsx";
 import SitePage from "./pages/admin/SitePage.tsx";
 import InstallerReleasesPage from "./pages/admin/InstallerReleasesPage.tsx";
 import GmCommanderPage from "./pages/admin/GmCommanderPage.tsx";
+import LicensesPage from "./pages/admin/LicensesPage.tsx";
 
 const queryClient = new QueryClient();
 

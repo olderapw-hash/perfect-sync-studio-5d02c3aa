@@ -247,13 +247,7 @@ const FALLBACK_SUPPORTED = new Set([
   "revokeGmPermission",
 ]);
 
-const FALLBACK_UNSUPPORTED = new Set([
-  "teleportRole",
-  "summonRole",
-  "prisonRole",
-  "reviveRole",
-  "resetRoleQuest",
-]);
+const FALLBACK_UNSUPPORTED = new Set<string>([]);
 
 function normalizeCatalog(
   cat: GmCommandCatalogResponse | null,
@@ -1699,30 +1693,6 @@ function ModerationTab({
       ),
     },
     {
-      id: "teleport",
-      action: "teleportRole",
-      title: "Teleport",
-      subtitle: "Aguardando suporte na VPS.",
-      icon: Zap,
-      render: () => <UnsupportedCard caps={caps} action="teleportRole" icon={Zap} title="Teleport" />,
-    },
-    {
-      id: "summon",
-      action: "summonRole",
-      title: "Summon",
-      subtitle: "Aguardando suporte na VPS.",
-      icon: Zap,
-      render: () => <UnsupportedCard caps={caps} action="summonRole" icon={Zap} title="Summon" />,
-    },
-    {
-      id: "prison",
-      action: "prisonRole",
-      title: "Prison",
-      subtitle: "Aguardando suporte na VPS.",
-      icon: ShieldOff,
-      render: () => <UnsupportedCard caps={caps} action="prisonRole" icon={ShieldOff} title="Prison" />,
-    },
-    {
       id: "clearpk",
       action: "clearRolePk",
       title: "Clear PK",
@@ -1730,22 +1700,6 @@ function ModerationTab({
       icon: ShieldCheck,
       tone: "warning",
       render: () => <ClearRolePkCard caps={caps} onActed={onActed} />,
-    },
-    {
-      id: "revive",
-      action: "reviveRole",
-      title: "Revive",
-      subtitle: "Aguardando suporte na VPS.",
-      icon: Sparkles,
-      render: () => <UnsupportedCard caps={caps} action="reviveRole" icon={Sparkles} title="Revive" />,
-    },
-    {
-      id: "reset-quest",
-      action: "resetRoleQuest",
-      title: "Reset Quest",
-      subtitle: "Aguardando suporte na VPS.",
-      icon: Sparkles,
-      render: () => <UnsupportedCard caps={caps} action="resetRoleQuest" icon={Sparkles} title="Reset Quest" />,
     },
   ];
   return (
@@ -2603,31 +2557,7 @@ function ClearRolePkCard({
   );
 }
 
-function UnsupportedCard({
-  caps,
-  action,
-  icon,
-  title,
-}: {
-  caps: Map<string, GmCommandCapability>;
-  action: string;
-  icon: typeof Zap;
-  title: string;
-}) {
-  return (
-    <GmCard
-      icon={icon}
-      title={title}
-      subtitle="Aguardando suporte na VPS."
-      action={action}
-      caps={caps}
-    >
-      <p className="text-[11px] text-muted-foreground">
-        Endpoint planejado mas ainda não validado no api_cls.php.
-      </p>
-    </GmCard>
-  );
-}
+
 
 /* -------------------------------------------------------------------------- */
 /* Comunicação                                                                 */

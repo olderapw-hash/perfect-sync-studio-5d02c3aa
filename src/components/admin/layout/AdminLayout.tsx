@@ -189,6 +189,13 @@ const SUPERADMIN_SECTIONS: NavSection[] = [
     basePath: "/admin/installer",
     children: [{ to: "/admin/installer", label: "Publicar versão", end: true }],
   },
+  {
+    id: "licenses",
+    label: "Licenças",
+    icon: Key,
+    basePath: "/admin/licenses",
+    children: [{ to: "/admin/licenses", label: "Gerenciar licenças", end: true }],
+  },
 ];
 
 export const AdminLayout = () => {

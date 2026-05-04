@@ -2856,10 +2856,13 @@ function ruleLabel(r: GmPermissionRule): string {
 function GmPermissionsTab({
   caps,
   onActed,
+  isSuperadmin: isSA,
+  cardVisibility = {},
+  onToggleVisibility,
 }: {
   caps: Map<string, GmCommandCapability>;
   onActed: () => void;
-}) {
+} & VisibilityProps) {
   const toast = useFeedback();
   const { active } = useServers();
   const [target, setTarget] = useState<{ kind: "userid" | "roleid"; value: string }>(

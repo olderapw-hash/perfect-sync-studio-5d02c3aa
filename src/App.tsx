@@ -159,6 +159,15 @@ const App = () => (
                         </SuperadminRoute>
                       }
                     />
+                    {/* Licenças de instalação — apenas superadmin. */}
+                    <Route
+                      path="licenses"
+                      element={
+                        <SuperadminRoute>
+                          <LicensesPage />
+                        </SuperadminRoute>
+                      }
+                    />
                   </Route>
 
                   {/* /trial — área enxuta para usuários no Free Trial.

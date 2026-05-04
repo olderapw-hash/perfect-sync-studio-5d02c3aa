@@ -1009,17 +1009,29 @@ interface ActionItem {
   render: () => React.ReactNode;
 }
 
+interface VisibilityProps {
+  isSuperadmin?: boolean;
+  cardVisibility?: Record<string, boolean>;
+  onToggleVisibility?: (cardId: string) => void;
+}
+
 function ActionPicker({
   items,
   caps,
   emptyHint,
+  isSuperadmin,
+  cardVisibility = {},
+  onToggleVisibility,
 }: {
   items: ActionItem[];
   caps: Map<string, GmCommandCapability>;
   emptyHint?: string;
-}) {
+} & VisibilityProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const active = items.find((i) => i.id === activeId) ?? null;
+
+  // Filter hidden cards for non-superadmin
+  const visibleItems = isSuperadmin ? items : items.filter((i) => isCardVisible(i.id, cardVisibility));
 
   return (
     <div>

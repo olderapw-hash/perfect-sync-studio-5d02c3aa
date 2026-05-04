@@ -3056,8 +3056,29 @@ function GmPermissionsTab({
     (a, b) => categoryOrder.indexOf(a) - categoryOrder.indexOf(b),
   );
 
+  const permCardId = "gm-permissions";
+  const permHidden = !isCardVisible(permCardId, cardVisibility);
+  if (!isSA && permHidden) return <p className="text-xs text-muted-foreground">Nenhum card disponível nesta seção.</p>;
+
   return (
-    <div className="space-y-4">
+    <div className={cn("space-y-4", permHidden && isSA && "opacity-50")}>
+      {isSA && onToggleVisibility && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => onToggleVisibility(permCardId)}
+            className={cn(
+              "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[11px] font-medium transition-all",
+              permHidden
+                ? "border-destructive/50 bg-destructive/10 text-destructive hover:bg-destructive/20"
+                : "border-emerald-500/50 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20",
+            )}
+          >
+            {permHidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            {permHidden ? "Oculto para usuários" : "Visível para usuários"}
+          </button>
+        </div>
+      )}
       {/* Alvo + reason */}
       <Card className="bg-card/40">
         <CardHeader className="pb-3">

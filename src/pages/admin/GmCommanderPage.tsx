@@ -2557,31 +2557,7 @@ function ClearRolePkCard({
   );
 }
 
-function UnsupportedCard({
-  caps,
-  action,
-  icon,
-  title,
-}: {
-  caps: Map<string, GmCommandCapability>;
-  action: string;
-  icon: typeof Zap;
-  title: string;
-}) {
-  return (
-    <GmCard
-      icon={icon}
-      title={title}
-      subtitle="Aguardando suporte na VPS."
-      action={action}
-      caps={caps}
-    >
-      <p className="text-[11px] text-muted-foreground">
-        Endpoint planejado mas ainda não validado no api_cls.php.
-      </p>
-    </GmCard>
-  );
-}
+
 
 /* -------------------------------------------------------------------------- */
 /* Comunicação                                                                 */

@@ -247,13 +247,7 @@ const FALLBACK_SUPPORTED = new Set([
   "revokeGmPermission",
 ]);
 
-const FALLBACK_UNSUPPORTED = new Set([
-  "teleportRole",
-  "summonRole",
-  "prisonRole",
-  "reviveRole",
-  "resetRoleQuest",
-]);
+const FALLBACK_UNSUPPORTED = new Set<string>([]);
 
 function normalizeCatalog(
   cat: GmCommandCatalogResponse | null,

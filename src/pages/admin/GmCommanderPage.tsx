@@ -294,6 +294,15 @@ const ICON_CATALOG: Record<string, LucideIcon> = {
 
 const ICON_NAMES = Object.keys(ICON_CATALOG);
 
+/** Game icons from PW sprite sheet — stored in public/gm-icons/ */
+const PW_ICON_NAMES = [
+  "crystal", "phoenix", "crown", "shield", "coin", "lotus", "rose", "star",
+  "hourglass", "dragon", "dragon2", "chest", "firebird", "sword", "orb",
+  "fire", "flower", "gem", "diamond", "scroll", "book", "scroll2", "feather",
+  "sparkle", "jade", "coinbronze", "globe", "hammer", "gift", "moon", "pet",
+  "bag", "potion", "gold", "sun", "crystal2", "mail", "quill", "heart", "wand",
+];
+
 type TabKey = "compensation" | "moderation" | "communication" | "permissions" | "history";
 
 const DEFAULT_TAB_ICONS: Record<TabKey, string> = {
@@ -318,8 +327,26 @@ function saveTabIcons(icons: Record<TabKey, string>) {
   localStorage.setItem(TAB_ICON_STORAGE_KEY, JSON.stringify(icons));
 }
 
-function resolveIcon(name: string): LucideIcon {
-  return ICON_CATALOG[name] ?? Gift;
+/** Returns true if the icon key refers to a PW game icon (prefixed with "pw:") */
+function isPwIcon(name: string): boolean {
+  return name.startsWith("pw:");
+}
+
+/** Render a tab icon — either Lucide component or PW game image */
+function TabIconRenderer({ name, className }: { name: string; className?: string }) {
+  if (isPwIcon(name)) {
+    const pwName = name.slice(3);
+    return (
+      <img
+        src={`/gm-icons/${pwName}.png`}
+        alt={pwName}
+        className={cn("inline-block rounded-sm object-contain", className)}
+        style={{ width: "1em", height: "1em" }}
+      />
+    );
+  }
+  const LucideComp = ICON_CATALOG[name] ?? Gift;
+  return <LucideComp className={className} />;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -449,10 +476,9 @@ function GmCommanderPageInner() {
               { key: "permissions" as TabKey, label: "Permissões GM" },
               { key: "history" as TabKey, label: "Histórico" },
             ] as const).map(({ key, label }) => {
-              const TabIcon = resolveIcon(tabIcons[key]);
               return (
                 <TabsTrigger key={key} value={key} className="gap-2 rounded-lg px-4 py-2 text-xs data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-[0_0_12px_-3px_hsl(210_85%_60%/0.3)]">
-                  <TabIcon className="h-3.5 w-3.5" />
+                  <TabIconRenderer name={tabIcons[key]} className="h-3.5 w-3.5" />
                   {label}
                 </TabsTrigger>
               );
@@ -540,7 +566,6 @@ function TabIconCustomizer({
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {(Object.keys(TAB_LABELS) as TabKey[]).map((tab) => {
-          const CurrentIcon = resolveIcon(icons[tab]);
           return (
             <button
               key={tab}
@@ -554,11 +579,11 @@ function TabIconCustomizer({
               )}
             >
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform group-hover:scale-110">
-                <CurrentIcon className="h-5 w-5" />
+                <TabIconRenderer name={icons[tab]} className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-bold text-foreground">{TAB_LABELS[tab]}</p>
-                <p className="text-[10px] text-muted-foreground">{icons[tab]}</p>
+                <p className="text-[10px] text-muted-foreground">{icons[tab].replace("pw:", "PW: ")}</p>
               </div>
               <Paintbrush className="h-3.5 w-3.5 text-muted-foreground/50 transition-colors group-hover:text-primary" />
             </button>
@@ -568,31 +593,63 @@ function TabIconCustomizer({
 
       {/* Icon picker grid */}
       {editingTab && (
-        <div className="rounded-xl border border-primary/30 bg-card/60 p-4 backdrop-blur-sm">
-          <p className="mb-3 text-xs font-semibold text-foreground">
+        <div className="space-y-4 rounded-xl border border-primary/30 bg-card/60 p-4 backdrop-blur-sm">
+          <p className="text-xs font-semibold text-foreground">
             Selecione o ícone para <span className="text-primary">{TAB_LABELS[editingTab]}</span>
           </p>
-          <div className="grid grid-cols-8 gap-1.5 sm:grid-cols-10 lg:grid-cols-12">
-            {ICON_NAMES.map((name) => {
-              const Ic = ICON_CATALOG[name];
-              const isActive = icons[editingTab] === name;
-              return (
-                <button
-                  key={name}
-                  type="button"
-                  title={name}
-                  onClick={() => handleSelect(editingTab, name)}
-                  className={cn(
-                    "flex h-9 w-9 items-center justify-center rounded-lg border transition-all duration-150 hover:scale-110",
-                    isActive
-                      ? "border-primary bg-primary/20 text-primary shadow-[0_0_12px_-3px_hsl(210_85%_60%/0.4)]"
-                      : "border-border/40 bg-card/30 text-muted-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-foreground",
-                  )}
-                >
-                  <Ic className="h-4 w-4" />
-                </button>
-              );
-            })}
+
+          {/* PW Game Icons */}
+          <div>
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-purple-400">Perfect World</p>
+            <div className="grid grid-cols-8 gap-1.5 sm:grid-cols-10 lg:grid-cols-12">
+              {PW_ICON_NAMES.map((name) => {
+                const key = `pw:${name}`;
+                const isActive = icons[editingTab] === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    title={name}
+                    onClick={() => handleSelect(editingTab, key)}
+                    className={cn(
+                      "flex h-9 w-9 items-center justify-center rounded-lg border transition-all duration-150 hover:scale-110",
+                      isActive
+                        ? "border-purple-500 bg-purple-500/20 shadow-[0_0_12px_-3px_hsl(270_60%_55%/0.4)]"
+                        : "border-border/40 bg-card/30 hover:border-purple-500/40 hover:bg-purple-500/5",
+                    )}
+                  >
+                    <img src={`/gm-icons/${name}.png`} alt={name} className="h-6 w-6 rounded-sm object-contain" />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Lucide Icons */}
+          <div>
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Sistema</p>
+            <div className="grid grid-cols-8 gap-1.5 sm:grid-cols-10 lg:grid-cols-12">
+              {ICON_NAMES.map((name) => {
+                const Ic = ICON_CATALOG[name];
+                const isActive = icons[editingTab] === name;
+                return (
+                  <button
+                    key={name}
+                    type="button"
+                    title={name}
+                    onClick={() => handleSelect(editingTab, name)}
+                    className={cn(
+                      "flex h-9 w-9 items-center justify-center rounded-lg border transition-all duration-150 hover:scale-110",
+                      isActive
+                        ? "border-primary bg-primary/20 text-primary shadow-[0_0_12px_-3px_hsl(210_85%_60%/0.4)]"
+                        : "border-border/40 bg-card/30 text-muted-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-foreground",
+                    )}
+                  >
+                    <Ic className="h-4 w-4" />
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}

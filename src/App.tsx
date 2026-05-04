@@ -73,9 +73,10 @@ const App = () => (
                 <Toaster />
                 <Sonner />
                 <Routes>
-                  <Route path="/" element={<Landing />} />
+                  {/* No modo VPS, "/" vai direto pro login; páginas públicas ficam ocultas */}
+                  <Route path="/" element={isVpsMode ? <Navigate to="/auth" replace /> : <Landing />} />
                   <Route path="/auth" element={<Auth />} />
-                  <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/pricing" element={isVpsMode ? <Navigate to="/auth" replace /> : <Pricing />} />
                   <Route path="/checkout/success" element={<CheckoutSuccess />} />
                   <Route
                     path="/onboarding"

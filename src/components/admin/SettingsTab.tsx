@@ -18,6 +18,7 @@ interface SettingsForm {
   footer_text: string;
   footer_link_label: string;
   footer_link_url: string;
+  whatsapp_vps_link: string;
 }
 
 const EMPTY: SettingsForm = {
@@ -29,6 +30,7 @@ const EMPTY: SettingsForm = {
   footer_text: "",
   footer_link_label: "",
   footer_link_url: "",
+  whatsapp_vps_link: "",
 };
 
 /**

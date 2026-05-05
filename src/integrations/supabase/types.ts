@@ -1346,6 +1346,7 @@ export type Database = {
         Returns: undefined
       }
       start_free_trial: { Args: { _environment: string }; Returns: string }
+      suspend_expired_licenses: { Args: never; Returns: undefined }
       validate_license: { Args: { _key: string }; Returns: Json }
     }
     Enums: {

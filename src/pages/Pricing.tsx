@@ -119,6 +119,7 @@ const Pricing = () => {
   const { isActive, isTrial, plan, loading: subLoading, refetch: refetchSub } = useSubscription();
   const { active, loading: serversLoading } = useServers();
   const { openCheckout, loading } = usePaddleCheckout();
+  const { settings } = useAppSettings();
   const [trialLoading, setTrialLoading] = useState(false);
   const [cycle, setCycle] = useState<BillingCycle>("monthly");
   const [checkoutTarget, setCheckoutTarget] = useState<string | null>(null);

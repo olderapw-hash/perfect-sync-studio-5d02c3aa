@@ -139,7 +139,7 @@ export const SettingsTab = () => {
     }
 
     // Superadmin → app_settings (branding global + assets)
-    const payload = {
+    const payload: Record<string, any> = {
       id: 1,
       server_name: form.server_name.trim() || "Orphea Core",
       logo_url: form.logo_url.trim() || null,
@@ -149,6 +149,7 @@ export const SettingsTab = () => {
       footer_text: form.footer_text.trim() || null,
       footer_link_label: form.footer_link_label.trim() || null,
       footer_link_url: form.footer_link_url.trim() || null,
+      whatsapp_vps_link: form.whatsapp_vps_link.trim() || null,
       updated_by: user?.id ?? null,
       updated_at: new Date().toISOString(),
     };

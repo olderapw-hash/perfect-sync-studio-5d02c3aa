@@ -15,6 +15,8 @@ interface LicenseState {
   plan?: string;
   clientName?: string;
   expiresAt?: string;
+  expiresSoon?: boolean;
+  daysRemaining?: number;
 }
 
 /**

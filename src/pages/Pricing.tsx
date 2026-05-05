@@ -13,7 +13,7 @@ import { getPaymentEnvironment } from "@/lib/paddle";
 
 type BillingCycle = "monthly" | "yearly";
 
-const FREE_FEATURES = [
+const INICIANTE_FEATURES = [
   "Visualizar todo o painel",
   "Editar slots de equipamento (CLS) manualmente",
   "Editar inventário item por item (CLS)",
@@ -75,7 +75,7 @@ const FAQ = [
 ];
 
 interface PaidPlan {
-  id: "pro" | "ultimate";
+  id: "iniciante" | "pro" | "ultimate";
   name: string;
   tagline: string;
   monthly: number;
@@ -88,11 +88,21 @@ interface PaidPlan {
 
 const PAID_PLANS: PaidPlan[] = [
   {
+    id: "iniciante",
+    name: "Iniciante",
+    tagline: "Ideal pra começar a usar o painel",
+    monthly: 25,
+    yearly: 250,
+    monthlyPriceId: "pw_admin_iniciante_monthly",
+    yearlyPriceId: "pw_admin_iniciante_yearly",
+    features: INICIANTE_FEATURES,
+  },
+  {
     id: "pro",
     name: "Pro",
     tagline: "Gestão completa de personagens e templates",
-    monthly: 250,
-    yearly: 2500,
+    monthly: 150,
+    yearly: 1500,
     monthlyPriceId: "pw_admin_pro_monthly",
     yearlyPriceId: "pw_admin_pro_yearly",
     features: PRO_FEATURES,
@@ -101,8 +111,8 @@ const PAID_PLANS: PaidPlan[] = [
     id: "ultimate",
     name: "Ultimate",
     tagline: "Tudo do Pro + controle total do servidor",
-    monthly: 500,
-    yearly: 5000,
+    monthly: 300,
+    yearly: 3000,
     monthlyPriceId: "pw_admin_ultimate_monthly",
     yearlyPriceId: "pw_admin_ultimate_yearly",
     features: ULTIMATE_FEATURES,
@@ -271,58 +281,7 @@ const Pricing = () => {
         </div>
 
         <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
-          {/* Free */}
-          <div className="relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card/40 p-5 sm:p-7">
-            <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full bg-muted/40 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-              <Sparkles className="h-3 w-3" />
-              Free
-            </div>
-
-            <div className="mb-1">
-              <h3 className="text-xl font-extrabold">Free</h3>
-              <p className="text-xs text-muted-foreground">Ideal pra testar o painel</p>
-            </div>
-
-            <div className="mb-2 mt-4 flex items-baseline gap-2">
-              <span className="text-4xl font-extrabold tracking-tight">R$ 0</span>
-              <span className="text-sm text-muted-foreground">/sempre</span>
-            </div>
-            <p className="mb-6 text-sm text-muted-foreground">
-              Sem cartão. Visualize tudo, edite só templates iniciais (CLS).
-            </p>
-
-            <ul className="mb-8 space-y-2.5">
-              {FREE_FEATURES.map((f) => (
-                <li key={f} className="flex items-start gap-2.5 text-sm">
-                  <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                    <Check className="h-2.5 w-2.5" strokeWidth={3} />
-                  </div>
-                  <span className="text-foreground/80">{f}</span>
-                </li>
-              ))}
-            </ul>
-
-            <button
-              onClick={handleStartTrial}
-              disabled={trialLoading || isTrial || plan !== "free"}
-              className="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-md border border-border bg-card px-6 py-3 text-sm font-bold transition-smooth hover:border-primary/40 disabled:opacity-60"
-            >
-              {trialLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : isTrial ? (
-                "Plano gratuito ativo"
-              ) : plan !== "free" ? (
-                "Você já é assinante"
-              ) : (
-                <>
-                  Começar grátis
-                  <ArrowRight className="h-4 w-4" />
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Pro / Ultimate */}
+          {/* Iniciante / Pro / Ultimate */}
           {PAID_PLANS.map((p) => {
             const priceId = cycle === "monthly" ? p.monthlyPriceId : p.yearlyPriceId;
             const value = cycle === "monthly" ? p.monthly : p.yearly;
@@ -330,7 +289,7 @@ const Pricing = () => {
             const monthlyEquivalent = cycle === "yearly" ? p.yearly / 12 : null;
             const isCurrent = plan === p.id;
             const isThisLoading = loading && checkoutTarget === priceId;
-            const Icon = p.id === "ultimate" ? Crown : Zap;
+            const Icon = p.id === "ultimate" ? Crown : p.id === "iniciante" ? Sparkles : Zap;
             return (
               <div
                 key={p.id}
@@ -454,7 +413,7 @@ const Pricing = () => {
               </div>
               <div className="mt-6 flex flex-col items-center gap-3 sm:mt-0 sm:min-w-[200px]">
                 <div className="mb-2 text-center">
-                  <span className="text-3xl font-extrabold tracking-tight text-emerald-400">Sob consulta</span>
+                  <span className="text-4xl font-extrabold tracking-tight text-emerald-400">R$ 700</span>
                   <p className="mt-1 text-xs text-muted-foreground">pagamento único</p>
                 </div>
                 <a

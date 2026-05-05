@@ -59,7 +59,7 @@ export const SettingsTab = () => {
       if (isSuperadmin) {
         const { data, error } = await supabase
           .from("app_settings")
-          .select("server_name, logo_url, primary_color, background_url, favicon_url, footer_text, footer_link_label, footer_link_url")
+          .select("server_name, logo_url, primary_color, background_url, favicon_url, footer_text, footer_link_label, footer_link_url, whatsapp_vps_link")
           .eq("id", 1)
           .maybeSingle();
         if (error) {
@@ -77,6 +77,7 @@ export const SettingsTab = () => {
             footer_text: data.footer_text ?? "",
             footer_link_label: data.footer_link_label ?? "",
             footer_link_url: data.footer_link_url ?? "",
+            whatsapp_vps_link: (data as any).whatsapp_vps_link ?? "",
           });
         }
         setLoading(false);
@@ -96,6 +97,7 @@ export const SettingsTab = () => {
         footer_text: "",
         footer_link_label: "",
         footer_link_url: "",
+        whatsapp_vps_link: "",
       });
       setLoading(false);
     })();

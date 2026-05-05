@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, Check, Crown, Loader2, Shield, Sparkles, Zap } from "lucide-react";
+import { ArrowRight, Check, Crown, Loader2, Server, Shield, Sparkles, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { usePaddleCheckout } from "@/hooks/usePaddleCheckout";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useServers } from "@/hooks/useServers";
+import { useAppSettings } from "@/hooks/useAppSettings";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 import { supabase } from "@/integrations/supabase/client";
 import { getPaymentEnvironment } from "@/lib/paddle";
@@ -43,6 +44,15 @@ const ULTIMATE_FEATURES = [
   "Manutenção, mensagens globais e logs do servidor",
   "Auditoria completa e histórico de operações",
   "Suporte prioritário",
+];
+
+const VPS_FEATURES = [
+  "VPS otimizada pra Perfect World",
+  "Painel Orphea Core pré-instalado",
+  "Servidor PW configurado e rodando",
+  "Suporte completo na instalação",
+  "Backup automático incluso",
+  "Acesso root à máquina",
 ];
 
 const FAQ = [

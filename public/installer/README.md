@@ -4,37 +4,32 @@ Este pacote instala a ponte HTTP que conecta sua VPS Perfect World ao PW Admin.
 
 A API correta e a `api_cls.php` completa, que fala com o `gamedbd` em
 `127.0.0.1:29400`, lista templates CLS, edita personagens reais, cria backups,
-restaura backups, consulta catalogo de itens **e entrega correio (item/gold)
-via gdeliveryd**.
+restaura backups, consulta catalogo de itens, envia correio e executa moderacao
+basica (kick/ban/unban).
 
-> A versao antiga baseada apenas em `clsconfig` ja nao e mais suportada — esta
-> aqui inclui `getRoleEditable`, `saveRoleEditable`, `restoreBackup`,
-> `backupGamedbd`, `sendMailItem` e `sendMailGold`.
+> Nao use a versao antiga baseada em `/home/gamedbd/clsconfig.data`. Ela retorna
+> `count:0` / `classes:[]` e nao e compativel com o painel atual.
 
 ## Requisitos
 
 - CentOS 7 ou equivalente.
 - Acesso SSH como `root`.
-- Perfect World instalado em `/home/gamedbd` (e `/home/gdeliveryd` para correio real).
+- Perfect World instalado em `/home/gamedbd`.
 - Apache/httpd com PHP 7+ ou PHP 8.x. O instalador tenta instalar PHP 8.2 via Remi se o PHP estiver ausente ou antigo.
-- Secret gerado no painel em **Servidores**.
+- Secret gerado no painel em `Servidores`.
 
 ## Instalacao automatica
 
-Suba estes tres arquivos para a VPS:
+Suba estes dois arquivos para a VPS:
 
 - `api_cls.php`
 - `install-apicls-centos7.sh`
-- `pw_send_mail.php` (opcional mas recomendado — sem ele o correio fica em modo *queue-only*)
-- `sendreward-api.sh` (opcional — o instalador embute um padrao se ausente)
 
 No seu computador:
 
 ```powershell
-scp api_cls.php root@IP_DA_VPS:/root/api_cls.php
-scp install-apicls-centos7.sh root@IP_DA_VPS:/root/install-apicls-centos7.sh
-scp pw_send_mail.php root@IP_DA_VPS:/root/pw_send_mail.php
-scp sendreward-api.sh root@IP_DA_VPS:/root/sendreward-api.sh
+scp "api_cls.php" root@IP_DA_VPS:/root/api_cls.php
+scp "install-apicls-centos7.sh" root@IP_DA_VPS:/root/install-apicls-centos7.sh
 ```
 
 Na VPS:
@@ -47,16 +42,18 @@ O instalador faz automaticamente:
 
 - Instala/ativa Apache e PHP quando necessario.
 - Cria `/var/www/html/apicls`.
-- Instala o `api_cls.php` com seu secret embutido.
-- Instala `/usr/local/bin/pw_send_mail.php` (handler do correio).
-- Instala `/usr/local/sbin/sendreward-api.sh` (wrapper sudo do correio).
+- Instala o `api_cls.php` com seu secret.
 - Instala `/usr/local/sbin/exportclsconfig-api.sh`.
 - Instala `/usr/local/sbin/backupgamedbd-api.sh`.
-- Configura `/etc/sudoers.d/apicls-pwadmin` com os 3 comandos.
-- Cria pastas de backup, mail-logs e mail-queue.
+- Instala `/usr/local/bin/pw_send_mail.php`.
+- Instala `/usr/local/sbin/sendreward-api.sh`.
+- Configura `/etc/sudoers.d/apicls-pwadmin`.
+- Cria pastas de backup.
 - Ajusta permissoes.
 - Reinicia o Apache.
-- Testa `getClasses`, `backupGamedbd` e `sendMailItem` (em `dry_run`).
+- Testa `getClasses`.
+- Testa a rota `sendMailGold`.
+- Testa `backupGamedbd`.
 
 Ao finalizar, ele imprime:
 
@@ -64,7 +61,6 @@ Ao finalizar, ele imprime:
 - URL para cadastrar no painel.
 - Secret usado.
 - Usuario web detectado.
-- Caminhos do correio (handler, wrapper, logs, queue).
 
 ## Comando recomendado
 
@@ -78,14 +74,7 @@ Se quiser que o instalador gere um secret novo:
 bash /root/install-apicls-centos7.sh --api-src /root/api_cls.php
 ```
 
-Depois cadastre o secret gerado em **PW Admin → Servidores**.
-
-## Origem da conexao
-
-O painel **sempre** usa o servidor ativo cadastrado em **Servidores** —
-URL e secret vem de la, nao da tela antiga de Configuracoes. Para trocar
-de VPS, basta selecionar outro servidor na sidebar; nao precisa rodar o
-instalador de novo.
+Depois cadastre o secret gerado em `PW Admin -> Servidores`.
 
 ## Testes manuais
 
@@ -118,84 +107,245 @@ Resultado esperado do backup:
 {"success":true,"backup":{"type":"gamedbd_backup","file":"...gamedbd-backup-....tgz"}}
 ```
 
-### Correio — modo dry_run (nao envia nada de verdade)
-
-Use `dry_run: true` para validar payload e roteamento sem chamar o `gdeliveryd`:
+Teste rapido do correio com validacao local:
 
 ```bash
 curl -s -X POST -H "x-sync-secret: SEU_SECRET" -H "Content-Type: application/json" \
--d '{"roleid":1024,"dry_run":true,"item":{"item_id":11530,"count":1}}' \
-"http://127.0.0.1/apicls/api_cls.php?action=sendMailItem"
-```
-
-```bash
-curl -s -X POST -H "x-sync-secret: SEU_SECRET" -H "Content-Type: application/json" \
--d '{"roleid":1024,"dry_run":true,"amount":1000000}' \
+-d '{"roleid":1024,"title":"Teste","message":"Dry run","money":1,"dry_run":true}' \
 "http://127.0.0.1/apicls/api_cls.php?action=sendMailGold"
 ```
 
-Resposta esperada do `dry_run`:
+Resultado esperado:
 
 ```json
-{"success":true,"dry_run":true,"roleid":1024,"kind":"item","validated":true,"payload":{...}}
+{"success":true,"delivery":{"success":true,"dry_run":true}}
 ```
 
-### Correio — envio real
-
-Sem `dry_run`, o `api_cls.php` chama o wrapper `sendreward-api.sh` que executa
-`pw_send_mail.php`. Esse handler tenta entregar via `send_mail.lua` no console
-do `gdeliveryd`. Se nao houver mecanismo configurado, o mail e **enfileirado**
-em `/var/www/html/apicls/backups/mail-queue/` e a resposta volta com
-`delivered: false, queued: true` para o painel registrar o status correto.
+Teste rapido de moderacao sem aplicar:
 
 ```bash
 curl -s -X POST -H "x-sync-secret: SEU_SECRET" -H "Content-Type: application/json" \
--d '{"roleid":1024,"subject":"Recompensa","body":"Obrigado!","item":{"item_id":11530,"count":5}}' \
-"http://127.0.0.1/apicls/api_cls.php?action=sendMailItem"
+-d '{"roleid":1024,"reason":"Teste dry run","dry_run":true}' \
+"http://127.0.0.1/apicls/api_cls.php?action=kickRole"
 ```
-
-Para entrega imediata, configure `/etc/pw_send_mail.conf`:
-
-```ini
-gdeliveryd_dir    = /home/gdeliveryd
-send_mail_lua     = /home/gdeliveryd/script/send_mail.lua
-deliveryd_console = /home/gdeliveryd/gdeliveryd
-```
-
-### Eventos ingame — registerIngameParticipation
-
-O NPC/script ingame chama o `api_cls.php`, que repassa para o Supabase
-via RPC `register_ingame_participation`. **Antes de testar**, edite o
-`/var/www/html/apicls/api_cls.php` e preencha:
-
-```php
-'ingame_enabled'             => true,
-'supabase_url'               => 'https://SEU_PROJ.supabase.co',
-'supabase_service_role_key'  => 'eyJhbGciOi...', // service role, NUNCA expor publicamente
-'ingame_default_tenant_id'   => 'uuid-do-servidor', // opcional
-```
-
-Teste manual:
 
 ```bash
 curl -s -X POST -H "x-sync-secret: SEU_SECRET" -H "Content-Type: application/json" \
-  -d '{"event_id":"UUID-DO-EVENTO","roleid":1024,"role_name":"Foo","npc_id":4001}' \
-  "http://127.0.0.1/apicls/api_cls.php?action=registerIngameParticipation"
+-d '{"roleid":1024,"reason":"Teste ban temp","duration_seconds":60,"dry_run":true}' \
+"http://127.0.0.1/apicls/api_cls.php?action=banAccount"
 ```
 
-Resposta esperada (sucesso):
+Para banir a conta e derrubar a sessao atual do personagem no mesmo fluxo:
 
-```json
-{"success":true,"status":"registered","message":"Participacao registrada com sucesso","id":"uuid","duplicate":false}
+```bash
+curl -s -X POST -H "x-sync-secret: SEU_SECRET" -H "Content-Type: application/json" \
+-d '{"userid":1024,"roleid":1024,"reason":"Teste ban com kick","duration_seconds":60,"kick_online":true,"kick_seconds":10}' \
+"http://127.0.0.1/apicls/api_cls.php?action=banAccount"
 ```
 
-Logs em `/var/www/html/apicls/backups/ingame-logs/YYYY-MM-DD.log`.
+```bash
+curl -s -X POST -H "x-sync-secret: SEU_SECRET" -H "Content-Type: application/json" \
+-d '{"roleid":1024,"reason":"Teste unban","dry_run":true}' \
+"http://127.0.0.1/apicls/api_cls.php?action=unbanAccount"
+```
+
+Para `clearRolePk`, comece pelo dry-run:
+
+```bash
+curl -s -X POST -H "x-sync-secret: SEU_SECRET" -H "Content-Type: application/json" \
+-d '{"roleid":1024,"reason":"Teste clear PK","dry_run":true}' \
+"http://127.0.0.1/apicls/api_cls.php?action=clearRolePk"
+```
+
+Aplicacao real:
+
+```bash
+curl -s -X POST -H "x-sync-secret: SEU_SECRET" -H "Content-Type: application/json" \
+-d '{"roleid":1024,"reason":"Teste clear PK"}' \
+"http://127.0.0.1/apicls/api_cls.php?action=clearRolePk"
+```
+
+Se o personagem estiver online e voce quiser forcar o recarregamento do estado em memoria logo apos a limpeza persistida, use:
+
+```bash
+curl -s -X POST -H "x-sync-secret: SEU_SECRET" -H "Content-Type: application/json" \
+-d '{"roleid":1024,"reason":"Teste clear PK","kick_online":true,"kick_seconds":10}' \
+"http://127.0.0.1/apicls/api_cls.php?action=clearRolePk"
+```
+
+No legado atual, isso e o caminho mais seguro para fazer o estado limpo reaparecer no cliente quando o personagem estava online no momento da operacao.
+
+Em servidores legados como `game_version 101`, `banAccount` e `unbanAccount` usam automaticamente a tabela MySQL `forbid`. Em versoes mais novas, a API tenta o caminho via `gamedbd`. Quando um `roleid` e informado no `unbanAccount`, a API tambem tenta limpar o `base.forbid` do personagem e notifica `gamedbd` e `gdeliveryd` para soltar o bloqueio de login em memoria.
+
+No legado validado, o menor refresh que realmente soltou o login apos o unban foi `authd + gdeliveryd`. Exemplo:
+
+```bash
+curl -s -X POST -H "x-sync-secret: SEU_SECRET" -H "Content-Type: application/json" \
+-d '{"userid":1024,"roleid":1024,"reason":"cleanup","refresh_services":["authd","gdeliveryd"]}' \
+"http://127.0.0.1/apicls/api_cls.php?action=unbanAccount"
+```
+
+`refresh_login_cache=true` continua disponivel, mas ele reinicia apenas o `authd` e pode nao bastar no legado. `glinkd` deve ficar so como escalada de emergencia, porque tem impacto maior sobre jogadores online.
+
+Para `reviveRole`, faca primeiro o dry-run para inspecionar `hp`, `mp`, `dead_flag` e `resurrect_state` persistidos:
+
+```bash
+curl -s -X POST -H "x-sync-secret: SEU_SECRET" -H "Content-Type: application/json" \
+-d '{"roleid":1024,"reason":"Teste revive","dry_run":true}' \
+"http://127.0.0.1/apicls/api_cls.php?action=reviveRole"
+```
+
+Aplicacao real:
+
+```bash
+curl -s -X POST -H "x-sync-secret: SEU_SECRET" -H "Content-Type: application/json" \
+-d '{"roleid":1024,"reason":"Teste revive"}' \
+"http://127.0.0.1/apicls/api_cls.php?action=reviveRole"
+```
+
+No retorno, confira `gm_action.revive.before`, `gm_action.revive.after`, `gm_action.revive.revived` e `gm_action.revive.changed`. Se o personagem ja estiver vivo, a API deve retornar `revived=true` e `changed=false`.
+
+## GM Commander V2 - Fase A
+
+O backend agora tambem entrega a fundacao real da Fase A do `GM Commander V2`:
+
+- `searchPlayerDirectory`
+- `getPlayerTargetProfile`
+- `resolveBulkTargets`
+- `previewBulkTargets`
+- `queueBulkCommand`
+- `getBulkCommandJob`
+- `getBulkCommandJobs`
+- `gm-queue-worker.php`
+
+Na pratica, esta Fase A e a base real para **premiacao em massa** no servidor:
+
+- preview de audiencia
+- resolucao de alvos
+- fila de execucao
+- worker backend
+- auditoria local
+
+Ou seja: o painel ja consegue preparar e disparar recompensas em lote com backend real, sem depender de acao manual personagem por personagem.
+
+Essa fundacao usa armazenamento file-based em:
+
+```text
+/var/www/html/apicls/backups/gm-commander-v2/
+```
+
+Teste rapido de busca:
+
+```bash
+curl -s -H "x-sync-secret: SEU_SECRET" \
+"http://127.0.0.1/apicls/api_cls.php?action=searchPlayerDirectory&online_only=1&limit=20"
+```
+
+Preview de bulk para item:
+
+```bash
+curl -s -X POST -H "x-sync-secret: SEU_SECRET" -H "Content-Type: application/json" \
+-d '{"command_key":"sendMailItem","selection":{"names":["Criador"]},"item_id":12980,"count":1,"title":"Evento","message":"Premio"}' \
+"http://127.0.0.1/apicls/api_cls.php?action=previewBulkTargets"
+```
+
+Preview de bulk por guild:
+
+```bash
+curl -s -X POST -H "x-sync-secret: SEU_SECRET" -H "Content-Type: application/json" \
+-d '{"command_key":"sendMailGold","selection":{"guild_ids":[1234]},"money":1000,"title":"Guild Reward","message":"Entrega por guild"}' \
+"http://127.0.0.1/apicls/api_cls.php?action=previewBulkTargets"
+```
+
+Preview de bulk por classe:
+
+```bash
+curl -s -X POST -H "x-sync-secret: SEU_SECRET" -H "Content-Type: application/json" \
+-d '{"command_key":"sendMailGold","selection":{"class_ids":[4],"online_only":true},"money":1000,"title":"Class Reward","message":"Entrega por classe"}' \
+"http://127.0.0.1/apicls/api_cls.php?action=previewBulkTargets"
+```
+
+Preview de bulk por faixa de level:
+
+```bash
+curl -s -X POST -H "x-sync-secret: SEU_SECRET" -H "Content-Type: application/json" \
+-d '{"command_key":"sendMailGold","selection":{"level_min":100,"level_max":105,"online_only":true},"money":1000,"title":"Level Reward","message":"Entrega por level"}' \
+"http://127.0.0.1/apicls/api_cls.php?action=previewBulkTargets"
+```
+
+Enfileirar job:
+
+```bash
+curl -s -X POST -H "x-sync-secret: SEU_SECRET" -H "Content-Type: application/json" \
+-d '{"command_key":"sendMailGold","selection":{"all_online":true},"money":1000,"title":"Evento","message":"Entrega em lote"}' \
+"http://127.0.0.1/apicls/api_cls.php?action=queueBulkCommand"
+```
+
+Listar jobs:
+
+```bash
+curl -s -H "x-sync-secret: SEU_SECRET" \
+"http://127.0.0.1/apicls/api_cls.php?action=getBulkCommandJobs&limit=20"
+```
+
+Executar o worker manualmente:
+
+```bash
+php /var/www/html/apicls/gm-queue-worker.php
+```
+
+Limitacoes atuais desta fase:
+
+- busca por `userid` sem `roleid` ainda fica limitada a alvo de conta
+- selecao de guild confiavel nesta fase usa `guild_id` ou `guild_ids`
+- `ranking_key` ainda depende de integrar uma fonte de ranking real nesta VPS
+- `sendSystemMessage` continua global e nao respeita filtros de alvo
+
+Seletores ja homologados nesta fase:
+
+- `roleids`
+- `names` exatos
+- `online_only`
+- `all_online`
+- `guild_id` / `guild_ids`
+- `class_ids`
+- `level_min` / `level_max`
+
+## Agendamento semanal de bulk rewards
+
+O proximo passo natural sobre essa fundacao e **agendar recompensas em massa para rodar automaticamente em dia/horario da semana**.
+
+Esse bloco deve ser tratado como backend real, nao como detalhe de frontend:
+
+- o Lovable deve criar a tela de agendamento
+- a API deve salvar a regra recorrente
+- um worker/cron backend deve criar jobs normais da fila no horario devido
+- a execucao automatica deve reutilizar o mesmo motor de `queueBulkCommand`
+
+Contrato funcional esperado para essa etapa:
+
+- `scheduleBulkCommand`
+- `getBulkSchedules`
+- `getBulkSchedule`
+- `updateBulkSchedule`
+- `deleteBulkSchedule`
+- `gm-schedule-worker.php`
+
+Escopo minimo do agendamento:
+
+- selecionar dia da semana
+- selecionar horario
+- timezone fixa do servidor/painel
+- permitir `sendMailItem`, `sendMailGold` e `grantMallCash`
+- suportar os mesmos seletores da Fase A ja homologados
+- gerar log de criacao, alteracao, execucao e falha
+- enfileirar job normal em vez de executar direto no frontend
 
 ## Cadastro no painel
 
 No PW Admin:
 
-1. Abra **Servidores**.
+1. Abra `Servidores`.
 2. Adicione ou edite a VPS.
 3. URL da API:
 
@@ -204,11 +354,11 @@ http://IP_DA_VPS/apicls/api_cls.php
 ```
 
 4. Secret: o mesmo usado no instalador.
-5. Clique em **Testar conexao**.
+5. Clique em `Testar conexao`.
 6. Ative esse servidor.
 
-As chamadas do painel devem usar o servidor ativo em **Servidores**, nao a
-conexao legada da tela de Configuracoes.
+As chamadas do painel devem usar o servidor ativo em `Servidores`, nao a conexao
+legada da tela de Configuracoes.
 
 ## Backups automaticos
 
@@ -219,12 +369,13 @@ A API cria backup completo antes das operacoes sensiveis:
 - `restoreBackup`
 - `exportClsconfig`
 
-Os endpoints de correio (`sendMailItem` / `sendMailGold`) **nao** disparam
-`backupGamedbd` automatico — eles apenas registram em
-`/var/www/html/apicls/backups/mail-logs/`. Se quiser backup manual antes de
-um envio em massa, chame `backupGamedbd` explicitamente.
+As acoes de moderacao tambem geram log local em:
 
-O backup do `gamedbd` fica em:
+```text
+/var/www/html/apicls/backups/security-logs/security-AAAA-MM-DD.jsonl
+```
+
+O backup fica em:
 
 ```text
 /var/www/html/apicls/backups/gamedbd/
@@ -262,24 +413,20 @@ bash /root/install-apicls-centos7.sh --secret SEU_SECRET --api-src /root/api_cls
 
 | Sintoma | Causa provavel | Como resolver |
 |---|---|---|
-| `Unauthorized` | Secret errado no painel ou no PHP | Compare o secret em `/var/www/html/apicls/api_cls.php` com **Servidores** |
+| `Unauthorized` | Secret errado no painel ou no PHP | Compare o secret em `/var/www/html/apicls/api_cls.php` com `Servidores` |
 | `classes: []` | API antiga ou secret/servidor errado | Garanta que `api_cls.php` contem `backupGamedbd` e `CLASS_INFO` |
 | `count:0` com classes preenchidas | `gamedbd` nao respondeu ou `clsconfig` vazio | Rode `getClsconfigDebug` |
-| `Connection refused 127.0.0.1:29400` | `gamedbd` desligado | Inicie o `gamedbd` e teste `ss -lntp \| grep 29400` |
+| `Connection refused 127.0.0.1:29400` | `gamedbd` desligado | Inicie o `gamedbd` e teste `ss -lntp | grep 29400` |
 | `Backup gamedbd falhou` | sudoers/permissao faltando | Rode `visudo -cf /etc/sudoers.d/apicls-pwadmin` |
-| `sendMailItem` volta `queued:true` | Sem `send_mail.lua` configurado | Edite `/etc/pw_send_mail.conf` apontando seu lua/console |
-| `sendMailItem` volta 400 "Acao invalida" | `api_cls.php` antigo | Reinstale com a versao nova |
-| Tela usa VPS errada | Painel lendo configuracao legada | Use **Servidores** e mantenha um servidor ativo |
+| Tela usa VPS errada | Painel lendo configuracao legada | Usar `Servidores` e servidor ativo |
 
 ## Atualizacao futura
 
 Para atualizar a API:
 
 ```powershell
-scp api_cls.php root@IP_DA_VPS:/root/api_cls.php
-scp install-apicls-centos7.sh root@IP_DA_VPS:/root/install-apicls-centos7.sh
-scp pw_send_mail.php root@IP_DA_VPS:/root/pw_send_mail.php
-scp sendreward-api.sh root@IP_DA_VPS:/root/sendreward-api.sh
+scp "api_cls.php" root@IP_DA_VPS:/root/api_cls.php
+scp "install-apicls-centos7.sh" root@IP_DA_VPS:/root/install-apicls-centos7.sh
 ```
 
 Na VPS:

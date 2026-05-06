@@ -110,6 +110,7 @@ import {
 
 import { NoActiveServerState } from "@/components/admin/NoActiveServerState";
 import { EndpointMissingNotice } from "@/components/admin/EndpointMissingNotice";
+import { BulkCommanderTab } from "@/components/admin/BulkCommanderTab";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useServers } from "@/hooks/useServers";
@@ -245,6 +246,13 @@ const FALLBACK_SUPPORTED = new Set([
   "getGmPermissionState",
   "grantGmPermission",
   "revokeGmPermission",
+  // GM Commander v2 — Bulk Operations (Fase A homologada).
+  "searchPlayerDirectory",
+  "resolveBulkTargets",
+  "previewBulkTargets",
+  "queueBulkCommand",
+  "getBulkCommandJob",
+  "getBulkCommandJobs",
 ]);
 
 const FALLBACK_UNSUPPORTED = new Set<string>([]);
@@ -299,13 +307,14 @@ const PW_ICON_NAMES = [
   "bag", "potion", "gold", "sun", "crystal2", "mail", "quill", "heart", "wand",
 ];
 
-type TabKey = "compensation" | "moderation" | "communication" | "permissions" | "history";
+type TabKey = "compensation" | "moderation" | "communication" | "permissions" | "bulk" | "history";
 
 const DEFAULT_TAB_ICONS: Record<TabKey, string> = {
   compensation: "Gift",
   moderation: "Hammer",
   communication: "MessageSquare",
   permissions: "Shield",
+  bulk: "Users",
   history: "History",
 };
 
@@ -501,6 +510,7 @@ function GmCommanderPageInner() {
               { key: "moderation" as TabKey, label: "Moderação" },
               { key: "communication" as TabKey, label: "Comunicação" },
               { key: "permissions" as TabKey, label: "Permissões GM" },
+              { key: "bulk" as TabKey, label: "Bulk Commander" },
               { key: "history" as TabKey, label: "Histórico" },
             ] as const).map(({ key, label }) => {
               return (
@@ -530,6 +540,9 @@ function GmCommanderPageInner() {
           <TabsContent value="permissions" className="space-y-4">
             <GmPermissionsTab caps={caps} onActed={refreshHistory} isSuperadmin={isSuperadmin} cardVisibility={cardVisibility} onToggleVisibility={toggleCardVisibility} />
           </TabsContent>
+          <TabsContent value="bulk" className="space-y-4">
+            <BulkCommanderTab caps={caps} onActed={refreshHistory} />
+          </TabsContent>
           <TabsContent value="history">
             <HistoryTab tick={historyTick} />
           </TabsContent>
@@ -553,6 +566,7 @@ const TAB_LABELS: Record<TabKey, string> = {
   moderation: "Moderação",
   communication: "Comunicação",
   permissions: "Permissões GM",
+  bulk: "Bulk Commander",
   history: "Histórico",
 };
 

@@ -10,7 +10,13 @@
  *   POST /apicls/api_cls.php?action=saveClsconfigTemplate&roleid=12345&secret=SEU_SECRET
  *   POST /apicls/api_cls.php?action=sendMailItem&secret=SEU_SECRET
  *   POST /apicls/api_cls.php?action=sendMailGold&secret=SEU_SECRET
+ *   POST /apicls/api_cls.php?action=grantMallCash&secret=SEU_SECRET
+ *   GET  /apicls/api_cls.php?action=getMallCashBalance&secret=SEU_SECRET
  *   POST /apicls/api_cls.php?action=sendSystemMessage&secret=SEU_SECRET
+ *   GET  /apicls/api_cls.php?action=getGmCommandCatalog&secret=SEU_SECRET
+ *   GET  /apicls/api_cls.php?action=getGmActionHistory&secret=SEU_SECRET
+ *   GET  /apicls/api_cls.php?action=getGmPermissionCatalog&secret=SEU_SECRET
+ *   GET  /apicls/api_cls.php?action=getGmPermissionState&secret=SEU_SECRET
  *   GET  /apicls/api_cls.php?action=getMaintenanceMode&secret=SEU_SECRET
  *   GET  /apicls/api_cls.php?action=getManageableServices&secret=SEU_SECRET
  *   GET  /apicls/api_cls.php?action=getManageableInstances&secret=SEU_SECRET
@@ -40,6 +46,11 @@
  *   POST /apicls/api_cls.php?action=kickRole&secret=SEU_SECRET
  *   POST /apicls/api_cls.php?action=banAccount&secret=SEU_SECRET
  *   POST /apicls/api_cls.php?action=unbanAccount&secret=SEU_SECRET
+ *   POST /apicls/api_cls.php?action=muteAccount&secret=SEU_SECRET
+ *   POST /apicls/api_cls.php?action=muteRole&secret=SEU_SECRET
+ *   POST /apicls/api_cls.php?action=grantGmPermission&secret=SEU_SECRET
+ *   POST /apicls/api_cls.php?action=revokeGmPermission&secret=SEU_SECRET
+ *   POST /apicls/api_cls.php?action=teleportRole&secret=SEU_SECRET
  *   POST /apicls/api_cls.php?action=backupNow&secret=SEU_SECRET
  *   GET  /apicls/api_cls.php?action=getBackupContent&name=roleid-...json&secret=SEU_SECRET
  *   GET  /apicls/api_cls.php?action=getRestorePlan&name=backup.ext&secret=SEU_SECRET
@@ -74,9 +85,41 @@ $CONFIG = [
     'mysql_backup_enabled' => true,
     'mysql_backup_command' => '/usr/bin/sudo -n /usr/local/sbin/backupmysql-api.sh',
     'mysql_backup_dir' => __DIR__ . '/backups/mysql',
+    'mysql_restore_command' => '/usr/bin/sudo -n /usr/local/sbin/restoremysql-api.sh',
+    'mall_cash_enabled' => true,
+    'mall_cash_grant_command' => '/usr/bin/sudo -n /usr/local/sbin/grantmallcash-api.sh',
+    'mall_cash_db_name' => 'pw',
+    'mall_cash_units_per_gold' => 100,
+    'mall_cash_max_amount' => 1000000,
+    'mall_cash_max_cash_units' => 100000000,
+    'mall_cash_verify_timeout_seconds' => 6,
+    'mall_cash_verify_poll_interval_us' => 250000,
+    'gm_permission_enabled' => true,
+    'gm_permission_command' => '/usr/bin/sudo -n /usr/local/sbin/gmpermission-api.sh',
+    'gm_permission_db_name' => 'pw',
+    'gm_permission_auth_table' => 'auth',
+    'gm_permission_auth_userid_field' => 'userid',
+    'gm_permission_auth_zoneid_field' => 'zoneid',
+    'gm_permission_auth_rid_field' => 'rid',
+    'gm_permission_zoneid' => 1,
+    'gm_permission_rule_ids' => [],
+    'gm_permission_template_min_rules' => 30,
+    'security_account_forbid_mode' => 'auto',
+    'security_account_forbid_command' => '/usr/bin/sudo -n /usr/local/sbin/accountforbid-api.sh',
+    'security_account_forbid_db_name' => 'pw',
+    'security_account_forbid_table' => 'forbid',
+    'security_account_forbid_userid_field' => 'userid',
+    'security_account_forbid_type_field' => 'type',
+    'security_account_forbid_ctime_field' => 'ctime',
+    'security_account_forbid_time_field' => 'forbid_time',
+    'security_account_forbid_reason_field' => 'reason',
+    'security_account_forbid_gmroleid_field' => 'gmroleid',
+    'security_account_forbid_gmroleid' => 0,
+    'security_account_forbid_types' => [0],
     'uniquenamed_backup_enabled' => true,
     'uniquenamed_backup_command' => '/usr/bin/sudo -n /usr/local/sbin/backupuniquenamed-api.sh',
     'uniquenamed_backup_dir' => __DIR__ . '/backups/uniquenamed',
+    'uniquenamed_restore_command' => '/usr/bin/sudo -n /usr/local/sbin/restoreuniquenamed-api.sh',
     'panel_backup_enabled' => true,
     'panel_backup_command' => '/usr/bin/sudo -n /usr/local/sbin/backuppanel-api.sh',
     'panel_backup_dir' => __DIR__ . '/backups/panel',
@@ -84,15 +127,33 @@ $CONFIG = [
     'full_backup_command' => '/usr/bin/sudo -n /usr/local/sbin/backupfull-api.sh',
     'full_backup_dir' => __DIR__ . '/backups/full',
     'backup_now_timeout_seconds' => 1800,
+    'restore_now_timeout_seconds' => 1800,
     'gdeliveryd_ip' => '127.0.0.1',
     'gdeliveryd_port' => 29100,
     'mail_send_command' => '/usr/bin/sudo -n /usr/local/sbin/sendreward-api.sh',
     'gacd_ip' => '127.0.0.1',
     'gacd_port' => 29300,
+    'gm_delivery_sid_default' => 0,
+    'gm_history_file' => __DIR__ . '/backups/gm-actions/history.log',
     'system_message_enabled' => true,
     'system_message_default_channel' => 9,
     'system_message_max_length' => 200,
     'system_message_log_dir' => __DIR__ . '/backups/sysmsg-logs',
+    'gm_v2_enabled' => true,
+    'gm_v2_state_dir' => __DIR__ . '/backups/gm-commander-v2',
+    'gm_v2_queue_jobs_dir' => __DIR__ . '/backups/gm-commander-v2/queue/jobs',
+    'gm_v2_queue_attempts_dir' => __DIR__ . '/backups/gm-commander-v2/queue/attempts',
+    'gm_v2_queue_logs_dir' => __DIR__ . '/backups/gm-commander-v2/queue/logs',
+    'gm_v2_audit_file' => __DIR__ . '/backups/gm-commander-v2/audit/history.log',
+    'gm_v2_queue_lock_file' => __DIR__ . '/backups/gm-commander-v2/queue/worker.lock',
+    'gm_v2_directory_limit' => 200,
+    'gm_v2_preview_sample_size' => 20,
+    'gm_v2_max_targets_per_job' => 500,
+    'gm_v2_queue_batch_size' => 10,
+    'gm_v2_queue_retry_limit' => 3,
+    'gm_v2_queue_backoff_seconds' => 30,
+    'gm_v2_queue_scan_limit' => 20,
+    'gm_v2_queue_allowed_commands' => ['sendMailItem', 'sendMailGold', 'grantMallCash', 'sendSystemMessage'],
     'maintenance_reason_max_length' => 240,
     'maintenance_eta_max_minutes' => 1440,
     'maintenance_state_file' => __DIR__ . '/backups/maintenance/state.json',
@@ -268,8 +329,61 @@ class GamedProtocol
     const OP_PUT_ROLE_STOREHOUSE = 3026;
     const OP_PUT_ROLE_INVENTORY  = 3050;
     const OP_GET_RAW_TABLE       = 3055;
+    const OP_GET_USER            = 3002;
+    const OP_GET_NEW_ROLE_DETAIL = 13013;
+    const OP_SET_NEW_ROLE_DETAIL = 13014;
+    const OP_PUT_ROLE_FORBID     = 3030;
+    const OP_GET_ROLE_FORBID     = 3031;
+    const OP_GET_ROLEID          = 3033;
     const OP_FORBID_ROLE         = 360;
     const OP_FORBID_ACC          = 5035;
+    const OP_GET_PLAYER_ID_BY_NAME = 118;
+    const OP_QUERY_USERID        = 8001;
+    const OP_GM_ONLINE_NUM       = 350;
+    const OP_GM_LIST_ONLINE_USER = 352;
+    const OP_GET_USER_FACTION    = 4607;
+    const OP_GET_FACTION_DETAIL  = 4608;
+
+    private function normalizedConfiguredVersion()
+    {
+        $raw = strtolower(trim((string) array_value($GLOBALS['CONFIG'], 'game_version', '')));
+        if ($raw !== '' && preg_match('/(\d+)/', $raw, $m)) {
+            return $m[1];
+        }
+        return $raw;
+    }
+
+    private function gmDeliveryOpcodeMap()
+    {
+        $version = $this->normalizedConfiguredVersion();
+        $map = [
+            'muteAccount' => 0,
+            'muteRole' => 0,
+            'teleportRole' => 0,
+        ];
+
+        if (in_array($version, ['101', '155'], true)) {
+            $map['muteAccount'] = 362;
+            $map['muteRole'] = 356;
+        } elseif ($version === '352') {
+            $map['muteAccount'] = 356;
+            $map['muteRole'] = 362;
+            $map['teleportRole'] = 13010;
+        }
+
+        return $map;
+    }
+
+    private function gmDeliveryOpcode($action)
+    {
+        $action = trim((string) $action);
+        $map = $this->gmDeliveryOpcodeMap();
+        $opcode = intval(array_value($map, $action, 0));
+        if ($opcode <= 0) {
+            throw new Exception('Acao GM nao suportada para game_version ' . $this->normalizedConfiguredVersion() . ': ' . $action);
+        }
+        return $opcode;
+    }
 
     private $struct_base = [
         'version' => 'byte',
@@ -353,6 +467,63 @@ class GamedProtocol
         'realm_data' => 'octets',
         'reserved2' => 'byte',
         'reserved3' => 'byte',
+    ];
+
+    private $struct_new_role_detail = [
+        'roleid' => 'int',
+        'pk_time' => 'int',
+        'pk_status' => 'int',
+        'money_silver' => 'int',
+        'color_name' => 'int',
+        'pvp_rank' => 'int',
+        'pvp_rank_exp' => 'int',
+        'player_kill' => 'int',
+        'monster_kill' => 'int',
+        'player_death' => 'int',
+        'monster_death' => 'int',
+        'diary_exp' => 'int',
+        'realm_day_verify' => 'int',
+        'verify_itens_valid' => 'int',
+        'has_astrolabe_lock' => 'byte',
+        'enabled_fashion_weapon' => 'byte',
+        'double_factor_exp' => 'byte',
+        'double_factor_sp' => 'byte',
+        'double_factor_realm' => 'byte',
+        'autoswap' => 'octets',
+        'skillsender' => 'octets',
+        'glyph' => 'octets',
+        'carrier' => 'octets',
+        'repository' => 'octets',
+        'treasure' => 'octets',
+        'lottery' => 'octets',
+        'treasure_items' => 'octets',
+        'lib_items' => 'octets',
+        'pet_skill_temp' => 'octets',
+        'pet_skin' => 'octets',
+        'passwd_safe' => 'octets',
+        'day_world_points' => 'octets',
+        'activity' => 'octets',
+        'celestial' => 'octets',
+        'question_data' => 'octets',
+        'speak_cost' => 'octets',
+        'rank_pvp' => 'octets',
+        'person_data' => 'octets',
+        'get_old_values' => 'octets',
+        'codex' => 'octets',
+        'reserve6' => 'octets',
+        'reserve7' => 'octets',
+        'reserve8' => 'octets',
+        'reserve9' => 'octets',
+        'first_new_db_login' => 'int',
+        'reserve11' => 'int',
+        'reserve12' => 'int',
+        'reserve13' => 'int',
+        'reserve14' => 'int',
+        'reserve15' => 'int',
+        'reserve16' => 'int',
+        'reserve17' => 'int',
+        'reserve18' => 'int',
+        'reserve19' => 'int',
     ];
 
     private $struct_db_base = [
@@ -513,6 +684,203 @@ class GamedProtocol
         ],
     ];
 
+    private $struct_role_forbid_table = [
+        'forbidcount' => 'cuint',
+        'forbid' => [
+            'type' => 'byte',
+            'time' => 'int',
+            'createtime' => 'int',
+            'reason' => 'octets',
+        ],
+    ];
+
+    private $struct_user_info = [
+        'logicuid' => 'int',
+        'rolelist' => 'int',
+        'cash' => 'int',
+        'money' => 'int',
+        'cash_add' => 'int',
+        'cash_buy' => 'int',
+        'cash_sell' => 'int',
+        'cash_used' => 'int',
+        'add_serial' => 'int',
+        'use_serial' => 'int',
+        'exp_logcount' => 'cuint',
+        'exg_log' => [
+            'tid' => 'int',
+            'time' => 'int',
+            'result' => 'short',
+            'volume' => 'short',
+            'cost' => 'int',
+        ],
+        'addiction' => 'octets',
+        'cash_password' => 'octets',
+        'autolockcount' => 'cuint',
+        'autolock' => [
+            'key' => 'int',
+            'value' => 'int',
+        ],
+        'status' => 'byte',
+        'forbidcount' => 'cuint',
+        'forbid' => [
+            'type' => 'byte',
+            'time' => 'int',
+            'createtime' => 'int',
+            'reason' => 'name',
+        ],
+        'reference' => 'octets',
+        'consume_reward' => 'octets',
+        'taskcounter' => 'octets',
+        'cash_sysauction' => 'octets',
+        'login_record' => 'octets',
+        'mall_consumption' => 'octets',
+        'reserved32' => 'short',
+    ];
+
+    private $struct_query_userid_response = [
+        'result' => 'int',
+        'userid' => 'int',
+        'roleid' => 'int',
+        'level' => 'int',
+    ];
+
+    private $struct_get_player_id_by_name_response = [
+        'retcode' => 'int',
+        'localsid' => 'int',
+        'rolename' => 'octets',
+        'roleid' => 'int',
+        'reason' => 'byte',
+    ];
+
+    private $struct_gm_player_info = [
+        'userid' => 'int',
+        'roleid' => 'int',
+        'linkid' => 'int',
+        'localsid' => 'int',
+        'gsid' => 'int',
+        'status' => 'byte',
+        'name' => 'octets',
+    ];
+
+    private $struct_gm_online_num_response = [
+        'gmroleid' => 'int',
+        'localsid' => 'int',
+        'total_num' => 'int',
+        'local_num' => 'int',
+    ];
+
+    private $struct_gm_list_online_user_response = [
+        'retcode' => 'int',
+        'gmroleid' => 'int',
+        'localsid' => 'int',
+        'handler' => 'int',
+        'userlistcount' => 'cuint',
+        'userlist' => [
+            'userid' => 'int',
+            'roleid' => 'int',
+            'linkid' => 'int',
+            'localsid' => 'int',
+            'gsid' => 'int',
+            'status' => 'byte',
+            'name' => 'octets',
+        ],
+    ];
+
+    private $struct_legacy_role_list_response = [
+        'localsid' => 'int',
+        'handler' => 'int',
+        'userscount' => 'cuint',
+        'users' => [
+            'userid' => 'int',
+            'roleid' => 'int',
+            'linkid' => 'int',
+            'localsid' => 'int',
+            'gsid' => 'int',
+            'status' => 'byte',
+            'name' => 'name',
+        ],
+    ];
+
+    private $struct_user_faction = [
+        'rid' => 'int',
+        'name' => 'octets',
+        'fid' => 'int',
+        'cls' => 'byte',
+        'role' => 'byte',
+        'delayexpel' => 'octets',
+        'extend' => 'octets',
+        'nickname' => 'octets',
+    ];
+
+    private $struct_user_faction_response = [
+        'retcode' => 'int',
+        'value' => [
+            'rid' => 'int',
+            'name' => 'octets',
+            'fid' => 'int',
+            'cls' => 'byte',
+            'role' => 'byte',
+            'delayexpel' => 'octets',
+            'extend' => 'octets',
+            'nickname' => 'octets',
+        ],
+        'level' => 'int',
+        'contrib' => 'int',
+        'reputation' => 'int',
+        'reincarn_times' => 'byte',
+        'gender' => 'byte',
+    ];
+
+    private $struct_faction_detail_response = [
+        'fid' => 'int',
+        'name' => 'octets',
+        'level' => 'byte',
+        'master' => 'int',
+        'announce' => 'name',
+        'sysinfo' => 'octets',
+        'membercount' => 'cuint',
+        'member' => [
+            'roleid' => 'int',
+            'level' => 'byte',
+            'occupation' => 'byte',
+            'froleid' => 'byte',
+            'login_day' => 'short',
+            'online_status' => 'byte',
+            'name' => 'name',
+            'nickname' => 'name',
+            'contrib' => 'int',
+            'delayexpel' => 'byte',
+            'expeltime' => 'int',
+        ],
+        'last_op_time' => 'int',
+        'alliancecount' => 'cuint',
+        'alliance' => [
+            'fid' => 'int',
+            'end_time' => 'int',
+        ],
+        'hostilecount' => 'cuint',
+        'hostile' => [
+            'fid' => 'int',
+            'end_time' => 'int',
+        ],
+        'applycount' => 'cuint',
+        'apply' => [
+            'type' => 'int',
+            'fid' => 'int',
+            'end_time' => 'int',
+        ],
+    ];
+
+    private $struct_faction_detail_wrapped_response = [
+        'retcode' => 'int',
+        'value' => [
+            'fid' => 'int',
+            'name' => 'octets',
+            'level' => 'byte',
+            'master' => 'int',
+        ],
+    ];
+
     private $struct_raw_read = [
         'handle' => 'octets',
         'Rawcount' => 'cuint',
@@ -655,6 +1023,16 @@ class GamedProtocol
         return pack('n', intval($data));
     }
 
+    public function packLInt($data)
+    {
+        return pack('V', intval($data));
+    }
+
+    public function packLShort($data)
+    {
+        return pack('v', intval($data));
+    }
+
     public function packLongOctet($data)
     {
         return pack('n', strlen($data) + 32768) . $data;
@@ -709,6 +1087,23 @@ class GamedProtocol
         $this->unpackCuint($data, $length);
         $length += 8;
         return substr($data, $length);
+    }
+
+    public function deleteProtocolHeader($data)
+    {
+        $offset = 0;
+        $this->unpackCuint($data, $offset);
+        $this->unpackCuint($data, $offset);
+        return substr($data, $offset);
+    }
+
+    public function deleteProtocolHeaderWithSession($data)
+    {
+        $offset = 0;
+        $this->unpackCuint($data, $offset);
+        $this->unpackCuint($data, $offset);
+        $offset += 8;
+        return substr($data, $offset);
     }
 
     public function sendToGamedBD($data, $ip, $port)
@@ -870,6 +1265,18 @@ class GamedProtocol
 
     public function sendToDelivery($data, $ip, $port)
     {
+        $wire = $this->sendToDeliveryRaw($data, $ip, $port);
+
+        return [
+            'hello_len' => intval(array_value($wire, 'hello_len', 0)),
+            'sent_bytes' => intval(array_value($wire, 'sent_bytes', 0)),
+            'response_hex' => (string) array_value($wire, 'response_hex', ''),
+            'response_len' => intval(array_value($wire, 'response_len', 0)),
+        ];
+    }
+
+    public function sendToDeliveryRaw($data, $ip, $port)
+    {
         if (!function_exists('socket_create')) {
             throw new Exception('Extensao PHP sockets nao instalada.');
         }
@@ -906,16 +1313,105 @@ class GamedProtocol
         }
 
         $response = '';
-        @socket_recv($sock, $response, 8192, 0);
+        $header = '';
+        @socket_recv($sock, $header, 8, PHP_BINARY_READ);
+        if (is_string($header) && $header !== '') {
+            $response = $header;
+            $tmpIdx = 0;
+            $opcode = $this->unpackCuint($response, $tmpIdx);
+            $length = $this->unpackCuint($response, $tmpIdx);
+            $expected = max($tmpIdx, 0) + max(intval($length), 0);
+
+            while (strlen($response) < $expected) {
+                $missing = $expected - strlen($response);
+                $chunk = '';
+                @socket_recv($sock, $chunk, $missing, PHP_BINARY_READ);
+                if (!is_string($chunk) || $chunk === '') {
+                    break;
+                }
+                $response .= $chunk;
+            }
+        }
 
         socket_close($sock);
         fclose($fp);
 
         return [
+            'hello' => $hello,
             'hello_len' => strlen($hello),
             'sent_bytes' => intval($sentBytes),
+            'response' => $response,
             'response_hex' => ($response !== '') ? bin2hex($response) : '',
             'response_len' => strlen($response),
+        ];
+    }
+
+    public function sendToDeliveryRawLegacyCompat($data, $ip, $port)
+    {
+        if (!function_exists('socket_create')) {
+            throw new Exception('Extensao PHP sockets nao instalada.');
+        }
+
+        $fp = @fsockopen($ip, $port, $errno, $errstr, 2);
+        if (!$fp) {
+            throw new Exception("Nao foi possivel conectar ao gdeliveryd ($ip:$port): $errstr");
+        }
+
+        $sock = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
+        if (!$sock) {
+            fclose($fp);
+            throw new Exception('Falha ao criar socket para gdeliveryd');
+        }
+
+        socket_set_option($sock, SOL_SOCKET, SO_RCVTIMEO, ['sec' => 5, 'usec' => 0]);
+        socket_set_option($sock, SOL_SOCKET, SO_SNDTIMEO, ['sec' => 5, 'usec' => 0]);
+
+        if (!@socket_connect($sock, $ip, $port)) {
+            socket_close($sock);
+            fclose($fp);
+            throw new Exception('Falha ao conectar socket ao gdeliveryd');
+        }
+
+        $hello = '';
+        @socket_recv($sock, $hello, 8192, 0);
+
+        $sentBytes = @socket_send($sock, $data, strlen($data), 0);
+        if ($sentBytes === false) {
+            $err = socket_strerror(socket_last_error($sock));
+            socket_close($sock);
+            fclose($fp);
+            throw new Exception('Falha ao enviar pacote legacy para gdeliveryd: ' . $err);
+        }
+
+        $buf = '';
+        $chunk = @socket_read($sock, 1024, PHP_BINARY_READ);
+        if (is_string($chunk) && $chunk !== '') {
+            $buf .= $chunk;
+            if (strlen($buf) >= 8) {
+                $tmpIdx = 0;
+                $this->unpackCuint($buf, $tmpIdx);
+                $length = $this->unpackCuint($buf, $tmpIdx);
+                while (strlen($buf) < intval($length)) {
+                    $more = @socket_read($sock, 1024, PHP_BINARY_READ);
+                    if (!is_string($more) || $more === '') {
+                        break;
+                    }
+                    $buf .= $more;
+                }
+            }
+        }
+
+        socket_close($sock);
+        fclose($fp);
+
+        return [
+            'hello' => $hello,
+            'hello_len' => strlen($hello),
+            'sent_bytes' => intval($sentBytes),
+            'response' => $buf,
+            'response_hex' => ($buf !== '') ? bin2hex($buf) : '',
+            'response_len' => strlen($buf),
+            'legacy_compat' => true,
         ];
     }
 
@@ -929,6 +1425,24 @@ class GamedProtocol
     {
         $pack = pack('N*', -1, 0, intval($userid), intval($seconds)) . $this->packString((string) $reason);
         return $this->sendToDelivery($this->createHeader(self::OP_FORBID_ACC, $pack), $ip, $port);
+    }
+
+    public function muteAccount($sid, $userid, $seconds, $reason, $ip, $port)
+    {
+        $pack = pack('N*', -1, intval($sid), intval($userid), intval($seconds)) . $this->packString((string) $reason);
+        return $this->sendToDelivery($this->createHeader($this->gmDeliveryOpcode('muteAccount'), $pack), $ip, $port);
+    }
+
+    public function muteRole($sid, $roleid, $seconds, $reason, $ip, $port)
+    {
+        $pack = pack('N*', -1, intval($sid), intval($roleid), intval($seconds)) . $this->packString((string) $reason);
+        return $this->sendToDelivery($this->createHeader($this->gmDeliveryOpcode('muteRole'), $pack), $ip, $port);
+    }
+
+    public function playerTeleport($roleid, $worldtag, $x, $y, $z, $ip, $port)
+    {
+        $pack = pack('NNf*', intval($roleid), intval($worldtag), floatval($x), floatval($y), floatval($z));
+        return $this->sendToDelivery($this->createHeader($this->gmDeliveryOpcode('teleportRole'), $pack), $ip, $port);
     }
 
     public function accountForbidAction($provider, $userid, $seconds, $reason, $ip, $port)
@@ -979,16 +1493,21 @@ class GamedProtocol
             throw new Exception('roleid invalido para limpeza de forbid');
         }
 
-        $base = $this->getRoleBase($roleid, $ip, $port);
-        if (!is_array($base)) {
-            throw new Exception('Nao foi possivel ler base do roleid ' . $roleid);
+        $current = $this->getEditableRole($roleid, $ip, $port);
+        if (!is_array($current)) {
+            throw new Exception('Nao foi possivel ler role completo para o roleid ' . $roleid);
         }
 
-        $before = array_value($base, 'forbid', []);
+        $before = array_value(array_value($current, 'base', []), 'forbid', []);
         $before = is_array($before) ? array_values($before) : [];
 
-        $base['forbid'] = [];
-        $this->putRoleBase($roleid, $base, $ip, $port);
+        $prepared = $this->prepareEditableRoleForSave($roleid, [
+            'base' => [
+                'forbid' => [],
+            ],
+        ], $ip, $port, $current);
+        $prepared['base']['forbid'] = [];
+        $this->putPreparedRoleSections($roleid, $prepared, $ip, $port);
 
         $fresh = $this->getRoleBase($roleid, $ip, $port);
         $after = is_array($fresh) ? array_value($fresh, 'forbid', []) : [];
@@ -999,6 +1518,609 @@ class GamedProtocol
             'before' => $before,
             'after' => $after,
             'cleared' => empty($after),
+        ];
+    }
+
+    public function clearRoleForbidTypes($roleid, array $types, $ip, $port)
+    {
+        $roleid = intval($roleid);
+        if ($roleid <= 0) {
+            throw new Exception('roleid invalido para limpeza seletiva de forbid');
+        }
+
+        $normalizedTypes = [];
+        foreach ($types as $type) {
+            $type = intval($type);
+            if ($type >= 0) {
+                $normalizedTypes[] = $type;
+            }
+        }
+        $normalizedTypes = array_values(array_unique($normalizedTypes));
+        if (empty($normalizedTypes)) {
+            throw new Exception('nenhum tipo de forbid informado para limpeza seletiva');
+        }
+
+        $current = $this->getEditableRole($roleid, $ip, $port);
+        if (!is_array($current)) {
+            throw new Exception('Nao foi possivel ler role completo para o roleid ' . $roleid);
+        }
+
+        $before = array_value(array_value($current, 'base', []), 'forbid', []);
+        $before = is_array($before) ? array_values($before) : [];
+        $afterWanted = [];
+        $removed = [];
+        foreach ($before as $entry) {
+            $entryType = intval(array_value($entry, 'type', -1));
+            if (in_array($entryType, $normalizedTypes, true)) {
+                $removed[] = $entry;
+                continue;
+            }
+            $afterWanted[] = $entry;
+        }
+
+        if (count($removed) === 0) {
+            return [
+                'roleid' => $roleid,
+                'types' => $normalizedTypes,
+                'before' => $before,
+                'after' => $before,
+                'removed' => [],
+                'removed_count' => 0,
+                'cleared' => true,
+                'changed' => false,
+            ];
+        }
+
+        $prepared = $this->prepareEditableRoleForSave($roleid, [
+            'base' => [
+                'forbid' => $afterWanted,
+            ],
+        ], $ip, $port, $current);
+        $prepared['base']['forbid'] = $afterWanted;
+        $this->putPreparedRoleSections($roleid, $prepared, $ip, $port);
+
+        $fresh = $this->getRoleBase($roleid, $ip, $port);
+        $after = is_array($fresh) ? array_value($fresh, 'forbid', []) : [];
+        $after = is_array($after) ? array_values($after) : [];
+
+        $remainingTypes = array_map(function ($entry) {
+            return intval(array_value($entry, 'type', -1));
+        }, $after);
+        $remainingTypes = array_values(array_unique($remainingTypes));
+        $stillPresent = array_values(array_intersect($normalizedTypes, $remainingTypes));
+
+        return [
+            'roleid' => $roleid,
+            'types' => $normalizedTypes,
+            'before' => $before,
+            'after' => $after,
+            'removed' => $removed,
+            'removed_count' => count($removed),
+            'cleared' => empty($stillPresent),
+            'changed' => true,
+        ];
+    }
+
+    private function normalizeRoleForbidTableEntries($entries)
+    {
+        if (is_array($entries) && isset($entries['type'])) {
+            $entries = [$entries];
+        }
+        $entries = is_array($entries) ? array_values($entries) : [];
+        $normalized = [];
+        foreach ($entries as $entry) {
+            if (!is_array($entry)) {
+                continue;
+            }
+            $normalized[] = $this->sanitizeFields($entry, [
+                'type' => 'int',
+                'time' => 'int',
+                'createtime' => 'int',
+                'reason' => 'hex',
+            ]);
+        }
+        return $normalized;
+    }
+
+    public function getRoleForbidTable($roleid, $ip, $port)
+    {
+        $roleid = intval($roleid);
+        if ($roleid <= 0) {
+            throw new Exception('roleid invalido para getRoleForbidTable');
+        }
+
+        $pack = pack('N*', -1, $roleid);
+        $send = $this->sendToGamedBD($this->createHeader(self::OP_GET_ROLE_FORBID, $pack), $ip, $port);
+        $data = $this->deleteHeader($send);
+        $this->cycle = false;
+
+        $wrappedBuffer = $data;
+        $wrapped = $this->unmarshal($wrappedBuffer, [
+            'retcode' => 'int',
+            'value' => $this->struct_role_forbid_table,
+        ]);
+        if (is_array($wrapped) && intval(array_value($wrapped, 'retcode', -1)) === 0) {
+            return $this->normalizeRoleForbidTableEntries(array_value(array_value($wrapped, 'value', []), 'forbid', []));
+        }
+
+        $directBuffer = $data;
+        $direct = $this->unmarshal($directBuffer, $this->struct_role_forbid_table);
+        if (is_array($direct)) {
+            return $this->normalizeRoleForbidTableEntries(array_value($direct, 'forbid', []));
+        }
+
+        throw new Exception('Falha ao interpretar GetRoleForbid');
+    }
+
+    public function putRoleForbidTable($roleid, array $forbid, $ip, $port)
+    {
+        $roleid = intval($roleid);
+        if ($roleid <= 0) {
+            throw new Exception('roleid invalido para putRoleForbidTable');
+        }
+
+        $forbid = $this->normalizeRoleForbidTableEntries($forbid);
+        $pack = pack('N*', -1, $roleid) . $this->marshal([
+            'forbid' => $forbid,
+        ], $this->struct_role_forbid_table);
+        $send = $this->sendToGamedBD($this->createHeader(self::OP_PUT_ROLE_FORBID, $pack), $ip, $port);
+        $data = $this->deleteHeader($send);
+        $this->cycle = false;
+        $decoded = $this->unmarshal($data, [
+            'retcode' => 'int',
+        ]);
+        if (!is_array($decoded)) {
+            throw new Exception('Falha ao interpretar PutRoleForbid');
+        }
+        if (intval(array_value($decoded, 'retcode', -1)) !== 0) {
+            throw new Exception('PutRoleForbid retornou retcode ' . intval(array_value($decoded, 'retcode', -1)));
+        }
+
+        return [
+            'success' => true,
+            'roleid' => $roleid,
+            'retcode' => 0,
+            'forbid' => $forbid,
+        ];
+    }
+
+    public function clearRoleForbidTableTypes($roleid, array $types, $ip, $port)
+    {
+        $roleid = intval($roleid);
+        if ($roleid <= 0) {
+            throw new Exception('roleid invalido para limpeza seletiva de GetRoleForbid');
+        }
+
+        $normalizedTypes = [];
+        foreach ($types as $type) {
+            $type = intval($type);
+            if ($type >= 0) {
+                $normalizedTypes[] = $type;
+            }
+        }
+        $normalizedTypes = array_values(array_unique($normalizedTypes));
+        if (empty($normalizedTypes)) {
+            throw new Exception('nenhum tipo informado para limpeza seletiva de GetRoleForbid');
+        }
+
+        $before = $this->getRoleForbidTable($roleid, $ip, $port);
+        $afterWanted = [];
+        $removed = [];
+        foreach ($before as $entry) {
+            $entryType = intval(array_value($entry, 'type', -1));
+            if (in_array($entryType, $normalizedTypes, true)) {
+                $removed[] = $entry;
+                continue;
+            }
+            $afterWanted[] = $entry;
+        }
+
+        if (count($removed) === 0) {
+            return [
+                'roleid' => $roleid,
+                'types' => $normalizedTypes,
+                'before' => $before,
+                'after' => $before,
+                'removed' => [],
+                'removed_count' => 0,
+                'cleared' => true,
+                'changed' => false,
+            ];
+        }
+
+        $this->putRoleForbidTable($roleid, $afterWanted, $ip, $port);
+        $after = $this->getRoleForbidTable($roleid, $ip, $port);
+        $remainingTypes = array_map(function ($entry) {
+            return intval(array_value($entry, 'type', -1));
+        }, $after);
+        $remainingTypes = array_values(array_unique($remainingTypes));
+        $stillPresent = array_values(array_intersect($normalizedTypes, $remainingTypes));
+
+        return [
+            'roleid' => $roleid,
+            'types' => $normalizedTypes,
+            'before' => $before,
+            'after' => $after,
+            'removed' => $removed,
+            'removed_count' => count($removed),
+            'cleared' => empty($stillPresent),
+            'changed' => true,
+        ];
+    }
+
+    private function extractNewRoleDetailPkState(array $detail)
+    {
+        return [
+            'roleid' => intval(array_value($detail, 'roleid', 0)),
+            'pk_time' => intval(array_value($detail, 'pk_time', 0)),
+            'pk_status' => intval(array_value($detail, 'pk_status', 0)),
+            'color_name' => intval(array_value($detail, 'color_name', 0)),
+            'player_kill' => intval(array_value($detail, 'player_kill', 0)),
+            'player_death' => intval(array_value($detail, 'player_death', 0)),
+        ];
+    }
+
+    public function inspectRolePkState($roleid, $ip, $port)
+    {
+        $roleid = intval($roleid);
+        if ($roleid <= 0) {
+            throw new Exception('roleid invalido para leitura de PK');
+        }
+
+        $editable = $this->getEditableRole($roleid, $ip, $port);
+        if (!is_array($editable)) {
+            throw new Exception('Nao foi possivel ler role completo para o roleid ' . $roleid);
+        }
+
+        $newRoleDetail = null;
+        try {
+            $newRoleDetail = $this->getNewRoleDetail($roleid, $ip, $port);
+        } catch (Exception $e) {
+            $newRoleDetail = null;
+        }
+
+        $roleForbidTable = null;
+        try {
+            $roleForbidTable = $this->getRoleForbidTable($roleid, $ip, $port);
+        } catch (Exception $e) {
+            $roleForbidTable = null;
+        }
+
+        return $this->extractRolePkState($roleid, $editable, $newRoleDetail, $roleForbidTable);
+    }
+
+    private function extractRolePkState($roleid, array $editable, $newRoleDetail = null, $roleForbidTable = null)
+    {
+        $base = array_value($editable, 'base', []);
+        $status = array_value($editable, 'status', []);
+        $decoded = array_value($status, 'decoded', []);
+        if (!is_array($decoded) || empty($decoded)) {
+            $decoded = $this->decodeStatusOctets(is_array($status) ? $status : []);
+        }
+
+        $varData = array_value($decoded, 'var_data', null);
+        if (!is_array($varData)) {
+            $varData = $this->decodeHexStruct(array_value($status, 'var_data', ''), $this->struct_octets['var_data']);
+        }
+
+        $pkCount = is_array($varData) ? intval(array_value($varData, 'pk_count', 0)) : null;
+        $roleForbid = is_array($base) ? array_value($base, 'forbid', []) : [];
+        $roleForbid = is_array($roleForbid) ? array_values($roleForbid) : [];
+        $roleForbidTable = $this->normalizeRoleForbidTableEntries($roleForbidTable);
+        $state = [
+            'roleid' => intval($roleid),
+            'pk_count' => $pkCount,
+            'invader_state' => intval(array_value($status, 'invader_state', 0)),
+            'invader_time' => intval(array_value($status, 'invader_time', 0)),
+            'pariah_time' => intval(array_value($status, 'pariah_time', 0)),
+            'var_data_available' => is_array($varData),
+            'role_forbid_count' => count($roleForbid),
+            'role_forbid_table_count' => count($roleForbidTable),
+            'custom_status_hex' => strtoupper((string) array_value($status, 'custom_status', '')),
+            'filter_data_hex' => strtoupper((string) array_value($status, 'filter_data', '')),
+            'charactermode_hex' => strtoupper((string) array_value($status, 'charactermode', '')),
+        ];
+        if (is_array($newRoleDetail) && !empty($newRoleDetail)) {
+            $detailState = $this->extractNewRoleDetailPkState($newRoleDetail);
+            $state['new_role_detail_available'] = true;
+            $state['new_pk_time'] = intval(array_value($detailState, 'pk_time', 0));
+            $state['new_pk_status'] = intval(array_value($detailState, 'pk_status', 0));
+            $state['new_color_name'] = intval(array_value($detailState, 'color_name', 0));
+            $state['new_player_kill'] = intval(array_value($detailState, 'player_kill', 0));
+            $state['new_player_death'] = intval(array_value($detailState, 'player_death', 0));
+        } else {
+            $state['new_role_detail_available'] = false;
+        }
+        $state['cleared'] = $state['pk_count'] === 0
+            && $state['invader_state'] === 0
+            && $state['invader_time'] === 0
+            && $state['pariah_time'] === 0
+            && (!array_key_exists('new_pk_time', $state) || intval($state['new_pk_time']) === 0)
+            && (!array_key_exists('new_pk_status', $state) || intval($state['new_pk_status']) === 0);
+
+        return [
+            'state' => $state,
+            'var_data' => is_array($varData) ? $varData : null,
+            'role_forbid' => $roleForbid,
+            'role_forbid_table' => $roleForbidTable,
+            'new_role_detail' => is_array($newRoleDetail) ? $newRoleDetail : null,
+        ];
+    }
+
+    public function clearRolePk($roleid, $ip, $port)
+    {
+        $roleid = intval($roleid);
+        if ($roleid <= 0) {
+            throw new Exception('roleid invalido para limpeza de PK');
+        }
+
+        $current = $this->getEditableRole($roleid, $ip, $port);
+        if (!is_array($current)) {
+            throw new Exception('Nao foi possivel ler role completo para o roleid ' . $roleid);
+        }
+
+        $newRoleDetailBefore = null;
+        $newRoleDetailError = '';
+        try {
+            $newRoleDetailBefore = $this->getNewRoleDetail($roleid, $ip, $port);
+        } catch (Exception $e) {
+            $newRoleDetailBefore = null;
+            $newRoleDetailError = $e->getMessage();
+        }
+
+        $roleForbidTableBefore = null;
+        $roleForbidTableBeforeError = '';
+        try {
+            $roleForbidTableBefore = $this->getRoleForbidTable($roleid, $ip, $port);
+        } catch (Exception $e) {
+            $roleForbidTableBefore = null;
+            $roleForbidTableBeforeError = $e->getMessage();
+        }
+
+        $beforeBundle = $this->extractRolePkState($roleid, $current, $newRoleDetailBefore, $roleForbidTableBefore);
+        $before = array_value($beforeBundle, 'state', []);
+        $varData = array_value($beforeBundle, 'var_data', null);
+        if (!is_array($varData)) {
+            throw new Exception('Nao foi possivel decodificar status.var_data para limpar PK do roleid ' . $roleid);
+        }
+
+        $varData['pk_count'] = 0;
+        $payload = [
+            'status' => [
+                'invader_state' => 0,
+                'invader_time' => 0,
+                'pariah_time' => 0,
+                'var_data' => $this->encodeHexStruct($varData, $this->struct_octets['var_data']),
+            ],
+        ];
+        $prepared = $this->prepareEditableRoleForSave($roleid, $payload, $ip, $port, $current);
+
+        try {
+            $this->putPreparedRoleSections($roleid, $prepared, $ip, $port);
+            if (is_array($newRoleDetailBefore)) {
+                $newRoleDetailPayload = $newRoleDetailBefore;
+                $newRoleDetailPayload['pk_time'] = 0;
+                $newRoleDetailPayload['pk_status'] = 0;
+                $this->putNewRoleDetail($roleid, $newRoleDetailPayload, $ip, $port);
+            }
+        } catch (Exception $e) {
+            $rollbackMessage = 'rollback nao executado';
+            try {
+                $rollbackPrepared = $this->prepareEditableRoleForSave($roleid, $current, $ip, $port, $current);
+                $this->putPreparedRoleSections($roleid, $rollbackPrepared, $ip, $port);
+                $rollbackMessage = 'rollback automatico concluido';
+            } catch (Exception $rollbackError) {
+                $rollbackMessage = 'rollback falhou: ' . $rollbackError->getMessage();
+            }
+
+            throw new Exception('Falha ao limpar PK do roleid ' . $roleid . ': ' . $e->getMessage() . ' (' . $rollbackMessage . ')');
+        }
+
+        $fresh = $this->getEditableRole($roleid, $ip, $port);
+        if (!is_array($fresh)) {
+            throw new Exception('PK limpo, mas nao foi possivel reler o roleid ' . $roleid . ' para confirmacao');
+        }
+
+        $newRoleDetailAfter = null;
+        $newRoleDetailAfterError = '';
+        try {
+            $newRoleDetailAfter = $this->getNewRoleDetail($roleid, $ip, $port);
+        } catch (Exception $e) {
+            $newRoleDetailAfter = null;
+            $newRoleDetailAfterError = $e->getMessage();
+        }
+
+        $roleForbidTableAfter = null;
+        $roleForbidTableAfterError = '';
+        try {
+            $roleForbidTableAfter = $this->getRoleForbidTable($roleid, $ip, $port);
+        } catch (Exception $e) {
+            $roleForbidTableAfter = null;
+            $roleForbidTableAfterError = $e->getMessage();
+        }
+
+        $afterBundle = $this->extractRolePkState($roleid, $fresh, $newRoleDetailAfter, $roleForbidTableAfter);
+        $after = array_value($afterBundle, 'state', []);
+
+        $response = [
+            'roleid' => $roleid,
+            'before' => $before,
+            'after' => $after,
+            'role_forbid_before' => array_value($beforeBundle, 'role_forbid', []),
+            'role_forbid_after' => array_value($afterBundle, 'role_forbid', []),
+            'role_forbid_table_before' => array_value($beforeBundle, 'role_forbid_table', []),
+            'role_forbid_table_after' => array_value($afterBundle, 'role_forbid_table', []),
+            'new_role_detail_before' => is_array($newRoleDetailBefore) ? $this->extractNewRoleDetailPkState($newRoleDetailBefore) : null,
+            'new_role_detail_after' => is_array($newRoleDetailAfter) ? $this->extractNewRoleDetailPkState($newRoleDetailAfter) : null,
+            'cleared' => truthyValue(array_value($after, 'cleared', false)),
+            'changed' => intval(array_value($before, 'pk_count', 0)) !== intval(array_value($after, 'pk_count', 0))
+                || intval(array_value($before, 'invader_state', 0)) !== intval(array_value($after, 'invader_state', 0))
+                || intval(array_value($before, 'invader_time', 0)) !== intval(array_value($after, 'invader_time', 0))
+                || intval(array_value($before, 'pariah_time', 0)) !== intval(array_value($after, 'pariah_time', 0))
+                || intval(array_value($before, 'role_forbid_table_count', 0)) !== intval(array_value($after, 'role_forbid_table_count', 0))
+                || intval(array_value($before, 'new_pk_time', 0)) !== intval(array_value($after, 'new_pk_time', 0))
+                || intval(array_value($before, 'new_pk_status', 0)) !== intval(array_value($after, 'new_pk_status', 0)),
+        ];
+
+        if ($newRoleDetailError !== '') {
+            $response['new_role_detail_before_error'] = $newRoleDetailError;
+        }
+        if ($newRoleDetailAfterError !== '') {
+            $response['new_role_detail_after_error'] = $newRoleDetailAfterError;
+        }
+        if ($roleForbidTableBeforeError !== '') {
+            $response['role_forbid_table_before_error'] = $roleForbidTableBeforeError;
+        }
+        if ($roleForbidTableAfterError !== '') {
+            $response['role_forbid_table_after_error'] = $roleForbidTableAfterError;
+        }
+
+        return $response;
+    }
+
+    public function inspectRoleReviveState($roleid, $ip, $port)
+    {
+        $roleid = intval($roleid);
+        if ($roleid <= 0) {
+            throw new Exception('roleid invalido para leitura de revive');
+        }
+
+        $editable = $this->getEditableRole($roleid, $ip, $port);
+        if (!is_array($editable)) {
+            throw new Exception('Nao foi possivel ler role completo para o roleid ' . $roleid);
+        }
+
+        return $this->extractRoleReviveState($roleid, $editable);
+    }
+
+    private function extractRoleReviveState($roleid, array $editable)
+    {
+        $status = array_value($editable, 'status', []);
+        $decoded = array_value($status, 'decoded', []);
+        if (!is_array($decoded) || empty($decoded)) {
+            $decoded = $this->decodeStatusOctets(is_array($status) ? $status : []);
+        }
+
+        $varData = array_value($decoded, 'var_data', null);
+        if (!is_array($varData)) {
+            $varData = $this->decodeHexStruct(array_value($status, 'var_data', ''), $this->struct_octets['var_data']);
+        }
+
+        $property = array_value($decoded, 'property', null);
+        if (!is_array($property)) {
+            $property = $this->decodeHexStruct(array_value($status, 'property', ''), $this->struct_octets['property']);
+        }
+
+        $deadFlag = is_array($varData) ? intval(array_value($varData, 'dead_flag', 0)) : null;
+        $resurrectState = is_array($varData) ? intval(array_value($varData, 'resurrect_state', 0)) : null;
+        $state = [
+            'roleid' => intval($roleid),
+            'hp' => intval(array_value($status, 'hp', 0)),
+            'mp' => intval(array_value($status, 'mp', 0)),
+            'property_hp' => is_array($property) ? intval(array_value($property, 'hp', 0)) : null,
+            'property_mp' => is_array($property) ? intval(array_value($property, 'mp', 0)) : null,
+            'dead_flag' => $deadFlag,
+            'resurrect_state' => $resurrectState,
+            'resurrect_exp_reduce' => is_array($varData) ? floatval(array_value($varData, 'resurrect_exp_reduce', 0)) : null,
+            'resurrect_hp_factor' => is_array($varData) ? floatval(array_value($varData, 'resurrect_hp_factor', 0)) : null,
+            'resurrect_mp_factor' => is_array($varData) ? floatval(array_value($varData, 'resurrect_mp_factor', 0)) : null,
+            'var_data_available' => is_array($varData),
+            'property_available' => is_array($property),
+        ];
+        $state['revivable'] = $state['hp'] <= 0
+            || intval(array_value($state, 'dead_flag', 0)) > 0
+            || intval(array_value($state, 'resurrect_state', 0)) > 0;
+        $state['revived'] = $state['hp'] > 0
+            && intval(array_value($state, 'dead_flag', 0)) === 0
+            && intval(array_value($state, 'resurrect_state', 0)) === 0;
+
+        return [
+            'state' => $state,
+            'var_data' => is_array($varData) ? $varData : null,
+            'property' => is_array($property) ? $property : null,
+        ];
+    }
+
+    public function reviveRole($roleid, $ip, $port)
+    {
+        $roleid = intval($roleid);
+        if ($roleid <= 0) {
+            throw new Exception('roleid invalido para revive');
+        }
+
+        $current = $this->getEditableRole($roleid, $ip, $port);
+        if (!is_array($current)) {
+            throw new Exception('Nao foi possivel ler role completo para o roleid ' . $roleid);
+        }
+
+        $beforeBundle = $this->extractRoleReviveState($roleid, $current);
+        $before = array_value($beforeBundle, 'state', []);
+        $varData = array_value($beforeBundle, 'var_data', null);
+        if (!is_array($varData)) {
+            throw new Exception('Nao foi possivel decodificar status.var_data para reviver o roleid ' . $roleid);
+        }
+
+        $persistedAlreadyAlive = truthyValue(array_value($before, 'revived', false));
+        $targetHp = max(
+            1,
+            intval(array_value($before, 'hp', 0)),
+            intval(array_value($before, 'property_hp', 0))
+        );
+        $targetMp = max(
+            1,
+            intval(array_value($before, 'mp', 0)),
+            intval(array_value($before, 'property_mp', 0))
+        );
+
+        $varData['dead_flag'] = 0;
+        $varData['resurrect_state'] = 0;
+        $varData['resurrect_exp_reduce'] = 0.0;
+        $varData['resurrect_hp_factor'] = 1.0;
+        $varData['resurrect_mp_factor'] = 1.0;
+
+        $payload = [
+            'status' => [
+                'hp' => $targetHp,
+                'mp' => $targetMp,
+                'var_data' => $this->encodeHexStruct($varData, $this->struct_octets['var_data']),
+            ],
+        ];
+        $prepared = $this->prepareEditableRoleForSave($roleid, $payload, $ip, $port, $current);
+
+        try {
+            $this->putPreparedRoleSections($roleid, $prepared, $ip, $port);
+        } catch (Exception $e) {
+            $rollbackMessage = 'rollback nao executado';
+            try {
+                $rollbackPrepared = $this->prepareEditableRoleForSave($roleid, $current, $ip, $port, $current);
+                $this->putPreparedRoleSections($roleid, $rollbackPrepared, $ip, $port);
+                $rollbackMessage = 'rollback automatico concluido';
+            } catch (Exception $rollbackError) {
+                $rollbackMessage = 'rollback falhou: ' . $rollbackError->getMessage();
+            }
+
+            throw new Exception('Falha ao reviver o roleid ' . $roleid . ': ' . $e->getMessage() . ' (' . $rollbackMessage . ')');
+        }
+
+        $fresh = $this->getEditableRole($roleid, $ip, $port);
+        if (!is_array($fresh)) {
+            throw new Exception('Role revivido, mas nao foi possivel reler o roleid ' . $roleid . ' para confirmacao');
+        }
+
+        $afterBundle = $this->extractRoleReviveState($roleid, $fresh);
+        $after = array_value($afterBundle, 'state', []);
+
+        return [
+            'roleid' => $roleid,
+            'before' => $before,
+            'after' => $after,
+            'revived' => truthyValue(array_value($after, 'revived', false)),
+            'forced_write' => true,
+            'persisted_state_already_alive' => $persistedAlreadyAlive,
+            'changed' => intval(array_value($before, 'hp', 0)) !== intval(array_value($after, 'hp', 0))
+                || intval(array_value($before, 'mp', 0)) !== intval(array_value($after, 'mp', 0))
+                || intval(array_value($before, 'dead_flag', 0)) !== intval(array_value($after, 'dead_flag', 0))
+                || intval(array_value($before, 'resurrect_state', 0)) !== intval(array_value($after, 'resurrect_state', 0)),
         ];
     }
 
@@ -1346,6 +2468,14 @@ class GamedProtocol
                     $data .= $this->packShort(array_value($pack, $key, 0));
                     break;
 
+                case 'lint':
+                    $data .= $this->packLInt(array_value($pack, $key, 0));
+                    break;
+
+                case 'lshort':
+                    $data .= $this->packLShort(array_value($pack, $key, 0));
+                    break;
+
                 case 'float':
                     $data .= $this->packFloat(array_value($pack, $key, 0));
                     break;
@@ -1450,6 +2580,466 @@ class GamedProtocol
         return $this->unmarshal($data, $this->struct_task);
     }
 
+    public function getNewRoleDetail($roleid, $ip, $port)
+    {
+        $roleid = intval($roleid);
+        if ($roleid <= 0) {
+            throw new Exception('roleid invalido para getNewRoleDetail');
+        }
+
+        $pack = pack('N*', -1, $roleid);
+        $send = $this->sendToGamedBD($this->createHeader(self::OP_GET_NEW_ROLE_DETAIL, $pack), $ip, $port);
+        $data = $this->deleteHeader($send);
+        $this->cycle = false;
+        $decoded = $this->unmarshal($data, [
+            'retcode' => 'int',
+            'detail' => $this->struct_new_role_detail,
+        ]);
+        if (!is_array($decoded)) {
+            throw new Exception('Falha ao interpretar GetNewRoleDetail');
+        }
+        if (intval(array_value($decoded, 'retcode', -1)) !== 0) {
+            throw new Exception('GetNewRoleDetail retornou retcode ' . intval(array_value($decoded, 'retcode', -1)));
+        }
+
+        $detail = array_value($decoded, 'detail', []);
+        if (!is_array($detail)) {
+            throw new Exception('GetNewRoleDetail retornou detail invalido');
+        }
+
+        return $detail;
+    }
+
+    public function putNewRoleDetail($roleid, array $detail, $ip, $port)
+    {
+        $roleid = intval($roleid);
+        if ($roleid <= 0) {
+            throw new Exception('roleid invalido para putNewRoleDetail');
+        }
+
+        $detail['roleid'] = $roleid;
+        $pack = pack('N*', -1, $roleid) . $this->marshal($detail, $this->struct_new_role_detail);
+        $send = $this->sendToGamedBD($this->createHeader(self::OP_SET_NEW_ROLE_DETAIL, $pack), $ip, $port);
+        $data = $this->deleteHeader($send);
+        $this->cycle = false;
+        $decoded = $this->unmarshal($data, [
+            'retcode' => 'int',
+        ]);
+        if (!is_array($decoded)) {
+            throw new Exception('Falha ao interpretar SetNewRoleDetail');
+        }
+        if (intval(array_value($decoded, 'retcode', -1)) !== 0) {
+            throw new Exception('SetNewRoleDetail retornou retcode ' . intval(array_value($decoded, 'retcode', -1)));
+        }
+
+        return [
+            'success' => true,
+            'roleid' => $roleid,
+            'retcode' => 0,
+        ];
+    }
+
+    public function getUserInfo($userid, $ip, $port)
+    {
+        $userid = intval($userid);
+        if ($userid <= 0) {
+            throw new Exception('userid invalido para getUserInfo');
+        }
+
+        $pack = pack('N*', -1, $userid, 1, 1);
+        $send = $this->sendToGamedBD($this->createHeader(self::OP_GET_USER, $pack), $ip, $port);
+
+        $offset = 11;
+        $flag = @unpack('H', substr($send, 2, 1));
+        if (is_array($flag) && isset($flag[1]) && substr((string) $flag[1], 0, 1) === '8') {
+            $offset = 12;
+        }
+
+        $data = substr($send, $offset);
+        $this->cycle = false;
+        $user = $this->unmarshal($data, $this->struct_user_info);
+        if (!is_array($user)) {
+            throw new Exception('Falha ao interpretar resposta user.info');
+        }
+
+        $loginRecord = strtolower((string) array_value($user, 'login_record', ''));
+        if ($loginRecord !== '' && preg_match('/^[0-9a-f]+$/', $loginRecord) && strlen($loginRecord) >= 16) {
+            $loginTime = hexdec(substr($loginRecord, 0, 8));
+            $ipHex = substr($loginRecord, 8, 8);
+            $user['login_time_unix'] = intval($loginTime);
+            $user['login_time'] = ($loginTime > 0) ? gmdate('c', intval($loginTime)) : null;
+            $user['login_ip'] = long2ip(hexdec(substr($ipHex, 6, 2) . substr($ipHex, 4, 2) . substr($ipHex, 2, 2) . substr($ipHex, 0, 2)));
+        } else {
+            $user['login_time_unix'] = 0;
+            $user['login_time'] = null;
+            $user['login_ip'] = '';
+        }
+
+        return $user;
+    }
+
+    public function queryUseridByRoleName($roleName, $ip, $port)
+    {
+        $roleName = trim((string) $roleName);
+        if ($roleName === '') {
+            throw new Exception('nome invalido para QueryUserid');
+        }
+
+        $pack = pack('N', 0xFFFFFFFF) . $this->packString($roleName);
+        $send = $this->sendToGamedBD($this->createHeader(self::OP_QUERY_USERID, $pack), $ip, $port);
+        $data = $this->deleteHeader($send);
+        $this->cycle = false;
+        $decoded = $this->unmarshal($data, $this->struct_query_userid_response);
+        if (!is_array($decoded)) {
+            throw new Exception('Falha ao interpretar QueryUserid');
+        }
+
+        $decoded['name'] = $roleName;
+        $decoded['found'] = intval(array_value($decoded, 'userid', 0)) > 0 && intval(array_value($decoded, 'roleid', 0)) > 0;
+        return $decoded;
+    }
+
+    public function getPlayerIdByName($roleName, $ip, $port, $localsid = 0, $reason = 0)
+    {
+        $roleName = trim((string) $roleName);
+        if ($roleName === '') {
+            throw new Exception('nome invalido para GetPlayerIDByName');
+        }
+
+        $pack = $this->packString($roleName)
+            . pack('N', intval($localsid))
+            . pack('C', intval($reason));
+        $wire = $this->sendToDeliveryRaw($this->createHeader(self::OP_GET_PLAYER_ID_BY_NAME, $pack), $ip, $port);
+        $response = (string) array_value($wire, 'response', '');
+        if ($response === '') {
+            throw new Exception('GetPlayerIDByName retornou resposta vazia');
+        }
+
+        $data = $this->deleteProtocolHeader($response);
+        $this->cycle = false;
+        $decoded = $this->unmarshal($data, $this->struct_get_player_id_by_name_response);
+        if (!is_array($decoded)) {
+            $data = $this->deleteProtocolHeaderWithSession($response);
+            $this->cycle = false;
+            $decoded = $this->unmarshal($data, $this->struct_get_player_id_by_name_response);
+        }
+        if (!is_array($decoded)) {
+            throw new Exception('Falha ao interpretar GetPlayerIDByName');
+        }
+
+        $decoded['name_text'] = decode_octet_text((string) array_value($decoded, 'rolename', ''));
+        $decoded['found'] = intval(array_value($decoded, 'retcode', -1)) === 0 && intval(array_value($decoded, 'roleid', 0)) > 0;
+        $decoded['wire'] = [
+            'hello_len' => intval(array_value($wire, 'hello_len', 0)),
+            'sent_bytes' => intval(array_value($wire, 'sent_bytes', 0)),
+            'response_hex' => (string) array_value($wire, 'response_hex', ''),
+            'response_len' => intval(array_value($wire, 'response_len', 0)),
+        ];
+        return $decoded;
+    }
+
+    public function getRoleIdByName($roleName, $ip, $port)
+    {
+        $roleName = trim((string) $roleName);
+        if ($roleName === '') {
+            throw new Exception('nome invalido para getRoleid');
+        }
+
+        $pack = pack('N', 0xFFFFFFFF) . $this->packString($roleName) . pack('C', 1);
+        $send = $this->sendToGamedBD($this->createHeader(self::OP_GET_ROLEID, $pack), $ip, $port);
+        $data = $this->deleteHeader($send);
+        if (!is_string($data) || strlen($data) < 4) {
+            throw new Exception('getRoleid retornou resposta vazia');
+        }
+
+        $unsigned = unpack('Nroleid', substr($data, 0, 4));
+        $rawRoleId = intval(array_value($unsigned, 'roleid', 0));
+        $found = ($rawRoleId > 0 && $rawRoleId !== 0xFFFFFFFF);
+        return [
+            'name' => $roleName,
+            'roleid' => $found ? $rawRoleId : 0,
+            'found' => $found,
+        ];
+    }
+
+    private function decodeMaybePackedName($value)
+    {
+        $value = (string) $value;
+        if ($value !== '' && preg_match('/^[0-9a-f]+$/i', $value) && (strlen($value) % 2) === 0) {
+            $decoded = decode_octet_text($value);
+            if ($decoded !== '') {
+                return $decoded;
+            }
+        }
+
+        return $value;
+    }
+
+    private function normalizeOnlineUserRows(array $rows)
+    {
+        $userlist = [];
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $row['name_text'] = $this->decodeMaybePackedName(array_value($row, 'name', ''));
+            $row['online'] = true;
+            $userlist[] = $row;
+        }
+        return $userlist;
+    }
+
+    private function maxOnlineUserid(array $rows)
+    {
+        $max = 0;
+        foreach ($rows as $row) {
+            $userid = intval(array_value($row, 'userid', 0));
+            if ($userid > $max) {
+                $max = $userid;
+            }
+        }
+        return ($max > 0) ? ($max + 1) : 0;
+    }
+
+    private function listOnlineUsersLegacy($ip, $port)
+    {
+        $cursor = 0;
+        $pages = 0;
+        $userlist = [];
+        $lastLocalsid = -1;
+        $lastHandler = 1;
+        $lastWire = [];
+
+        while ($pages < 256) {
+            $pack = pack('N*', 0xFFFFFFFF, 1, intval($cursor)) . $this->packString('1');
+            $wire = $this->sendToDeliveryRawLegacyCompat($this->createHeader(self::OP_GM_LIST_ONLINE_USER, $pack), $ip, $port);
+            $response = (string) array_value($wire, 'response', '');
+            if ($response === '') {
+                throw new Exception('GMListOnlineUser legado retornou resposta vazia');
+            }
+
+            $data = $this->deleteProtocolHeaderWithSession($response);
+            $this->cycle = false;
+            $decoded = $this->unmarshal($data, $this->struct_legacy_role_list_response);
+            if (!is_array($decoded)) {
+                throw new Exception('Falha ao interpretar GMListOnlineUser legado');
+            }
+
+            $rows = $this->normalizeOnlineUserRows((array) array_value($decoded, 'users', []));
+            $lastLocalsid = intval(array_value($decoded, 'localsid', $lastLocalsid));
+            $lastHandler = intval(array_value($decoded, 'handler', $lastHandler));
+            $lastWire = [
+                'hello_len' => intval(array_value($wire, 'hello_len', 0)),
+                'sent_bytes' => intval(array_value($wire, 'sent_bytes', 0)),
+                'response_hex' => (string) array_value($wire, 'response_hex', ''),
+                'response_len' => intval(array_value($wire, 'response_len', 0)),
+            ];
+
+            if (empty($rows)) {
+                break;
+            }
+
+            foreach ($rows as $row) {
+                $roleid = intval(array_value($row, 'roleid', 0));
+                if ($roleid <= 0) {
+                    continue;
+                }
+                $userlist[$roleid] = $row;
+            }
+
+            $nextCursor = $this->maxOnlineUserid($rows);
+            if ($nextCursor <= $cursor) {
+                break;
+            }
+
+            $cursor = $nextCursor;
+            $pages++;
+        }
+
+        return [
+            'retcode' => 0,
+            'gmroleid' => 0,
+            'localsid' => $lastLocalsid,
+            'handler' => $lastHandler,
+            'userlist' => array_values($userlist),
+            'wire' => $lastWire,
+            'legacy_paged' => true,
+        ];
+    }
+
+    public function getOnlineCounts($gmroleid, $localsid, $ip, $port)
+    {
+        $pack = pack('NN', intval($gmroleid), intval($localsid));
+        $wire = $this->sendToDeliveryRawLegacyCompat($this->createHeader(self::OP_GM_ONLINE_NUM, $pack), $ip, $port);
+        $response = (string) array_value($wire, 'response', '');
+        if ($response === '') {
+            throw new Exception('GMOnlineNum retornou resposta vazia');
+        }
+
+        $data = $this->deleteProtocolHeaderWithSession($response);
+        $this->cycle = false;
+        $decoded = $this->unmarshal($data, $this->struct_gm_online_num_response);
+        if (!is_array($decoded)) {
+            throw new Exception('Falha ao interpretar GMOnlineNum');
+        }
+
+        $decoded['wire'] = [
+            'hello_len' => intval(array_value($wire, 'hello_len', 0)),
+            'sent_bytes' => intval(array_value($wire, 'sent_bytes', 0)),
+            'response_hex' => (string) array_value($wire, 'response_hex', ''),
+            'response_len' => intval(array_value($wire, 'response_len', 0)),
+        ];
+        return $decoded;
+    }
+
+    public function listOnlineUsers($gmroleid, $localsid, $handler, $ip, $port, $condHex = '')
+    {
+        $primaryError = null;
+        $primaryResult = null;
+
+        try {
+            $pack = pack('NNN', intval($gmroleid), intval($localsid), intval($handler))
+                . $this->packOctet(preg_replace('/[^0-9a-f]/i', '', (string) $condHex));
+            $wire = $this->sendToDeliveryRaw($this->createHeader(self::OP_GM_LIST_ONLINE_USER, $pack), $ip, $port);
+            $response = (string) array_value($wire, 'response', '');
+            if ($response === '') {
+                throw new Exception('GMListOnlineUser retornou resposta vazia');
+            }
+
+            $data = $this->deleteProtocolHeader($response);
+            $this->cycle = false;
+            $decoded = $this->unmarshal($data, $this->struct_gm_list_online_user_response);
+            if (!is_array($decoded) || (intval(array_value($decoded, 'retcode', 0)) === 0 && intval(array_value($decoded, 'gmroleid', 0)) === 0 && intval(array_value($decoded, 'localsid', 0)) === 0 && intval(array_value($decoded, 'handler', 0)) === 0 && empty(array_value($decoded, 'userlist', [])))) {
+                $data = $this->deleteProtocolHeaderWithSession($response);
+                $this->cycle = false;
+                $decoded = $this->unmarshal($data, $this->struct_gm_list_online_user_response);
+            }
+            if (!is_array($decoded)) {
+                throw new Exception('Falha ao interpretar GMListOnlineUser');
+            }
+
+            $primaryResult = [
+                'retcode' => intval(array_value($decoded, 'retcode', 0)),
+                'gmroleid' => intval(array_value($decoded, 'gmroleid', 0)),
+                'localsid' => intval(array_value($decoded, 'localsid', 0)),
+                'handler' => intval(array_value($decoded, 'handler', 0)),
+                'userlist' => $this->normalizeOnlineUserRows((array) array_value($decoded, 'userlist', [])),
+                'wire' => [
+                    'hello_len' => intval(array_value($wire, 'hello_len', 0)),
+                    'sent_bytes' => intval(array_value($wire, 'sent_bytes', 0)),
+                    'response_hex' => (string) array_value($wire, 'response_hex', ''),
+                    'response_len' => intval(array_value($wire, 'response_len', 0)),
+                ],
+            ];
+        } catch (Exception $e) {
+            $primaryError = $e;
+        }
+
+        $version = $this->normalizedConfiguredVersion();
+        $shouldUseLegacyFallback = ($version !== '352');
+        if (!$shouldUseLegacyFallback) {
+            if ($primaryError instanceof Exception) {
+                throw $primaryError;
+            }
+            return $primaryResult;
+        }
+
+        if (is_array($primaryResult) && !empty($primaryResult['userlist'])) {
+            return $primaryResult;
+        }
+
+        try {
+            return $this->listOnlineUsersLegacy($ip, $port);
+        } catch (Exception $legacyError) {
+            if ($primaryError instanceof Exception) {
+                throw $primaryError;
+            }
+            throw $legacyError;
+        }
+    }
+
+    public function getUserFaction($roleid, $ip, $port, $reason = 0)
+    {
+        $roleid = intval($roleid);
+        if ($roleid <= 0) {
+            throw new Exception('roleid invalido para GetUserFaction');
+        }
+
+        $pack = pack('N*', -1, 1, $roleid);
+        $send = $this->sendToGamedBD($this->createHeader(self::OP_GET_USER_FACTION, $pack), $ip, $port);
+        $data = $this->deleteHeader($send);
+        $this->cycle = false;
+        $value = $this->unmarshal($data, $this->struct_user_faction);
+
+        if (!is_array($value)) {
+            $this->cycle = false;
+            $decoded = $this->unmarshal($data, $this->struct_user_faction_response);
+            if (!is_array($decoded)) {
+                throw new Exception('Falha ao interpretar GetUserFaction');
+            }
+            if (intval(array_value($decoded, 'retcode', -1)) !== 0) {
+                throw new Exception('GetUserFaction retornou retcode ' . intval(array_value($decoded, 'retcode', -1)));
+            }
+            $value = array_value($decoded, 'value', []);
+            if (!is_array($value)) {
+                throw new Exception('GetUserFaction retornou value invalido');
+            }
+        }
+        $value['name_text'] = decode_octet_text((string) array_value($value, 'name', ''));
+        $value['nickname_text'] = decode_octet_text((string) array_value($value, 'nickname', ''));
+
+        return [
+            'retcode' => 0,
+            'value' => $value,
+            'level' => intval(array_value($decoded, 'level', 0)),
+            'contrib' => intval(array_value($decoded, 'contrib', 0)),
+            'reputation' => intval(array_value($decoded, 'reputation', 0)),
+            'reincarn_times' => intval(array_value($decoded, 'reincarn_times', 0)),
+            'gender' => intval(array_value($decoded, 'gender', 0)),
+        ];
+    }
+
+    public function getFactionDetail($factionId, $ip, $port)
+    {
+        $factionId = intval($factionId);
+        if ($factionId <= 0) {
+            throw new Exception('factionid invalido para GetFactionDetail');
+        }
+
+        $pack = pack('N*', -1, $factionId);
+        $send = $this->sendToGamedBD($this->createHeader(self::OP_GET_FACTION_DETAIL, $pack), $ip, $port);
+        $data = $this->deleteHeader($send);
+        $this->cycle = false;
+        $value = $this->unmarshal($data, $this->struct_faction_detail_response);
+        if (!is_array($value)) {
+            $this->cycle = false;
+            $decoded = $this->unmarshal($data, $this->struct_faction_detail_wrapped_response);
+            if (!is_array($decoded)) {
+                throw new Exception('Falha ao interpretar GetFactionDetail');
+            }
+            if (intval(array_value($decoded, 'retcode', -1)) !== 0) {
+                throw new Exception('GetFactionDetail retornou retcode ' . intval(array_value($decoded, 'retcode', -1)));
+            }
+            $value = array_value($decoded, 'value', []);
+            if (!is_array($value)) {
+                throw new Exception('GetFactionDetail retornou value invalido');
+            }
+        }
+        $value['name_text'] = decode_octet_text((string) array_value($value, 'name', ''));
+        $value['announce_text'] = trim((string) array_value($value, 'announce', ''));
+    $members = [];
+    foreach ((array) array_value($value, 'member', []) as $member) {
+        if (!is_array($member)) {
+            continue;
+        }
+        $member['name_text'] = trim((string) array_value($member, 'name', ''));
+        $member['nickname_text'] = trim((string) array_value($member, 'nickname', ''));
+        $members[] = $member;
+    }
+    $value['member'] = $members;
+    return $value;
+}
+
     private function decodeHexStruct($hex, $struct)
     {
         if (!is_string($hex) || $hex === '') {
@@ -1464,6 +3054,11 @@ class GamedProtocol
         $this->cycle = false;
         $decoded = $this->unmarshal($binary, $struct);
         return ($decoded === false) ? null : $decoded;
+    }
+
+    private function encodeHexStruct(array $data, array $struct)
+    {
+        return bin2hex($this->marshal($data, $struct));
     }
 
     public function decodeStatusOctets(array $status)
@@ -3090,6 +4685,1278 @@ function firstArrayValue(array $source, array $keys, $default = null)
     return $default;
 }
 
+function gmV2Enabled(array $config)
+{
+    return truthyValue(array_value($config, 'gm_v2_enabled', true));
+}
+
+function gmV2StateDir(array $config)
+{
+    return trim((string) array_value($config, 'gm_v2_state_dir', __DIR__ . '/backups/gm-commander-v2'));
+}
+
+function gmV2QueueJobsDir(array $config)
+{
+    return trim((string) array_value($config, 'gm_v2_queue_jobs_dir', gmV2StateDir($config) . '/queue/jobs'));
+}
+
+function gmV2QueueAttemptsDir(array $config)
+{
+    return trim((string) array_value($config, 'gm_v2_queue_attempts_dir', gmV2StateDir($config) . '/queue/attempts'));
+}
+
+function gmV2QueueLogsDir(array $config)
+{
+    return trim((string) array_value($config, 'gm_v2_queue_logs_dir', gmV2StateDir($config) . '/queue/logs'));
+}
+
+function gmV2AuditFile(array $config)
+{
+    return trim((string) array_value($config, 'gm_v2_audit_file', gmV2StateDir($config) . '/audit/history.log'));
+}
+
+function gmV2QueueLockFile(array $config)
+{
+    return trim((string) array_value($config, 'gm_v2_queue_lock_file', gmV2StateDir($config) . '/queue/worker.lock'));
+}
+
+function gmV2EnsureEnvironment(array $config)
+{
+    if (!gmV2Enabled($config)) {
+        throw new Exception('GM Commander V2 esta desabilitado na configuracao');
+    }
+
+    $dirs = [
+        gmV2StateDir($config),
+        gmV2QueueJobsDir($config),
+        gmV2QueueAttemptsDir($config),
+        gmV2QueueLogsDir($config),
+        dirname(gmV2AuditFile($config)),
+        dirname(gmV2QueueLockFile($config)),
+    ];
+
+    foreach ($dirs as $dir) {
+        ensureWritableDirectory($dir);
+    }
+
+    return [
+        'state_dir' => gmV2StateDir($config),
+        'jobs_dir' => gmV2QueueJobsDir($config),
+        'attempts_dir' => gmV2QueueAttemptsDir($config),
+        'logs_dir' => gmV2QueueLogsDir($config),
+        'audit_file' => gmV2AuditFile($config),
+        'lock_file' => gmV2QueueLockFile($config),
+    ];
+}
+
+function gmV2AllowedBulkCommands(array $config)
+{
+    $configured = array_value($config, 'gm_v2_queue_allowed_commands', []);
+    $commands = [];
+    foreach ((array) $configured as $candidate) {
+        $definition = gmCommandDefinition($config, $candidate);
+        if (!is_array($definition)) {
+            continue;
+        }
+
+        $canonical = trim((string) array_value($definition, 'key', ''));
+        if ($canonical !== '' && !in_array($canonical, $commands, true)) {
+            $commands[] = $canonical;
+        }
+    }
+
+    return $commands;
+}
+
+function gmV2RequestIp()
+{
+    $candidates = [
+        isset($_SERVER['HTTP_CF_CONNECTING_IP']) ? $_SERVER['HTTP_CF_CONNECTING_IP'] : '',
+        isset($_SERVER['HTTP_X_FORWARDED_FOR']) ? explode(',', (string) $_SERVER['HTTP_X_FORWARDED_FOR'])[0] : '',
+        isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '',
+    ];
+
+    foreach ($candidates as $candidate) {
+        $candidate = trimOneLineText($candidate);
+        if ($candidate !== '') {
+            return $candidate;
+        }
+    }
+
+    return '';
+}
+
+function gmV2RequestActor(array $request)
+{
+    $actor = trimOneLineText(firstArrayValue($request, [
+        'actor',
+        'admin',
+        'admin_user',
+        'adminUser',
+        'operator',
+        'requested_by',
+        'requestedBy',
+    ], ''));
+
+    if ($actor === '' && isset($_SERVER['HTTP_X_SYNC_ACTOR'])) {
+        $actor = trimOneLineText($_SERVER['HTTP_X_SYNC_ACTOR']);
+    }
+
+    if ($actor === '' && isset($_SERVER['PHP_AUTH_USER'])) {
+        $actor = trimOneLineText($_SERVER['PHP_AUTH_USER']);
+    }
+
+    if ($actor === '') {
+        $actor = 'api';
+    }
+
+    return containsControlChars($actor) ? 'api' : truncateUtf8Text($actor, 120);
+}
+
+function gmV2AppendAudit(array $config, $event, array $entry = [])
+{
+    gmV2EnsureEnvironment($config);
+    $payload = array_merge([
+        'type' => 'gm_v2_audit',
+        'event' => trim((string) $event),
+        'created_at' => gmdate('c'),
+        'ip' => gmV2RequestIp(),
+    ], $entry);
+    appendLogLine(gmV2AuditFile($config), safeJsonEncode($payload));
+    return gmV2AuditFile($config);
+}
+
+function gmV2NormalizeIntList($value)
+{
+    $items = [];
+    if (is_array($value)) {
+        $items = $value;
+    } elseif (is_string($value)) {
+        $items = preg_split('/[\s,;|]+/', trim($value));
+    } elseif ($value !== null && $value !== '') {
+        $items = [$value];
+    }
+
+    $normalized = [];
+    foreach ((array) $items as $item) {
+        $intValue = intval($item);
+        if ($intValue > 0 && !in_array($intValue, $normalized, true)) {
+            $normalized[] = $intValue;
+        }
+    }
+
+    return $normalized;
+}
+
+function gmV2NormalizeTextList($value)
+{
+    $items = [];
+    if (is_array($value)) {
+        $items = $value;
+    } elseif (is_string($value)) {
+        $items = preg_split('/[\r\n,;|]+/', trim($value));
+    } elseif ($value !== null && $value !== '') {
+        $items = [$value];
+    }
+
+    $normalized = [];
+    foreach ((array) $items as $item) {
+        $text = trimOneLineText($item);
+        if ($text === '' || containsControlChars($text)) {
+            continue;
+        }
+        if (!in_array($text, $normalized, true)) {
+            $normalized[] = $text;
+        }
+    }
+
+    return $normalized;
+}
+
+function gmV2SelectionHasExplicitTargets(array $selection)
+{
+    return !empty($selection['roleids']) || !empty($selection['userids']) || !empty($selection['names']) || !empty($selection['guild_ids']);
+}
+
+function gmV2NormalizeSelection(array $request, array $config)
+{
+    $selection = is_array(array_value($request, 'selection', null)) ? array_value($request, 'selection', []) : [];
+    $source = array_merge($selection, $request);
+
+    $roleids = gmV2NormalizeIntList(firstArrayValue($source, ['roleids', 'roles', 'role_ids'], []));
+    $singleRoleId = intval(firstArrayValue($source, ['roleid', 'role_id'], 0));
+    if ($singleRoleId > 0 && !in_array($singleRoleId, $roleids, true)) {
+        $roleids[] = $singleRoleId;
+    }
+
+    $userids = gmV2NormalizeIntList(firstArrayValue($source, ['userids', 'users', 'user_ids', 'account_ids'], []));
+    $singleUserId = intval(firstArrayValue($source, ['userid', 'user_id', 'account_id', 'accountId'], 0));
+    if ($singleUserId > 0 && !in_array($singleUserId, $userids, true)) {
+        $userids[] = $singleUserId;
+    }
+
+    $names = gmV2NormalizeTextList(firstArrayValue($source, ['names', 'role_names'], []));
+    $singleName = trimOneLineText(firstArrayValue($source, ['name', 'player_name', 'role_name'], ''));
+    $query = trimOneLineText(firstArrayValue($source, ['q', 'query', 'search'], ''));
+    if ($singleName !== '' && $query === '') {
+        $names[] = $singleName;
+    }
+    $names = array_values(array_unique($names));
+
+    $classIds = gmV2NormalizeIntList(firstArrayValue($source, ['class_ids', 'classes', 'cls', 'class_id'], []));
+    $guild = trimOneLineText(firstArrayValue($source, ['guild', 'guild_name', 'faction', 'faction_name'], ''));
+    $guildIds = gmV2NormalizeIntList(firstArrayValue($source, ['guild_ids', 'guild_id', 'faction_ids', 'faction_id'], []));
+    $levelMin = max(0, intval(firstArrayValue($source, ['level_min', 'min_level', 'minLevel'], 0)));
+    $levelMax = max(0, intval(firstArrayValue($source, ['level_max', 'max_level', 'maxLevel'], 0)));
+    $allOnline = truthyValue(firstArrayValue($source, ['all_online', 'allOnline', 'everyone_online'], false));
+    $onlineOnly = $allOnline || truthyValue(firstArrayValue($source, ['online_only', 'onlineOnly', 'online'], false));
+    $rankingKey = trimOneLineText(firstArrayValue($source, ['ranking_key', 'rankingKey'], ''));
+    $rankingLimit = max(0, intval(firstArrayValue($source, ['ranking_limit', 'rankingLimit'], 0)));
+    $limit = max(1, intval(firstArrayValue($source, ['limit', 'directory_limit'], array_value($config, 'gm_v2_directory_limit', 200))));
+    $limit = min($limit, max(1, intval(array_value($config, 'gm_v2_directory_limit', 200))));
+
+    return [
+        'roleids' => $roleids,
+        'userids' => $userids,
+        'names' => $names,
+        'query' => $query,
+        'guild' => $guild,
+        'guild_ids' => $guildIds,
+        'class_ids' => $classIds,
+        'level_min' => $levelMin,
+        'level_max' => $levelMax,
+        'all_online' => $allOnline,
+        'online_only' => $onlineOnly,
+        'ranking_key' => $rankingKey,
+        'ranking_limit' => $rankingLimit,
+        'limit' => $limit,
+    ];
+}
+
+function gmV2NormalizeCommandKey(array $config, $commandKey, $bulkOnly = true)
+{
+    $definition = gmCommandDefinition($config, trim((string) $commandKey));
+    if (!is_array($definition)) {
+        throw new InvalidArgumentException('command_key invalido');
+    }
+
+    $canonical = trim((string) array_value($definition, 'key', ''));
+    if ($canonical === '' || empty($definition['supported'])) {
+        throw new InvalidArgumentException('command_key nao esta suportado nesta VPS');
+    }
+
+    if ($bulkOnly && !in_array($canonical, gmV2AllowedBulkCommands($config), true)) {
+        throw new InvalidArgumentException('command_key nao esta liberado para Fase A bulk/queue');
+    }
+
+    return $canonical;
+}
+
+function gmV2OnlineLookup(array $config, GamedProtocol $proto)
+{
+    $handler = rand(1000, 999999999);
+    $localsid = intval(array_value($config, 'gm_delivery_sid_default', 0));
+    $counts = [];
+    try {
+        $counts = $proto->getOnlineCounts(0, $localsid, $config['gdeliveryd_ip'], $config['gdeliveryd_port']);
+    } catch (Exception $ignored) {
+    }
+    $response = $proto->listOnlineUsers(0, $localsid, $handler, $config['gdeliveryd_ip'], $config['gdeliveryd_port']);
+    $lookup = [];
+    foreach ((array) array_value($response, 'userlist', []) as $row) {
+        $roleid = intval(array_value($row, 'roleid', 0));
+        if ($roleid <= 0) {
+            continue;
+        }
+        $lookup[$roleid] = $row;
+    }
+    return [
+        'lookup' => $lookup,
+        'counts' => $counts,
+        'response' => $response,
+    ];
+}
+
+function gmV2RoleProfileSort(array &$profiles)
+{
+    usort($profiles, function ($a, $b) {
+        $onlineCmp = intval(!empty($b['online'])) <=> intval(!empty($a['online']));
+        if ($onlineCmp !== 0) {
+            return $onlineCmp;
+        }
+
+        $levelCmp = intval(array_value($b, 'level', 0)) <=> intval(array_value($a, 'level', 0));
+        if ($levelCmp !== 0) {
+            return $levelCmp;
+        }
+
+        return strnatcasecmp((string) array_value($a, 'name', ''), (string) array_value($b, 'name', ''));
+    });
+}
+
+function gmV2RoleProfileKey(array $profile)
+{
+    $roleid = intval(array_value($profile, 'roleid', 0));
+    if ($roleid > 0) {
+        return 'role:' . $roleid;
+    }
+
+    $userid = intval(array_value($profile, 'userid', 0));
+    if ($userid > 0) {
+        return 'account:' . $userid;
+    }
+
+    return 'anon:' . md5(safeJsonEncode($profile));
+}
+
+function gmV2BuildAccountOnlyProfile($userid)
+{
+    $userid = intval($userid);
+    return [
+        'roleid' => 0,
+        'userid' => $userid,
+        'name' => '',
+        'cls' => 0,
+        'class_name' => '',
+        'level' => 0,
+        'guild' => '',
+        'guild_id' => 0,
+        'online' => false,
+        'target_scope' => 'account',
+        'resolution_note' => 'Conta resolvida sem rolelist detalhada neste legado',
+    ];
+}
+
+function gmV2HydrateRoleProfile(array $config, GamedProtocol $proto, $roleid, array $onlineLookup = [], $includeGuild = false)
+{
+    $roleid = intval($roleid);
+    if ($roleid <= 0) {
+        throw new InvalidArgumentException('roleid invalido para perfil de alvo');
+    }
+
+    $role = $proto->getEditableRole($roleid, $config['gamedbd_ip'], $config['gamedbd_port']);
+    if (!is_array($role)) {
+        throw new Exception('Nao foi possivel carregar o roleid ' . $roleid);
+    }
+
+    $base = is_array(array_value($role, 'base', null)) ? array_value($role, 'base', []) : [];
+    $status = is_array(array_value($role, 'status', null)) ? array_value($role, 'status', []) : [];
+    $name = trim((string) array_value($base, 'name', array_value($role, 'name', '')));
+    $cls = intval(array_value($base, 'cls', array_value($role, 'cls', 0)));
+    $level = intval(array_value($status, 'level', array_value($role, 'level', 0)));
+    $userid = intval(array_value($base, 'userid', array_value($role, 'userid', 0)));
+    $onlineRow = isset($onlineLookup[$roleid]) && is_array($onlineLookup[$roleid]) ? $onlineLookup[$roleid] : [];
+    $classInfo = class_info($cls);
+
+    $profile = [
+        'roleid' => $roleid,
+        'userid' => $userid,
+        'name' => $name,
+        'cls' => $cls,
+        'class_name' => trim((string) array_value($classInfo, 'name', '')),
+        'level' => $level,
+        'guild' => '',
+        'guild_id' => 0,
+        'online' => !empty($onlineRow),
+        'linkid' => intval(array_value($onlineRow, 'linkid', 0)),
+        'localsid' => intval(array_value($onlineRow, 'localsid', 0)),
+        'gsid' => intval(array_value($onlineRow, 'gsid', 0)),
+        'target_scope' => 'role',
+    ];
+
+    if ($includeGuild) {
+        try {
+            $faction = $proto->getUserFaction($roleid, $config['gamedbd_ip'], $config['gamedbd_port']);
+            $value = is_array(array_value($faction, 'value', null)) ? array_value($faction, 'value', []) : [];
+            $guildId = intval(array_value($value, 'fid', 0));
+            $guildName = trim((string) array_value($value, 'name_text', ''));
+            if ($guildId > 0) {
+                try {
+                    $detail = $proto->getFactionDetail($guildId, $config['gamedbd_ip'], $config['gamedbd_port']);
+                    $guildName = trim((string) array_value($detail, 'name_text', $guildName));
+                } catch (Exception $ignored) {
+                }
+            }
+            $profile['guild_id'] = $guildId;
+            $profile['guild'] = $guildName;
+        } catch (Exception $ignored) {
+        }
+    }
+
+    return $profile;
+}
+
+function gmV2ResolveGuildMembers(array $config, GamedProtocol $proto, $guildId)
+{
+    $guildId = intval($guildId);
+    if ($guildId <= 0) {
+        throw new InvalidArgumentException('guild_id invalido');
+    }
+
+    $detail = $proto->getFactionDetail($guildId, $config['gamedbd_ip'], $config['gamedbd_port']);
+    $memberRoleIds = [];
+    foreach ((array) array_value($detail, 'member', []) as $member) {
+        $roleid = intval(array_value($member, 'roleid', 0));
+        if ($roleid > 0 && !in_array($roleid, $memberRoleIds, true)) {
+            $memberRoleIds[] = $roleid;
+        }
+    }
+
+    return [
+        'guild_id' => $guildId,
+        'guild_name' => trim((string) array_value($detail, 'name_text', '')),
+        'roleids' => $memberRoleIds,
+        'detail' => $detail,
+    ];
+}
+
+function gmV2ApplyProfileFilters(array $profiles, array $selection)
+{
+    $filtered = [];
+    $query = strtolower((string) array_value($selection, 'query', ''));
+    $guild = strtolower((string) array_value($selection, 'guild', ''));
+    $guildIds = (array) array_value($selection, 'guild_ids', []);
+    $classIds = (array) array_value($selection, 'class_ids', []);
+    $levelMin = intval(array_value($selection, 'level_min', 0));
+    $levelMax = intval(array_value($selection, 'level_max', 0));
+    $onlineOnly = !empty($selection['online_only']);
+    $userids = (array) array_value($selection, 'userids', []);
+
+    foreach ($profiles as $profile) {
+        if (!is_array($profile)) {
+            continue;
+        }
+
+        if (!empty($userids) && intval(array_value($profile, 'userid', 0)) > 0 && !in_array(intval(array_value($profile, 'userid', 0)), $userids, true)) {
+            continue;
+        }
+
+        if ($onlineOnly && empty($profile['online'])) {
+            continue;
+        }
+
+        if (!empty($guildIds) && !in_array(intval(array_value($profile, 'guild_id', 0)), $guildIds, true)) {
+            continue;
+        }
+
+        if (!empty($classIds) && !in_array(intval(array_value($profile, 'cls', 0)), $classIds, true)) {
+            continue;
+        }
+
+        $level = intval(array_value($profile, 'level', 0));
+        if ($levelMin > 0 && $level < $levelMin) {
+            continue;
+        }
+        if ($levelMax > 0 && $level > $levelMax) {
+            continue;
+        }
+
+        if ($guild !== '') {
+            $profileGuild = strtolower(trim((string) array_value($profile, 'guild', '')));
+            if ($profileGuild === '' || strpos($profileGuild, $guild) === false) {
+                continue;
+            }
+        }
+
+        if ($query !== '') {
+            $haystack = strtolower(trim((string) array_value($profile, 'name', '') . ' ' . array_value($profile, 'guild', '')));
+            if ($haystack === '' || strpos($haystack, $query) === false) {
+                continue;
+            }
+        }
+
+        $filtered[] = $profile;
+    }
+
+    return $filtered;
+}
+
+function gmV2ResolveRoleIdByName(array $config, GamedProtocol $proto, $name, array $onlineLookup = [])
+{
+    $name = trim((string) $name);
+    if ($name === '') {
+        return [
+            'found' => false,
+            'roleid' => 0,
+            'source' => '',
+            'errors' => [],
+        ];
+    }
+
+    $errors = [];
+
+    try {
+        $legacy = $proto->getRoleIdByName($name, $config['gamedbd_ip'], $config['gamedbd_port']);
+        if (!empty($legacy['found'])) {
+            return [
+                'found' => true,
+                'roleid' => intval(array_value($legacy, 'roleid', 0)),
+                'source' => 'gamedbd_getRoleid',
+                'errors' => $errors,
+            ];
+        }
+    } catch (Exception $e) {
+        $errors[] = $e->getMessage();
+    }
+
+    try {
+        $match = $proto->getPlayerIdByName($name, $config['gdeliveryd_ip'], $config['gdeliveryd_port'], intval(array_value($config, 'gm_delivery_sid_default', 0)));
+        if (!empty($match['found'])) {
+            return [
+                'found' => true,
+                'roleid' => intval(array_value($match, 'roleid', 0)),
+                'source' => 'gdeliveryd_GetPlayerIDByName',
+                'errors' => $errors,
+            ];
+        }
+    } catch (Exception $e) {
+        $errors[] = $e->getMessage();
+    }
+
+    foreach ($onlineLookup as $onlineRoleId => $onlineRow) {
+        $onlineName = trim((string) array_value($onlineRow, 'name_text', ''));
+        if ($onlineName !== '' && strcasecmp($onlineName, $name) === 0) {
+            return [
+                'found' => true,
+                'roleid' => intval($onlineRoleId),
+                'source' => 'online_lookup',
+                'errors' => $errors,
+            ];
+        }
+    }
+
+    return [
+        'found' => false,
+        'roleid' => 0,
+        'source' => '',
+        'errors' => $errors,
+    ];
+}
+
+function gmV2ResolveProfiles(array $config, array $request, $commandKey = '')
+{
+    gmV2EnsureEnvironment($config);
+    $selection = gmV2NormalizeSelection($request, $config);
+    $proto = new GamedProtocol();
+    $warnings = [];
+    $profiles = [];
+    $profileMap = [];
+    $onlineLookup = [];
+    $onlineCounts = [];
+    $needsGuild = ($selection['guild'] !== '' || !empty($selection['guild_ids']));
+
+    $needsOnlineDirectory = $selection['all_online']
+        || $selection['online_only']
+        || !empty($selection['guild_ids'])
+        || !empty($selection['names'])
+        || $selection['query'] !== ''
+        || (!gmV2SelectionHasExplicitTargets($selection) && $commandKey !== 'sendSystemMessage');
+
+    if ($needsOnlineDirectory) {
+        try {
+            $onlineSnapshot = gmV2OnlineLookup($config, $proto);
+            $onlineLookup = (array) array_value($onlineSnapshot, 'lookup', []);
+            $onlineCounts = (array) array_value($onlineSnapshot, 'counts', []);
+        } catch (Exception $e) {
+            $warnings[] = 'Nao foi possivel listar jogadores online: ' . $e->getMessage();
+        }
+    }
+
+    $reportedOnlineTotal = intval(array_value($onlineCounts, 'total_num', 0));
+    if (($selection['all_online'] || $selection['online_only']) && $reportedOnlineTotal > 0 && empty($onlineLookup)) {
+        $warnings[] = 'GMOnlineNum reportou ' . $reportedOnlineTotal . ' jogador(es) online, mas a listagem detalhada retornou 0 entradas';
+    }
+
+    $appendProfile = function ($profile) use (&$profileMap) {
+        if (!is_array($profile)) {
+            return;
+        }
+        $profileMap[gmV2RoleProfileKey($profile)] = $profile;
+    };
+
+    foreach ((array) array_value($selection, 'guild_ids', []) as $guildId) {
+        try {
+            $guildMembers = gmV2ResolveGuildMembers($config, $proto, $guildId);
+            foreach ((array) array_value($guildMembers, 'roleids', []) as $memberRoleId) {
+                $appendProfile(gmV2HydrateRoleProfile($config, $proto, $memberRoleId, $onlineLookup, true));
+            }
+        } catch (Exception $e) {
+            $warnings[] = 'Falha ao resolver guild_id ' . intval($guildId) . ': ' . $e->getMessage();
+        }
+    }
+
+    foreach ((array) array_value($selection, 'roleids', []) as $roleid) {
+        try {
+            $appendProfile(gmV2HydrateRoleProfile($config, $proto, $roleid, $onlineLookup, $needsGuild));
+        } catch (Exception $e) {
+            $warnings[] = 'Falha ao resolver roleid ' . intval($roleid) . ': ' . $e->getMessage();
+        }
+    }
+
+    foreach ((array) array_value($selection, 'names', []) as $name) {
+        try {
+            $match = gmV2ResolveRoleIdByName($config, $proto, $name, $onlineLookup);
+            if (empty($match['found'])) {
+                $warnings[] = 'Nome nao encontrado: ' . $name;
+                continue;
+            }
+            $appendProfile(gmV2HydrateRoleProfile($config, $proto, intval(array_value($match, 'roleid', 0)), $onlineLookup, $needsGuild));
+        } catch (Exception $e) {
+            $warnings[] = 'Falha ao resolver nome ' . $name . ': ' . $e->getMessage();
+        }
+    }
+
+    foreach ((array) array_value($selection, 'userids', []) as $userid) {
+        $appendProfile(gmV2BuildAccountOnlyProfile($userid));
+    }
+
+    if ($selection['all_online'] || (!gmV2SelectionHasExplicitTargets($selection) && !empty($onlineLookup))) {
+        foreach (array_keys($onlineLookup) as $roleid) {
+            try {
+                $appendProfile(gmV2HydrateRoleProfile($config, $proto, $roleid, $onlineLookup, $needsGuild));
+            } catch (Exception $e) {
+                $warnings[] = 'Falha ao carregar perfil online ' . intval($roleid) . ': ' . $e->getMessage();
+            }
+        }
+    }
+
+    $profiles = array_values($profileMap);
+    $profiles = gmV2ApplyProfileFilters($profiles, $selection);
+    gmV2RoleProfileSort($profiles);
+    $limit = max(1, intval(array_value($selection, 'limit', array_value($config, 'gm_v2_directory_limit', 200))));
+    if (count($profiles) > $limit) {
+        $warnings[] = 'Resultado limitado aos primeiros ' . $limit . ' alvos';
+        $profiles = array_slice($profiles, 0, $limit);
+    }
+
+    if ($selection['ranking_key'] !== '') {
+        $warnings[] = 'Selecao por ranking ainda depende de fonte de ranking configurada nesta VPS';
+    }
+
+    if (!empty($selection['userids'])) {
+        $warnings[] = 'Neste legado, userid sem roleid retorna alvo de conta sem rolelist detalhada';
+    }
+
+    return [
+        'profiles' => $profiles,
+        'selection' => $selection,
+        'warnings' => array_values(array_unique($warnings)),
+        'online_lookup_count' => count($onlineLookup),
+    ];
+}
+
+function gmV2TargetFromProfile(array $profile, $commandKey, array &$warnings)
+{
+    $commandKey = trim((string) $commandKey);
+    if ($commandKey === 'sendSystemMessage') {
+        return [
+            'target_type' => 'broadcast',
+            'target_key' => 'broadcast:global',
+            'roleid' => 0,
+            'userid' => 0,
+            'name' => 'global-broadcast',
+            'online' => null,
+        ];
+    }
+
+    if ($commandKey === 'grantMallCash') {
+        $userid = intval(array_value($profile, 'userid', 0));
+        if ($userid <= 0) {
+            $warnings[] = 'Alvo ignorado sem userid para grantMallCash';
+            return null;
+        }
+
+        return [
+            'target_type' => 'account',
+            'target_key' => gmV2RoleProfileKey($profile),
+            'roleid' => intval(array_value($profile, 'roleid', 0)),
+            'userid' => $userid,
+            'name' => trim((string) array_value($profile, 'name', '')),
+            'guild' => trim((string) array_value($profile, 'guild', '')),
+            'cls' => intval(array_value($profile, 'cls', 0)),
+            'level' => intval(array_value($profile, 'level', 0)),
+            'online' => !empty($profile['online']),
+        ];
+    }
+
+    $roleid = intval(array_value($profile, 'roleid', 0));
+    if ($roleid <= 0) {
+        $warnings[] = 'Alvo ignorado sem roleid para ' . $commandKey;
+        return null;
+    }
+
+    return [
+        'target_type' => 'role',
+        'target_key' => gmV2RoleProfileKey($profile),
+        'roleid' => $roleid,
+        'userid' => intval(array_value($profile, 'userid', 0)),
+        'name' => trim((string) array_value($profile, 'name', '')),
+        'guild' => trim((string) array_value($profile, 'guild', '')),
+        'cls' => intval(array_value($profile, 'cls', 0)),
+        'level' => intval(array_value($profile, 'level', 0)),
+        'online' => !empty($profile['online']),
+    ];
+}
+
+function gmV2BuildTargetsFromProfiles(array $profiles, $commandKey, array &$warnings)
+{
+    $targets = [];
+    $targetMap = [];
+
+    foreach ($profiles as $profile) {
+        $target = gmV2TargetFromProfile($profile, $commandKey, $warnings);
+        if (!is_array($target)) {
+            continue;
+        }
+        $targetMap[(string) array_value($target, 'target_key', md5(safeJsonEncode($target)))] = $target;
+    }
+
+    if ($commandKey === 'sendSystemMessage' && empty($targetMap)) {
+        $targetMap['broadcast:global'] = gmV2TargetFromProfile([], $commandKey, $warnings);
+    }
+
+    foreach ($targetMap as $target) {
+        $targets[] = $target;
+    }
+
+    return $targets;
+}
+
+function gmV2ResolveBulkTargetsPayload(array $config, array $request)
+{
+    $commandKey = gmV2NormalizeCommandKey($config, firstArrayValue($request, ['command_key', 'commandKey', 'command'], ''), true);
+    $resolved = gmV2ResolveProfiles($config, $request, $commandKey);
+    $warnings = (array) array_value($resolved, 'warnings', []);
+    $targets = gmV2BuildTargetsFromProfiles((array) array_value($resolved, 'profiles', []), $commandKey, $warnings);
+
+    if ($commandKey === 'sendSystemMessage' && gmV2SelectionHasExplicitTargets((array) array_value($resolved, 'selection', []))) {
+        $warnings[] = 'sendSystemMessage e global nesta fase e ignora filtros/alvos especificos';
+    }
+
+    return [
+        'success' => true,
+        'command_key' => $commandKey,
+        'selection' => array_value($resolved, 'selection', []),
+        'count' => count($targets),
+        'targets' => $targets,
+        'profiles' => array_value($resolved, 'profiles', []),
+        'warnings' => array_values(array_unique($warnings)),
+        'resolved_at' => gmdate('c'),
+    ];
+}
+
+function gmV2CommandPayloadFromRequest($commandKey, array $request)
+{
+    $merged = $request;
+    foreach (['command', 'payload', 'mail', 'broadcast', 'grant', 'cash', 'reward'] as $field) {
+        $candidate = array_value($request, $field, null);
+        if (is_array($candidate)) {
+            $merged = array_merge($merged, $candidate);
+        }
+    }
+
+    unset(
+        $merged['selection'],
+        $merged['roleids'],
+        $merged['userids'],
+        $merged['names'],
+        $merged['guild'],
+        $merged['class_ids'],
+        $merged['level_min'],
+        $merged['level_max'],
+        $merged['all_online'],
+        $merged['online_only'],
+        $merged['ranking_key'],
+        $merged['ranking_limit'],
+        $merged['limit']
+    );
+
+    $merged['command_key'] = $commandKey;
+    $merged['dry_run'] = false;
+    return $merged;
+}
+
+function gmV2PreviewBulkTargetsPayload(array $config, array $request)
+{
+    $resolved = gmV2ResolveBulkTargetsPayload($config, $request);
+    $previewLimit = max(1, intval(array_value($config, 'gm_v2_preview_sample_size', 20)));
+    $sample = array_slice((array) array_value($resolved, 'targets', []), 0, $previewLimit);
+    $commandKey = trim((string) array_value($resolved, 'command_key', ''));
+    $commandPayload = gmV2CommandPayloadFromRequest($commandKey, $request);
+
+    return [
+        'success' => true,
+        'command_key' => $commandKey,
+        'count' => intval(array_value($resolved, 'count', 0)),
+        'sample_size' => count($sample),
+        'sample_targets' => $sample,
+        'selection' => array_value($resolved, 'selection', []),
+        'warnings' => array_value($resolved, 'warnings', []),
+        'command_payload_preview' => [
+            'item_id' => intval(firstArrayValue($commandPayload, ['item_id', 'itemId'], 0)),
+            'count' => intval(firstArrayValue($commandPayload, ['count', 'quantity'], 0)),
+            'money' => intval(firstArrayValue($commandPayload, ['money'], 0)),
+            'amount' => firstArrayValue($commandPayload, ['amount', 'gold', 'cash_units'], null),
+            'message' => trim((string) firstArrayValue($commandPayload, ['message', 'title'], '')),
+        ],
+        'previewed_at' => gmdate('c'),
+    ];
+}
+
+function gmV2SearchPlayerDirectoryPayload(array $config, array $request)
+{
+    $resolved = gmV2ResolveProfiles($config, $request, '');
+    $onlineDiagnostics = [];
+    try {
+        $proto = new GamedProtocol();
+        $snapshot = gmV2OnlineLookup($config, $proto);
+        $onlineDiagnostics = [
+            'total_num' => intval(array_value(array_value($snapshot, 'counts', []), 'total_num', 0)),
+            'local_num' => intval(array_value(array_value($snapshot, 'counts', []), 'local_num', 0)),
+            'listed_count' => count((array) array_value(array_value($snapshot, 'response', []), 'userlist', [])),
+        ];
+    } catch (Exception $ignored) {
+    }
+    return [
+        'success' => true,
+        'entries' => array_values((array) array_value($resolved, 'profiles', [])),
+        'count' => count((array) array_value($resolved, 'profiles', [])),
+        'selection' => array_value($resolved, 'selection', []),
+        'warnings' => array_value($resolved, 'warnings', []),
+        'online_diagnostics' => $onlineDiagnostics,
+        'capabilities' => [
+            'name_exact' => true,
+            'name_partial_online' => true,
+            'online_directory' => true,
+            'guild_filter' => true,
+            'class_filter' => true,
+            'account_scope_limited' => true,
+            'ranking_source_configured' => false,
+        ],
+        'searched_at' => gmdate('c'),
+    ];
+}
+
+function gmV2GetPlayerTargetProfilePayload(array $config, array $request)
+{
+    gmV2EnsureEnvironment($config);
+    $proto = new GamedProtocol();
+    $onlineLookup = [];
+
+    try {
+        $onlineSnapshot = gmV2OnlineLookup($config, $proto);
+        $onlineLookup = (array) array_value($onlineSnapshot, 'lookup', []);
+    } catch (Exception $ignored) {
+    }
+
+    $roleid = intval(firstArrayValue($request, ['roleid', 'role_id'], 0));
+    if ($roleid <= 0) {
+        $name = trimOneLineText(firstArrayValue($request, ['name', 'player_name', 'role_name'], ''));
+        if ($name === '') {
+            throw new InvalidArgumentException('roleid ou name obrigatorio');
+        }
+        $match = gmV2ResolveRoleIdByName($config, $proto, $name, $onlineLookup);
+        if (empty($match['found'])) {
+            throw new InvalidArgumentException('Personagem nao encontrado');
+        }
+        $roleid = intval(array_value($match, 'roleid', 0));
+    }
+
+    $profile = gmV2HydrateRoleProfile($config, $proto, $roleid, $onlineLookup, true);
+    return [
+        'success' => true,
+        'profile' => $profile,
+        'resolved_at' => gmdate('c'),
+    ];
+}
+
+function gmV2GetQueueJobPayload(array $config, $jobId)
+{
+    $job = gmV2ReadJob($config, $jobId);
+    if (!is_array($job)) {
+        throw new InvalidArgumentException('Job nao encontrado');
+    }
+
+    return [
+        'success' => true,
+        'job' => $job,
+        'summary' => gmV2JobSummary($job),
+        'job_file' => gmV2QueueJobPath($config, $jobId),
+    ];
+}
+
+function gmV2QueueJobPath(array $config, $jobId)
+{
+    return rtrim(gmV2QueueJobsDir($config), '/\\') . DIRECTORY_SEPARATOR . trim((string) $jobId) . '.json';
+}
+
+function gmV2QueueAttemptPath(array $config, $jobId, $attemptId)
+{
+    return rtrim(gmV2QueueAttemptsDir($config), '/\\') . DIRECTORY_SEPARATOR . trim((string) $jobId) . '-' . trim((string) $attemptId) . '.json';
+}
+
+function gmV2ReadJob(array $config, $jobId)
+{
+    $path = gmV2QueueJobPath($config, $jobId);
+    if (!is_file($path) || !is_readable($path)) {
+        return null;
+    }
+
+    $raw = @file_get_contents($path);
+    if (!is_string($raw) || trim($raw) === '') {
+        return null;
+    }
+
+    $decoded = json_decode($raw, true);
+    return (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) ? $decoded : null;
+}
+
+function gmV2WriteJob(array $config, array $job)
+{
+    gmV2EnsureEnvironment($config);
+    $job['updated_at'] = gmdate('c');
+    $path = gmV2QueueJobPath($config, array_value($job, 'id', ''));
+    writeAtomicFile($path, safeJsonEncode($job));
+    return $path;
+}
+
+function gmV2JobSummary(array $job)
+{
+    return [
+        'id' => trim((string) array_value($job, 'id', '')),
+        'command_key' => trim((string) array_value($job, 'command_key', '')),
+        'status' => trim((string) array_value($job, 'status', 'queued')),
+        'created_at' => array_value($job, 'created_at', null),
+        'updated_at' => array_value($job, 'updated_at', null),
+        'actor' => array_value($job, 'actor', []),
+        'target_count' => intval(array_value($job, 'target_count', 0)),
+        'pending_count' => count((array) array_value($job, 'targets_pending', [])),
+        'retry_count' => count((array) array_value($job, 'targets_retry', [])),
+        'completed_count' => count((array) array_value($job, 'targets_completed', [])),
+        'failed_count' => count((array) array_value($job, 'targets_failed', [])),
+        'warnings' => array_value($job, 'warnings', []),
+        'next_retry_at' => array_value($job, 'next_retry_at', null),
+    ];
+}
+
+function gmV2ListJobs(array $config, $limit = 20)
+{
+    gmV2EnsureEnvironment($config);
+    $files = glob(rtrim(gmV2QueueJobsDir($config), '/\\') . DIRECTORY_SEPARATOR . '*.json');
+    if (!is_array($files)) {
+        return [];
+    }
+
+    usort($files, function ($a, $b) {
+        return intval(@filemtime($b)) <=> intval(@filemtime($a));
+    });
+
+    $limit = max(1, min(200, intval($limit)));
+    $items = [];
+    foreach (array_slice($files, 0, $limit) as $file) {
+        $raw = @file_get_contents($file);
+        $decoded = json_decode((string) $raw, true);
+        if (is_array($decoded)) {
+            $items[] = gmV2JobSummary($decoded);
+        }
+    }
+
+    return $items;
+}
+
+function gmV2CreateQueuedJob(array $config, array $request)
+{
+    $resolved = gmV2ResolveBulkTargetsPayload($config, $request);
+    $commandKey = trim((string) array_value($resolved, 'command_key', ''));
+    $targets = array_values((array) array_value($resolved, 'targets', []));
+    $maxTargets = max(1, intval(array_value($config, 'gm_v2_max_targets_per_job', 500)));
+    if (count($targets) > $maxTargets) {
+        throw new InvalidArgumentException('Quantidade de alvos excede o limite de ' . $maxTargets . ' por job');
+    }
+
+    $jobId = buildOperationId('gmv2-job');
+    $job = [
+        'type' => 'gm_v2_job',
+        'id' => $jobId,
+        'command_key' => $commandKey,
+        'status' => 'queued',
+        'created_at' => gmdate('c'),
+        'updated_at' => gmdate('c'),
+        'actor' => [
+            'name' => gmV2RequestActor($request),
+            'ip' => gmV2RequestIp(),
+        ],
+        'selection' => array_value($resolved, 'selection', []),
+        'warnings' => array_value($resolved, 'warnings', []),
+        'command_payload' => gmV2CommandPayloadFromRequest($commandKey, $request),
+        'target_count' => count($targets),
+        'targets_pending' => $targets,
+        'targets_retry' => [],
+        'targets_completed' => [],
+        'targets_failed' => [],
+        'batch_size' => max(1, min(intval(array_value($config, 'gm_v2_queue_batch_size', 10)), $maxTargets)),
+        'retry_limit' => max(1, intval(array_value($config, 'gm_v2_queue_retry_limit', 3))),
+        'retry_backoff_seconds' => max(5, intval(array_value($config, 'gm_v2_queue_backoff_seconds', 30))),
+        'next_retry_at' => null,
+        'preview' => [
+            'sample_targets' => array_slice($targets, 0, max(1, intval(array_value($config, 'gm_v2_preview_sample_size', 20)))),
+        ],
+    ];
+
+    $jobFile = gmV2WriteJob($config, $job);
+    gmV2AppendAudit($config, 'job_queued', [
+        'job_id' => $jobId,
+        'command_key' => $commandKey,
+        'actor' => array_value($job, 'actor', []),
+        'target_count' => count($targets),
+        'warnings' => array_value($resolved, 'warnings', []),
+    ]);
+
+    return [
+        'success' => true,
+        'job' => gmV2JobSummary($job),
+        'job_file' => $jobFile,
+        'audit_file' => gmV2AuditFile($config),
+    ];
+}
+
+function gmV2ExecuteQueuedMailCommand(array $config, $commandKey, array $request)
+{
+    $payload = ($commandKey === 'sendMailItem')
+        ? buildSendMailItemPayload($request, $config)
+        : buildSendMailGoldPayload($request, $config);
+    $delivery = executeMailSendCommand($config, $payload);
+
+    $gmHistoryWarning = '';
+    $gmEntry = gmHistoryEntryBase($config, $commandKey, [
+        'status' => 'success',
+        'success' => true,
+        'dry_run' => false,
+        'target' => [
+            'roleid' => intval(array_value($payload, 'roleid', 0)),
+        ],
+        'mail' => [
+            'kind' => array_value($payload, 'kind', ''),
+            'title' => array_value($payload, 'title', ''),
+            'message' => array_value($payload, 'message', ''),
+            'item_id' => intval(array_value($payload, 'item_id', 0)),
+            'count' => intval(array_value($payload, 'count', 0)),
+            'money' => intval(array_value($payload, 'money', 0)),
+        ],
+        'delivery' => $delivery,
+        'source' => 'gm_v2_queue',
+    ]);
+    gmAppendHistoryBestEffort($config, $gmEntry, $gmHistoryWarning);
+
+    return [
+        'success' => true,
+        'delivery' => $delivery,
+        'gm_history_warning' => $gmHistoryWarning,
+    ];
+}
+
+function gmV2ExecuteSingleTargetCommand(array $config, $commandKey, array $commandPayload, array $target)
+{
+    $request = $commandPayload;
+    $request['dry_run'] = false;
+
+    switch ($commandKey) {
+        case 'sendMailItem':
+        case 'sendMailGold':
+            $request['roleid'] = intval(array_value($target, 'roleid', 0));
+            return gmV2ExecuteQueuedMailCommand($config, $commandKey, $request);
+
+        case 'grantMallCash':
+            $request['userid'] = intval(array_value($target, 'userid', 0));
+            if (intval(array_value($target, 'roleid', 0)) > 0) {
+                $request['roleid'] = intval(array_value($target, 'roleid', 0));
+            }
+            return handleGrantMallCashRequest($config, $request);
+
+        case 'sendSystemMessage':
+            return handleSendSystemMessageRequest($config, $request);
+    }
+
+    throw new InvalidArgumentException('command_key sem executor bulk nesta fase');
+}
+
+function gmV2ProcessQueueJob(array $config, array $job)
+{
+    $jobId = trim((string) array_value($job, 'id', ''));
+    if ($jobId === '') {
+        throw new InvalidArgumentException('Job invalido sem id');
+    }
+
+    $status = trim((string) array_value($job, 'status', 'queued'));
+    if (in_array($status, ['completed', 'completed_with_errors', 'failed'], true)) {
+        return $job;
+    }
+
+    $now = time();
+    $nextRetryAt = trim((string) array_value($job, 'next_retry_at', ''));
+    if ($nextRetryAt !== '' && strtotime($nextRetryAt) > $now && empty($job['targets_pending'])) {
+        return $job;
+    }
+
+    if (empty($job['targets_pending']) && !empty($job['targets_retry'])) {
+        $job['targets_pending'] = array_values((array) array_value($job, 'targets_retry', []));
+        $job['targets_retry'] = [];
+        $job['next_retry_at'] = null;
+    }
+
+    $batchSize = max(1, intval(array_value($job, 'batch_size', array_value($config, 'gm_v2_queue_batch_size', 10))));
+    $retryLimit = max(1, intval(array_value($job, 'retry_limit', array_value($config, 'gm_v2_queue_retry_limit', 3))));
+    $backoffSeconds = max(5, intval(array_value($job, 'retry_backoff_seconds', array_value($config, 'gm_v2_queue_backoff_seconds', 30))));
+    $commandKey = trim((string) array_value($job, 'command_key', ''));
+    $commandPayload = (array) array_value($job, 'command_payload', []);
+
+    $job['status'] = 'processing';
+    $job['started_at'] = array_value($job, 'started_at', gmdate('c'));
+    $attemptRecord = [
+        'job_id' => $jobId,
+        'started_at' => gmdate('c'),
+        'command_key' => $commandKey,
+        'batch_size' => $batchSize,
+        'items' => [],
+    ];
+
+    for ($processed = 0; $processed < $batchSize && !empty($job['targets_pending']); $processed++) {
+        $target = array_shift($job['targets_pending']);
+        if (!is_array($target)) {
+            continue;
+        }
+
+        $attempts = max(0, intval(array_value($target, 'attempts', 0)));
+        try {
+            $result = gmV2ExecuteSingleTargetCommand($config, $commandKey, $commandPayload, $target);
+            $job['targets_completed'][] = [
+                'target' => $target,
+                'result' => $result,
+                'executed_at' => gmdate('c'),
+                'attempts' => ($attempts + 1),
+            ];
+            $attemptRecord['items'][] = [
+                'target' => $target,
+                'success' => true,
+                'attempts' => ($attempts + 1),
+            ];
+        } catch (Exception $e) {
+            $error = $e->getMessage();
+            $attemptRecord['items'][] = [
+                'target' => $target,
+                'success' => false,
+                'attempts' => ($attempts + 1),
+                'error' => $error,
+            ];
+
+            if (($attempts + 1) < $retryLimit) {
+                $target['attempts'] = $attempts + 1;
+                $target['last_error'] = $error;
+                $job['targets_retry'][] = $target;
+                $job['next_retry_at'] = gmdate('c', $now + $backoffSeconds);
+            } else {
+                $job['targets_failed'][] = [
+                    'target' => $target,
+                    'error' => $error,
+                    'failed_at' => gmdate('c'),
+                    'attempts' => ($attempts + 1),
+                ];
+            }
+        }
+    }
+
+    $attemptRecord['finished_at'] = gmdate('c');
+    $attemptRecord['remaining_pending'] = count((array) array_value($job, 'targets_pending', []));
+    $attemptRecord['remaining_retry'] = count((array) array_value($job, 'targets_retry', []));
+    $attemptPath = gmV2QueueAttemptPath($config, $jobId, buildOperationId('attempt'));
+    writeAtomicFile($attemptPath, safeJsonEncode($attemptRecord));
+
+    if (empty($job['targets_pending']) && empty($job['targets_retry'])) {
+        $job['status'] = empty($job['targets_failed']) ? 'completed' : 'completed_with_errors';
+        $job['completed_at'] = gmdate('c');
+        $job['next_retry_at'] = null;
+    } elseif (empty($job['targets_pending']) && !empty($job['targets_retry'])) {
+        $job['status'] = 'retry_wait';
+    } else {
+        $job['status'] = 'queued';
+    }
+
+    gmV2WriteJob($config, $job);
+    gmV2AppendAudit($config, 'job_progress', [
+        'job_id' => $jobId,
+        'status' => array_value($job, 'status', 'queued'),
+        'completed_count' => count((array) array_value($job, 'targets_completed', [])),
+        'failed_count' => count((array) array_value($job, 'targets_failed', [])),
+        'pending_count' => count((array) array_value($job, 'targets_pending', [])),
+        'retry_count' => count((array) array_value($job, 'targets_retry', [])),
+    ]);
+
+    return $job;
+}
+
+function gmV2RunQueueWorker(array $config, array $options = [])
+{
+    $paths = gmV2EnsureEnvironment($config);
+    $lockHandle = @fopen($paths['lock_file'], 'c+');
+    if (!is_resource($lockHandle)) {
+        throw new Exception('Nao foi possivel abrir lock do worker da fila');
+    }
+
+    if (!@flock($lockHandle, LOCK_EX | LOCK_NB)) {
+        return [
+            'success' => true,
+            'skipped' => true,
+            'reason' => 'worker_locked',
+            'checked_at' => gmdate('c'),
+        ];
+    }
+
+    $result = [
+        'success' => true,
+        'checked_at' => gmdate('c'),
+        'processed_jobs' => [],
+        'scan_limit' => max(1, intval(array_value($config, 'gm_v2_queue_scan_limit', 20))),
+    ];
+
+    try {
+        $files = glob(rtrim(gmV2QueueJobsDir($config), '/\\') . DIRECTORY_SEPARATOR . '*.json');
+        if (!is_array($files)) {
+            $files = [];
+        }
+
+        usort($files, function ($a, $b) {
+            return intval(@filemtime($a)) <=> intval(@filemtime($b));
+        });
+
+        $scanLimit = max(1, intval(array_value($config, 'gm_v2_queue_scan_limit', 20)));
+        foreach (array_slice($files, 0, $scanLimit) as $file) {
+            $raw = @file_get_contents($file);
+            $job = json_decode((string) $raw, true);
+            if (!is_array($job)) {
+                continue;
+            }
+
+            $status = trim((string) array_value($job, 'status', 'queued'));
+            if (!in_array($status, ['queued', 'processing', 'retry_wait'], true)) {
+                continue;
+            }
+
+            $due = trim((string) array_value($job, 'next_retry_at', ''));
+            if ($due !== '' && strtotime($due) > time() && $status === 'retry_wait') {
+                continue;
+            }
+
+            $processedJob = gmV2ProcessQueueJob($config, $job);
+            $result['processed_jobs'][] = gmV2JobSummary($processedJob);
+        }
+    } finally {
+        @flock($lockHandle, LOCK_UN);
+        @fclose($lockHandle);
+    }
+
+    return $result;
+}
+
 function mergeMailRequestPayload(array $request)
 {
     $merged = $request;
@@ -3228,6 +6095,931 @@ function buildSendMailGoldPayload(array $request, array $config)
     ];
 }
 
+function mallCashEnabled(array $config)
+{
+    return truthyValue(array_value($config, 'mall_cash_enabled', true));
+}
+
+function mallCashUnitsPerGold(array $config)
+{
+    return max(1, intval(array_value($config, 'mall_cash_units_per_gold', 100)));
+}
+
+function mallCashUnitsToGold($units, $unitsPerGold)
+{
+    $unitsPerGold = max(1, intval($unitsPerGold));
+    return round(floatval($units) / $unitsPerGold, 2);
+}
+
+function mergeMallCashRequest(array $request)
+{
+    $merged = mergedSecurityRequest($request);
+
+    foreach (['gm', 'account', 'cash', 'mall', 'reward', 'compensation'] as $field) {
+        $candidate = array_value($request, $field, null);
+        if (is_array($candidate)) {
+            $merged = array_merge($merged, $candidate);
+        }
+    }
+
+    return $merged;
+}
+
+function resolveMallCashTarget(array $request, array $config, GamedProtocol $proto)
+{
+    $merged = mergeMallCashRequest($request);
+    $roleid = securityResolveRoleId($merged);
+    $userid = intval(firstArrayValue($merged, ['userid', 'user_id', 'account_id', 'accountId', 'target_userid'], 0));
+    $roleBase = null;
+    $resolvedVia = 'userid';
+
+    if ($roleid > 0) {
+        $resolved = securityResolveUserIdFromRole($proto, $config, $roleid);
+        $resolvedUserId = intval(array_value($resolved, 'userid', 0));
+        $roleBase = is_array(array_value($resolved, 'base', null)) ? array_value($resolved, 'base', null) : null;
+        if ($userid > 0 && $resolvedUserId > 0 && $userid !== $resolvedUserId) {
+            throw new InvalidArgumentException('userid informado nao corresponde ao roleid informado');
+        }
+        if ($userid <= 0) {
+            $userid = $resolvedUserId;
+            $resolvedVia = 'roleid';
+        } else {
+            $resolvedVia = 'userid+roleid';
+        }
+    }
+
+    if ($userid <= 0) {
+        throw new InvalidArgumentException('userid ou roleid valido obrigatorio');
+    }
+
+    return [
+        'userid' => $userid,
+        'roleid' => $roleid,
+        'role_name' => is_array($roleBase) ? trim((string) array_value($roleBase, 'name', '')) : '',
+        'role_base' => $roleBase,
+        'resolved_via' => $resolvedVia,
+    ];
+}
+
+function buildMallCashWalletSnapshot(array $userInfo, array $config)
+{
+    $unitsPerGold = mallCashUnitsPerGold($config);
+    $cash = intval(array_value($userInfo, 'cash', 0));
+    $cashAdd = intval(array_value($userInfo, 'cash_add', 0));
+    $cashBuy = intval(array_value($userInfo, 'cash_buy', 0));
+    $cashSell = intval(array_value($userInfo, 'cash_sell', 0));
+    $cashUsed = intval(array_value($userInfo, 'cash_used', 0));
+
+    return [
+        'units_per_gold' => $unitsPerGold,
+        'cash_units' => $cash,
+        'cash_gold' => mallCashUnitsToGold($cash, $unitsPerGold),
+        'cash_total_units' => ($cash + $cashAdd),
+        'cash_total_gold' => mallCashUnitsToGold($cash + $cashAdd, $unitsPerGold),
+        'money' => intval(array_value($userInfo, 'money', 0)),
+        'cash_add_units' => $cashAdd,
+        'cash_add_gold' => mallCashUnitsToGold($cashAdd, $unitsPerGold),
+        'cash_buy_units' => $cashBuy,
+        'cash_buy_gold' => mallCashUnitsToGold($cashBuy, $unitsPerGold),
+        'cash_sell_units' => $cashSell,
+        'cash_sell_gold' => mallCashUnitsToGold($cashSell, $unitsPerGold),
+        'cash_used_units' => $cashUsed,
+        'cash_used_gold' => mallCashUnitsToGold($cashUsed, $unitsPerGold),
+    ];
+}
+
+function fetchMallCashBalanceDetails(array $config, array $target, GamedProtocol $proto = null)
+{
+    if (!mallCashEnabled($config)) {
+        throw new Exception('Gold da loja esta desabilitado na configuracao da API');
+    }
+
+    if (!$proto) {
+        $proto = new GamedProtocol();
+    }
+
+    $userInfo = $proto->getUserInfo(intval(array_value($target, 'userid', 0)), $config['gamedbd_ip'], $config['gamedbd_port']);
+    return [
+        'target' => [
+            'userid' => intval(array_value($target, 'userid', 0)),
+            'roleid' => intval(array_value($target, 'roleid', 0)),
+            'role_name' => trim((string) array_value($target, 'role_name', '')),
+            'resolved_via' => trim((string) array_value($target, 'resolved_via', '')),
+        ],
+        'account' => [
+            'logicuid' => intval(array_value($userInfo, 'logicuid', 0)),
+            'rolelist' => intval(array_value($userInfo, 'rolelist', 0)),
+            'status' => intval(array_value($userInfo, 'status', 0)),
+        ],
+        'wallet' => buildMallCashWalletSnapshot($userInfo, $config),
+        'login' => [
+            'ip' => trim((string) array_value($userInfo, 'login_ip', '')),
+            'time' => array_value($userInfo, 'login_time', null),
+            'time_unix' => intval(array_value($userInfo, 'login_time_unix', 0)),
+        ],
+    ];
+}
+
+function mallCashBalanceChangeFromSnapshots($before, $after, $unitsPerGold)
+{
+    if (!is_array($before) || !is_array($after)) {
+        return null;
+    }
+
+    $beforeWallet = array_value($before, 'wallet', []);
+    $afterWallet = array_value($after, 'wallet', []);
+
+    $deltaUnits = intval(array_value($afterWallet, 'cash_units', 0)) - intval(array_value($beforeWallet, 'cash_units', 0));
+    $deltaCashAddUnits = intval(array_value($afterWallet, 'cash_add_units', 0)) - intval(array_value($beforeWallet, 'cash_add_units', 0));
+    $deltaTotalUnits = intval(array_value($afterWallet, 'cash_total_units', 0)) - intval(array_value($beforeWallet, 'cash_total_units', 0));
+
+    return [
+        'cash_units' => $deltaUnits,
+        'cash_gold' => mallCashUnitsToGold($deltaUnits, $unitsPerGold),
+        'cash_add_units' => $deltaCashAddUnits,
+        'cash_add_gold' => mallCashUnitsToGold($deltaCashAddUnits, $unitsPerGold),
+        'cash_total_units' => $deltaTotalUnits,
+        'cash_total_gold' => mallCashUnitsToGold($deltaTotalUnits, $unitsPerGold),
+    ];
+}
+
+function mallCashObservedAppliedUnits($balanceChange)
+{
+    if (!is_array($balanceChange)) {
+        return 0;
+    }
+
+    return max(
+        intval(array_value($balanceChange, 'cash_units', 0)),
+        intval(array_value($balanceChange, 'cash_add_units', 0)),
+        intval(array_value($balanceChange, 'cash_total_units', 0))
+    );
+}
+
+function waitForMallCashGrantObservation(array $config, array $target, $before, $requestedCashUnits, GamedProtocol $proto)
+{
+    $requestedCashUnits = max(0, intval($requestedCashUnits));
+    $unitsPerGold = mallCashUnitsPerGold($config);
+    $timeoutSeconds = max(0, intval(array_value($config, 'mall_cash_verify_timeout_seconds', 6)));
+    $pollIntervalUs = max(50000, intval(array_value($config, 'mall_cash_verify_poll_interval_us', 250000)));
+
+    $lastAfter = null;
+    $lastWarning = '';
+    $lastBalanceChange = null;
+    $attempts = 0;
+    $deadline = microtime(true) + $timeoutSeconds;
+
+    do {
+        $attempts++;
+        try {
+            $lastAfter = fetchMallCashBalanceDetails($config, $target, $proto);
+            $lastWarning = '';
+            $lastBalanceChange = mallCashBalanceChangeFromSnapshots($before, $lastAfter, $unitsPerGold);
+            if (mallCashObservedAppliedUnits($lastBalanceChange) >= $requestedCashUnits) {
+                return [
+                    'after' => $lastAfter,
+                    'warning' => '',
+                    'balance_change' => $lastBalanceChange,
+                    'attempts' => $attempts,
+                    'observed' => true,
+                ];
+            }
+        } catch (Exception $e) {
+            $lastWarning = $e->getMessage();
+        }
+
+        if (microtime(true) >= $deadline) {
+            break;
+        }
+        usleep($pollIntervalUs);
+    } while (true);
+
+    return [
+        'after' => $lastAfter,
+        'warning' => $lastWarning,
+        'balance_change' => $lastBalanceChange,
+        'attempts' => $attempts,
+        'observed' => (mallCashObservedAppliedUnits($lastBalanceChange) >= $requestedCashUnits),
+    ];
+}
+
+function getMallCashBalanceSnapshot(array $config, array $request)
+{
+    $proto = new GamedProtocol();
+    $target = resolveMallCashTarget($request, $config, $proto);
+    $details = fetchMallCashBalanceDetails($config, $target, $proto);
+
+    return [
+        'success' => true,
+        'target' => array_value($details, 'target', []),
+        'account' => array_value($details, 'account', []),
+        'wallet' => array_value($details, 'wallet', []),
+        'login' => array_value($details, 'login', []),
+        'collected_at' => gmdate('c'),
+    ];
+}
+
+function grantMallCashConfirmOk(array $request)
+{
+    $confirm = strtoupper(trim((string) firstArrayValue($request, ['confirm', 'confirmation', 'confirm_token'], '')));
+    return in_array($confirm, ['GRANT_MALL_CASH', 'GRANT_SHOP_GOLD', 'ADD_MALL_CASH'], true);
+}
+
+function buildGrantMallCashPayload(array $request, array $config, GamedProtocol $proto)
+{
+    if (!mallCashEnabled($config)) {
+        throw new InvalidArgumentException('Gold da loja esta desabilitado na configuracao da API');
+    }
+
+    $merged = mergeMallCashRequest($request);
+    $target = resolveMallCashTarget($merged, $config, $proto);
+    $unitsPerGold = mallCashUnitsPerGold($config);
+
+    $amountRaw = firstArrayValue($merged, ['amount', 'gold', 'cash_gold', 'mall_gold', 'value'], null);
+    $cashUnitsRaw = firstArrayValue($merged, ['cash_units', 'cashUnits', 'raw_cash_units'], null);
+
+    $amountProvided = ($amountRaw !== null && trim((string) $amountRaw) !== '');
+    $cashUnitsProvided = ($cashUnitsRaw !== null && trim((string) $cashUnitsRaw) !== '');
+
+    $amount = 0.0;
+    if ($amountProvided) {
+        if (!is_numeric($amountRaw)) {
+            throw new InvalidArgumentException('amount invalido');
+        }
+        $amount = floatval($amountRaw);
+    }
+
+    $cashUnits = 0;
+    if ($cashUnitsProvided) {
+        if (!is_numeric($cashUnitsRaw)) {
+            throw new InvalidArgumentException('cash_units invalido');
+        }
+        $cashUnits = intval(round(floatval($cashUnitsRaw)));
+    }
+
+    if (!$amountProvided && !$cashUnitsProvided) {
+        throw new InvalidArgumentException('Informe amount ou cash_units para grantMallCash');
+    }
+
+    if ($amountProvided && $amount <= 0) {
+        throw new InvalidArgumentException('amount invalido');
+    }
+
+    if ($cashUnitsProvided && $cashUnits <= 0) {
+        throw new InvalidArgumentException('cash_units invalido');
+    }
+
+    if ($amountProvided && !$cashUnitsProvided) {
+        $cashUnits = intval(round($amount * $unitsPerGold));
+    } elseif (!$amountProvided && $cashUnitsProvided) {
+        $amount = mallCashUnitsToGold($cashUnits, $unitsPerGold);
+    } else {
+        $calculatedCashUnits = intval(round($amount * $unitsPerGold));
+        if ($calculatedCashUnits !== $cashUnits) {
+            throw new InvalidArgumentException('amount e cash_units conflitantes');
+        }
+    }
+
+    $maxAmount = max(1, intval(array_value($config, 'mall_cash_max_amount', 1000000)));
+    $maxCashUnits = max($unitsPerGold, intval(array_value($config, 'mall_cash_max_cash_units', 100000000)));
+    if ($amount > $maxAmount) {
+        throw new InvalidArgumentException('amount excede o limite configurado de ' . $maxAmount . ' gold');
+    }
+    if ($cashUnits > $maxCashUnits) {
+        throw new InvalidArgumentException('cash_units excede o limite configurado de ' . $maxCashUnits);
+    }
+
+    return [
+        'action' => 'grantMallCash',
+        'userid' => intval(array_value($target, 'userid', 0)),
+        'roleid' => intval(array_value($target, 'roleid', 0)),
+        'role_name' => trim((string) array_value($target, 'role_name', '')),
+        'resolved_via' => trim((string) array_value($target, 'resolved_via', '')),
+        'amount' => $amount,
+        'cash_units' => $cashUnits,
+        'units_per_gold' => $unitsPerGold,
+        'reason' => securityReasonFromRequest($merged, $config),
+        'dry_run' => truthyValue(firstArrayValue($merged, ['dry_run', 'dryRun'], false)),
+        'db_name' => trim((string) array_value($config, 'mall_cash_db_name', 'pw')),
+    ];
+}
+
+function executeMallCashGrantCommand(array $config, array $payload)
+{
+    $command = trim((string) array_value($config, 'mall_cash_grant_command', ''));
+    if ($command === '') {
+        throw new Exception('Comando de grantMallCash nao configurado');
+    }
+
+    $dbName = trim((string) array_value($payload, 'db_name', array_value($config, 'mall_cash_db_name', 'pw')));
+    if ($dbName === '') {
+        throw new Exception('Banco de dados do mall cash nao configurado');
+    }
+
+    $result = executeServerOpsCommand(
+        $command
+        . ' ' . escapeshellarg((string) intval(array_value($payload, 'userid', 0)))
+        . ' ' . escapeshellarg((string) intval(array_value($payload, 'cash_units', 0)))
+        . ' ' . escapeshellarg($dbName),
+        max(0, intval(array_value($config, 'restore_now_timeout_seconds', 1800)))
+    );
+
+    $parsed = is_array(array_value($result, 'parsed', null)) ? array_value($result, 'parsed', []) : [];
+    if (empty($result['success']) && empty($parsed)) {
+        throw new Exception(
+            'grantMallCash falhou (exit ' . intval(array_value($result, 'exit_code', 1)) . '): '
+            . trim((string) array_value($result, 'stdout_excerpt', ''))
+        );
+    }
+    if (empty($parsed)) {
+        $parsed = [
+            'stdout' => trim((string) array_value($result, 'stdout_excerpt', '')),
+        ];
+    }
+
+    return $parsed;
+}
+
+function handleGrantMallCashRequest(array $config, array $request)
+{
+    $proto = new GamedProtocol();
+    $payload = buildGrantMallCashPayload($request, $config, $proto);
+    $target = [
+        'userid' => intval(array_value($payload, 'userid', 0)),
+        'roleid' => intval(array_value($payload, 'roleid', 0)),
+        'role_name' => trim((string) array_value($payload, 'role_name', '')),
+        'resolved_via' => trim((string) array_value($payload, 'resolved_via', '')),
+    ];
+
+    $before = null;
+    $beforeWarning = '';
+    try {
+        $before = fetchMallCashBalanceDetails($config, $target, $proto);
+    } catch (Exception $e) {
+        $beforeWarning = $e->getMessage();
+    }
+
+    if (!empty($payload['dry_run'])) {
+        $response = [
+            'success' => true,
+            'dry_run' => true,
+            'gm_action' => [
+                'action' => 'grantMallCash',
+                'userid' => intval(array_value($payload, 'userid', 0)),
+                'roleid' => intval(array_value($payload, 'roleid', 0)),
+                'role_name' => trim((string) array_value($payload, 'role_name', '')),
+                'amount' => floatval(array_value($payload, 'amount', 0)),
+                'cash_units' => intval(array_value($payload, 'cash_units', 0)),
+                'units_per_gold' => intval(array_value($payload, 'units_per_gold', 100)),
+                'reason' => array_value($payload, 'reason', ''),
+                'message' => 'Dry-run de grantMallCash validado com sucesso',
+            ],
+            'target' => $target,
+            'wallet_before' => is_array($before) ? array_value($before, 'wallet', []) : null,
+        ];
+        if ($beforeWarning !== '') {
+            $response['wallet_lookup_warning'] = $beforeWarning;
+        }
+
+        $gmHistoryWarning = '';
+        $gmEntry = gmHistoryEntryBase($config, 'grantMallCash', [
+            'status' => 'dry_run',
+            'success' => true,
+            'dry_run' => true,
+            'reason' => array_value($payload, 'reason', ''),
+            'target' => $target,
+            'wallet_before' => is_array($before) ? array_value($before, 'wallet', []) : null,
+            'grant' => [
+                'amount' => floatval(array_value($payload, 'amount', 0)),
+                'cash_units' => intval(array_value($payload, 'cash_units', 0)),
+                'units_per_gold' => intval(array_value($payload, 'units_per_gold', 100)),
+            ],
+            'warning' => $beforeWarning,
+            'message' => 'Dry-run de grantMallCash validado com sucesso',
+        ]);
+        if (gmAppendHistoryBestEffort($config, $gmEntry, $gmHistoryWarning)) {
+            $response['gm_history_file'] = gmActionHistoryFile($config);
+        } elseif ($gmHistoryWarning !== '') {
+            $response['gm_history_warning'] = $gmHistoryWarning;
+        }
+        return $response;
+    }
+
+    if (!grantMallCashConfirmOk($request)) {
+        throw new InvalidArgumentException('Confirmacao obrigatoria para grantMallCash. Envie confirm=GRANT_MALL_CASH');
+    }
+
+    $grantResult = executeMallCashGrantCommand($config, $payload);
+    $after = null;
+    $afterWarning = '';
+    $verificationAttempts = 0;
+    $balanceChange = null;
+    if (is_array($before)) {
+        $verification = waitForMallCashGrantObservation(
+            $config,
+            $target,
+            $before,
+            intval(array_value($payload, 'cash_units', 0)),
+            $proto
+        );
+        $after = is_array(array_value($verification, 'after', null)) ? array_value($verification, 'after', null) : null;
+        $afterWarning = trim((string) array_value($verification, 'warning', ''));
+        $balanceChange = is_array(array_value($verification, 'balance_change', null)) ? array_value($verification, 'balance_change', null) : null;
+        $verificationAttempts = intval(array_value($verification, 'attempts', 0));
+    } else {
+        try {
+            $after = fetchMallCashBalanceDetails($config, $target, $proto);
+        } catch (Exception $e) {
+            $afterWarning = $e->getMessage();
+        }
+    }
+
+    $requestedCashUnits = intval(array_value($payload, 'cash_units', 0));
+    $errorCode = intval(array_value($grantResult, 'error_code', 0));
+    $appliedUnits = mallCashObservedAppliedUnits($balanceChange);
+
+    if ($errorCode !== 0 && $appliedUnits < $requestedCashUnits) {
+        throw new Exception('Stored procedure usecash retornou error_code ' . $errorCode . ' sem refletir o credito esperado no saldo');
+    }
+
+    $response = [
+        'success' => true,
+        'message' => 'Gold da loja creditado com sucesso',
+        'target' => $target,
+        'grant' => [
+            'amount' => floatval(array_value($payload, 'amount', 0)),
+            'cash_units' => intval(array_value($payload, 'cash_units', 0)),
+            'units_per_gold' => intval(array_value($payload, 'units_per_gold', 100)),
+            'reason' => array_value($payload, 'reason', ''),
+        ],
+        'grant_result' => $grantResult,
+        'wallet_before' => is_array($before) ? array_value($before, 'wallet', []) : null,
+        'wallet_after' => is_array($after) ? array_value($after, 'wallet', []) : null,
+        'balance_change' => $balanceChange,
+        'verification_attempts' => $verificationAttempts,
+    ];
+    if ($errorCode !== 0) {
+        $response['warning'] = 'usecash retornou error_code ' . $errorCode . ', mas o saldo refletiu o credito esperado.';
+    }
+    if ($beforeWarning !== '') {
+        $response['wallet_before_warning'] = $beforeWarning;
+    }
+    if ($afterWarning !== '') {
+        $response['wallet_after_warning'] = $afterWarning;
+    }
+
+    $gmHistoryWarning = '';
+    $gmEntry = gmHistoryEntryBase($config, 'grantMallCash', [
+        'status' => 'success',
+        'success' => true,
+        'dry_run' => false,
+        'reason' => array_value($payload, 'reason', ''),
+        'target' => $target,
+        'grant' => [
+            'amount' => floatval(array_value($payload, 'amount', 0)),
+            'cash_units' => intval(array_value($payload, 'cash_units', 0)),
+            'units_per_gold' => intval(array_value($payload, 'units_per_gold', 100)),
+        ],
+        'wallet_before' => is_array($before) ? array_value($before, 'wallet', []) : null,
+        'wallet_after' => is_array($after) ? array_value($after, 'wallet', []) : null,
+        'balance_change' => $balanceChange,
+        'grant_result' => $grantResult,
+        'warning' => trim(
+            ($errorCode !== 0 ? ('usecash error_code=' . $errorCode . ' com credito confirmado no saldo') : '')
+            . (($errorCode !== 0 && ($beforeWarning !== '' || $afterWarning !== '')) ? ' | ' : '')
+            . $beforeWarning
+            . (($beforeWarning !== '' && $afterWarning !== '') ? ' | ' : '')
+            . $afterWarning
+        ),
+        'message' => 'Gold da loja creditado com sucesso',
+    ]);
+    if (gmAppendHistoryBestEffort($config, $gmEntry, $gmHistoryWarning)) {
+        $response['gm_history_file'] = gmActionHistoryFile($config);
+    } elseif ($gmHistoryWarning !== '') {
+        $response['gm_history_warning'] = $gmHistoryWarning;
+    }
+
+    return $response;
+}
+
+function gmPermissionEnabled(array $config)
+{
+    return truthyValue(array_value($config, 'gm_permission_enabled', false))
+        && trim((string) array_value($config, 'gm_permission_command', '')) !== '';
+}
+
+function gmPermissionRuleIdsFromValue($value)
+{
+    $items = [];
+    if (is_array($value)) {
+        $items = $value;
+    } elseif (is_string($value) || is_numeric($value)) {
+        $text = trim((string) $value);
+        if ($text !== '') {
+            $items = preg_split('/[\s,;:|]+/', $text, -1, PREG_SPLIT_NO_EMPTY);
+        }
+    }
+
+    $ruleIds = [];
+    foreach ((array) $items as $item) {
+        if (!is_numeric($item)) {
+            continue;
+        }
+        $rid = intval($item);
+        if ($rid >= 0) {
+            $ruleIds[] = $rid;
+        }
+    }
+
+    $ruleIds = array_values(array_unique($ruleIds));
+    sort($ruleIds, SORT_NUMERIC);
+    return $ruleIds;
+}
+
+function gmPermissionRuleCatalog()
+{
+    return [
+        0 => 'Alternar nome / ID',
+        1 => 'Ocultar / ser Deus',
+        2 => 'Online ou nao',
+        3 => 'Conversa ou nao',
+        4 => 'Mover para o papel',
+        5 => 'Papel de busca',
+        6 => 'Mover como sera',
+        7 => 'Mover para NPC',
+        8 => 'Mover para mapa (copiar)',
+        9 => 'Melhore a velocidade',
+        10 => 'Acompanhe o jogador',
+        11 => 'Listar usuarios',
+        100 => 'Forca offline',
+        101 => 'Proibida conversa',
+        102 => 'Proibir o comercio',
+        103 => 'Proibir vender',
+        104 => 'Transmissao',
+        105 => 'Desligar o servidor',
+        200 => 'Invocar monstro',
+        201 => 'Dispel convocacao',
+        202 => 'Pretender',
+        203 => 'GM master',
+        204 => 'Duplo exp',
+        205 => 'Conexoes simultaneas (lambda)',
+        206 => 'Gerente de atividades',
+        207 => 'Nenhum comercio',
+        208 => 'Sem leilao',
+        209 => 'Sem correspondencia',
+        210 => 'Nenhuma faccao',
+        211 => 'Dinheiro Duplo',
+        212 => 'Duplo Drop',
+        213 => 'Duplo Alma',
+        214 => 'Nenhum ponto de venda',
+        215 => 'Interruptor PVP',
+    ];
+}
+
+function gmPermissionDescribeRuleIds(array $ruleIds)
+{
+    $catalog = gmPermissionRuleCatalog();
+    $described = [];
+    foreach (gmPermissionRuleIdsFromValue($ruleIds) as $rid) {
+        $described[] = [
+            'rid' => $rid,
+            'label' => array_key_exists($rid, $catalog) ? $catalog[$rid] : ('Regra GM ' . $rid),
+            'known' => array_key_exists($rid, $catalog),
+        ];
+    }
+
+    return $described;
+}
+
+function gmPermissionRuleIdsConfigured(array $config)
+{
+    return gmPermissionRuleIdsFromValue(array_value($config, 'gm_permission_rule_ids', []));
+}
+
+function mergeGmPermissionRequest(array $request)
+{
+    $merged = $request;
+    foreach (['payload', 'permission', 'gm_permission', 'target', 'account'] as $field) {
+        $candidate = array_value($request, $field, null);
+        if (is_array($candidate)) {
+            $merged = array_merge($merged, $candidate);
+        }
+    }
+
+    return $merged;
+}
+
+function gmPermissionConfirmOk(array $request, $mode = 'grant')
+{
+    $confirm = strtoupper(trim((string) firstArrayValue($request, ['confirm', 'confirmation', 'confirm_token'], '')));
+    if ($mode === 'revoke') {
+        return in_array($confirm, ['REVOKE_GM_PERMISSION', 'REMOVE_GM_PERMISSION', 'UNSET_GM_PERMISSION'], true);
+    }
+
+    return in_array($confirm, ['GRANT_GM_PERMISSION', 'SET_GM_PERMISSION'], true);
+}
+
+function buildGmPermissionTargetPayload(array $request, array $config, GamedProtocol $proto)
+{
+    if (!gmPermissionEnabled($config)) {
+        throw new InvalidArgumentException('Permissao GM esta desabilitada na configuracao da API');
+    }
+
+    $merged = mergeGmPermissionRequest($request);
+    $target = resolveMallCashTarget($merged, $config, $proto);
+
+    $ruleIds = gmPermissionRuleIdsFromValue(firstArrayValue($merged, ['rule_ids', 'ruleIds', 'rids'], gmPermissionRuleIdsConfigured($config)));
+    $dbName = trim((string) array_value($config, 'gm_permission_db_name', 'pw'));
+    $authTable = trim((string) array_value($config, 'gm_permission_auth_table', 'auth'));
+    $useridField = trim((string) array_value($config, 'gm_permission_auth_userid_field', 'userid'));
+    $zoneidField = trim((string) array_value($config, 'gm_permission_auth_zoneid_field', 'zoneid'));
+    $ridField = trim((string) array_value($config, 'gm_permission_auth_rid_field', 'rid'));
+    $zoneid = max(1, intval(array_value($config, 'gm_permission_zoneid', 1)));
+    $templateMinRules = max(1, intval(array_value($config, 'gm_permission_template_min_rules', 30)));
+
+    if ($dbName === '' || $authTable === '' || $useridField === '' || $zoneidField === '' || $ridField === '') {
+        throw new InvalidArgumentException('Configuracao GM auth incompleta');
+    }
+
+    return [
+        'userid' => intval(array_value($target, 'userid', 0)),
+        'roleid' => intval(array_value($target, 'roleid', 0)),
+        'role_name' => trim((string) array_value($target, 'role_name', '')),
+        'resolved_via' => trim((string) array_value($target, 'resolved_via', '')),
+        'rule_ids' => $ruleIds,
+        'db_name' => $dbName,
+        'auth_table' => $authTable,
+        'userid_field' => $useridField,
+        'zoneid_field' => $zoneidField,
+        'rid_field' => $ridField,
+        'zoneid' => $zoneid,
+        'template_min_rules' => $templateMinRules,
+    ];
+}
+
+function buildGmPermissionActionPayload(array $request, array $config, GamedProtocol $proto, $mode = 'grant')
+{
+    $mode = trim((string) $mode);
+    if (!in_array($mode, ['grant', 'revoke'], true)) {
+        throw new InvalidArgumentException('Modo de permissao GM invalido: ' . $mode);
+    }
+
+    $merged = mergeGmPermissionRequest($request);
+    $payload = buildGmPermissionTargetPayload($merged, $config, $proto);
+    $payload['mode'] = $mode;
+    $payload['reason'] = securityReasonFromRequest($merged, $config);
+    $payload['dry_run'] = truthyValue(firstArrayValue($merged, ['dry_run', 'dryRun'], false));
+    $payload['permission_level'] = trim((string) firstArrayValue($merged, ['permission_level', 'permissionLevel', 'level'], ''));
+    return $payload;
+}
+
+function executeGmPermissionCommand(array $config, array $payload, $mode = 'inspect')
+{
+    $mode = trim((string) $mode);
+    if (!in_array($mode, ['inspect', 'grant', 'revoke'], true)) {
+        throw new Exception('Modo invalido para wrapper de permissao GM: ' . $mode);
+    }
+
+    $command = trim((string) array_value($config, 'gm_permission_command', ''));
+    if ($command === '') {
+        throw new Exception('Comando de permissao GM nao configurado');
+    }
+
+    $ruleIdsCsv = implode(',', gmPermissionRuleIdsFromValue(array_value($payload, 'rule_ids', [])));
+    $result = executeServerOpsCommand(
+        $command
+        . ' ' . escapeshellarg($mode)
+        . ' ' . escapeshellarg((string) intval(array_value($payload, 'userid', 0)))
+        . ' ' . escapeshellarg((string) intval(array_value($payload, 'zoneid', 1)))
+        . ' ' . escapeshellarg((string) array_value($payload, 'db_name', 'pw'))
+        . ' ' . escapeshellarg((string) array_value($payload, 'auth_table', 'auth'))
+        . ' ' . escapeshellarg((string) array_value($payload, 'userid_field', 'userid'))
+        . ' ' . escapeshellarg((string) array_value($payload, 'zoneid_field', 'zoneid'))
+        . ' ' . escapeshellarg((string) array_value($payload, 'rid_field', 'rid'))
+        . ' ' . escapeshellarg($ruleIdsCsv)
+        . ' ' . escapeshellarg((string) intval(array_value($payload, 'template_min_rules', 30))),
+        max(0, intval(array_value($config, 'restore_now_timeout_seconds', 1800)))
+    );
+
+    $parsed = is_array(array_value($result, 'parsed', null)) ? array_value($result, 'parsed', []) : [];
+    if (empty($result['success']) && empty($parsed)) {
+        throw new Exception(
+            'Permissao GM falhou (exit ' . intval(array_value($result, 'exit_code', 1)) . '): '
+            . trim((string) array_value($result, 'stdout_excerpt', ''))
+        );
+    }
+    if (empty($parsed)) {
+        $parsed = [
+            'stdout' => trim((string) array_value($result, 'stdout_excerpt', '')),
+        ];
+    }
+
+    return $parsed;
+}
+
+function summarizeGmPermissionState(array $state, $phase = 'current')
+{
+    $phase = trim((string) $phase);
+    if (!in_array($phase, ['current', 'after'], true)) {
+        $phase = 'current';
+    }
+
+    $templateRuleIds = gmPermissionRuleIdsFromValue(array_value($state, 'template_rule_ids', []));
+    $ruleIds = ($phase === 'after')
+        ? gmPermissionRuleIdsFromValue(array_value($state, 'after_rule_ids', array_value($state, 'current_rule_ids', [])))
+        : gmPermissionRuleIdsFromValue(array_value($state, 'current_rule_ids', []));
+
+    $currentCount = count($ruleIds);
+    $templateCount = count($templateRuleIds);
+    $matchingRuleIds = array_values(array_intersect($ruleIds, $templateRuleIds));
+    $missingRuleIds = array_values(array_diff($templateRuleIds, $ruleIds));
+    $extraRuleIds = array_values(array_diff($ruleIds, $templateRuleIds));
+    $matchingCount = count($matchingRuleIds);
+    $missingCount = count($missingRuleIds);
+    $afterCount = ($phase === 'after') ? $currentCount : max(0, intval(array_value($state, 'after_rule_count', $currentCount)));
+
+    $fullyMatchesTemplate = ($templateCount > 0 && $missingCount === 0 && $matchingCount === $templateCount);
+    $partiallyMatchesTemplate = ($templateCount > 0 && $matchingCount > 0 && !$fullyMatchesTemplate);
+
+    return [
+        'template_source' => trim((string) array_value($state, 'template_source', '')),
+        'template_userid' => intval(array_value($state, 'template_userid', 0)),
+        'template_available' => $templateCount > 0,
+        'has_any_rules' => $currentCount > 0,
+        'current_rule_count' => $currentCount,
+        'template_rule_count' => $templateCount,
+        'matching_rule_count' => $matchingCount,
+        'missing_rule_count' => $missingCount,
+        'extra_rule_count' => count($extraRuleIds),
+        'fully_matches_template' => $fullyMatchesTemplate,
+        'partially_matches_template' => $partiallyMatchesTemplate,
+        'after_rule_count' => $afterCount,
+        'phase' => $phase,
+    ];
+}
+
+function getGmPermissionStateSnapshot(array $config, array $request)
+{
+    $proto = new GamedProtocol();
+    $payload = buildGmPermissionTargetPayload($request, $config, $proto);
+    $state = executeGmPermissionCommand($config, $payload, 'inspect');
+    $currentRuleIds = gmPermissionRuleIdsFromValue(array_value($state, 'current_rule_ids', []));
+    $templateRuleIds = gmPermissionRuleIdsFromValue(array_value($state, 'template_rule_ids', []));
+    $matchingRuleIds = gmPermissionRuleIdsFromValue(array_value($state, 'matching_rule_ids', []));
+    $missingRuleIds = gmPermissionRuleIdsFromValue(array_value($state, 'missing_rule_ids', []));
+    $afterRuleIds = gmPermissionRuleIdsFromValue(array_value($state, 'after_rule_ids', []));
+
+    return [
+        'success' => true,
+        'target' => [
+            'userid' => intval(array_value($payload, 'userid', 0)),
+            'roleid' => intval(array_value($payload, 'roleid', 0)),
+            'role_name' => trim((string) array_value($payload, 'role_name', '')),
+            'resolved_via' => trim((string) array_value($payload, 'resolved_via', '')),
+        ],
+        'requested_rule_ids' => gmPermissionRuleIdsFromValue(array_value($payload, 'rule_ids', [])),
+        'rule_catalog' => gmPermissionDescribeRuleIds(array_keys(gmPermissionRuleCatalog())),
+        'permission_state' => $state,
+        'permission_summary' => summarizeGmPermissionState($state, 'current'),
+        'current_rules' => gmPermissionDescribeRuleIds($currentRuleIds),
+        'template_rules' => gmPermissionDescribeRuleIds($templateRuleIds),
+        'matching_rules' => gmPermissionDescribeRuleIds($matchingRuleIds),
+        'missing_rules' => gmPermissionDescribeRuleIds($missingRuleIds),
+        'after_rules' => gmPermissionDescribeRuleIds($afterRuleIds),
+        'collected_at' => gmdate('c'),
+    ];
+}
+
+function getGmPermissionCatalogSnapshot()
+{
+    return [
+        'success' => true,
+        'rules' => gmPermissionDescribeRuleIds(array_keys(gmPermissionRuleCatalog())),
+        'count' => count(gmPermissionRuleCatalog()),
+        'collected_at' => gmdate('c'),
+    ];
+}
+
+function handleGmPermissionRequest(array $config, array $request, $mode = 'grant')
+{
+    $mode = trim((string) $mode);
+    if (!in_array($mode, ['grant', 'revoke'], true)) {
+        throw new InvalidArgumentException('Modo de permissao GM invalido: ' . $mode);
+    }
+
+    $proto = new GamedProtocol();
+    $payload = buildGmPermissionActionPayload($request, $config, $proto, $mode);
+    $before = executeGmPermissionCommand($config, $payload, 'inspect');
+    $beforeSummary = summarizeGmPermissionState($before, 'current');
+    $commandKey = ($mode === 'revoke') ? 'revokeGmPermission' : 'grantGmPermission';
+    $target = [
+        'userid' => intval(array_value($payload, 'userid', 0)),
+        'roleid' => intval(array_value($payload, 'roleid', 0)),
+        'role_name' => trim((string) array_value($payload, 'role_name', '')),
+        'resolved_via' => trim((string) array_value($payload, 'resolved_via', '')),
+    ];
+
+    if (!empty($payload['dry_run'])) {
+        $response = [
+            'success' => true,
+            'dry_run' => true,
+            'mode' => $mode,
+            'target' => $target,
+            'gm_action' => [
+                'action' => $commandKey,
+                'mode' => $mode,
+                'userid' => intval(array_value($payload, 'userid', 0)),
+                'roleid' => intval(array_value($payload, 'roleid', 0)),
+                'role_name' => trim((string) array_value($payload, 'role_name', '')),
+                'reason' => array_value($payload, 'reason', ''),
+                'message' => 'Dry-run de permissao GM validado com sucesso',
+            ],
+            'permission_before' => $before,
+            'permission_summary_before' => $beforeSummary,
+        ];
+
+        $gmHistoryWarning = '';
+        $gmEntry = gmHistoryEntryBase($config, $commandKey, [
+            'status' => 'dry_run',
+            'success' => true,
+            'dry_run' => true,
+            'reason' => array_value($payload, 'reason', ''),
+            'target' => $target,
+            'permission_before' => $before,
+            'message' => 'Dry-run de permissao GM validado com sucesso',
+        ]);
+        if (gmAppendHistoryBestEffort($config, $gmEntry, $gmHistoryWarning)) {
+            $response['gm_history_file'] = gmActionHistoryFile($config);
+        } elseif ($gmHistoryWarning !== '') {
+            $response['gm_history_warning'] = $gmHistoryWarning;
+        }
+
+        return $response;
+    }
+
+    if (!gmPermissionConfirmOk($request, $mode)) {
+        if ($mode === 'revoke') {
+            throw new InvalidArgumentException('Confirmacao obrigatoria para remover permissao GM. Envie confirm=REVOKE_GM_PERMISSION');
+        }
+        throw new InvalidArgumentException('Confirmacao obrigatoria para grant GM. Envie confirm=GRANT_GM_PERMISSION');
+    }
+
+    $after = executeGmPermissionCommand($config, $payload, $mode);
+    $afterSummary = summarizeGmPermissionState($after, 'after');
+    $change = [
+        'before_rule_count' => intval(array_value($beforeSummary, 'current_rule_count', 0)),
+        'after_rule_count' => intval(array_value($afterSummary, 'after_rule_count', array_value($afterSummary, 'current_rule_count', 0))),
+        'matching_rule_count' => intval(array_value($afterSummary, 'matching_rule_count', 0)),
+        'missing_rule_count' => intval(array_value($afterSummary, 'missing_rule_count', 0)),
+        'inserted_rule_count' => max(0, intval(array_value($after, 'inserted_rule_count', 0))),
+        'deleted_rule_count' => max(0, intval(array_value($after, 'deleted_rule_count', 0))),
+        'changed' => array_value($before, 'current_rule_ids', []) !== array_value($after, 'after_rule_ids', []),
+    ];
+    $message = ($mode === 'revoke')
+        ? 'Permissao GM removida com sucesso'
+        : 'Permissao GM aplicada com sucesso';
+
+    $response = [
+        'success' => true,
+        'mode' => $mode,
+        'message' => $message,
+        'target' => $target,
+        'permission_before' => $before,
+        'permission_summary_before' => $beforeSummary,
+        'permission_after' => $after,
+        'permission_summary_after' => $afterSummary,
+        'permission_change' => $change,
+        'gm_action' => [
+            'action' => $commandKey,
+            'mode' => $mode,
+            'userid' => intval(array_value($payload, 'userid', 0)),
+            'roleid' => intval(array_value($payload, 'roleid', 0)),
+            'role_name' => trim((string) array_value($payload, 'role_name', '')),
+            'reason' => array_value($payload, 'reason', ''),
+            'message' => $message,
+        ],
+    ];
+
+    $gmHistoryWarning = '';
+    $gmEntry = gmHistoryEntryBase($config, $commandKey, [
+        'status' => 'success',
+        'success' => true,
+        'dry_run' => false,
+        'reason' => array_value($payload, 'reason', ''),
+        'target' => $target,
+        'permission_before' => $before,
+        'permission_after' => $after,
+        'message' => $message,
+    ]);
+    if (gmAppendHistoryBestEffort($config, $gmEntry, $gmHistoryWarning)) {
+        $response['gm_history_file'] = gmActionHistoryFile($config);
+    } elseif ($gmHistoryWarning !== '') {
+        $response['gm_history_warning'] = $gmHistoryWarning;
+    }
+
+    return $response;
+}
+
 function mergedSecurityRequest(array $request)
 {
     $merged = $request;
@@ -3282,9 +7074,134 @@ function securityResolveUserIdFromRole(GamedProtocol $proto, array $config, $rol
     ];
 }
 
+function securityValidateResolvedUserMatch($roleid, $providedUserid, array $resolved)
+{
+    $roleid = intval($roleid);
+    $providedUserid = intval($providedUserid);
+    $resolvedUserid = intval(array_value($resolved, 'userid', 0));
+
+    if ($roleid > 0 && $providedUserid > 0 && $resolvedUserid > 0 && $providedUserid !== $resolvedUserid) {
+        throw new InvalidArgumentException(
+            'userid/account_id ' . $providedUserid . ' nao corresponde ao roleid ' . $roleid . ' (pertence ao userid ' . $resolvedUserid . ')'
+        );
+    }
+}
+
 function securityDurationFromRequest(array $request)
 {
     return max(0, intval(firstArrayValue($request, ['duration_seconds', 'durationSeconds', 'duration', 'seconds', 'time'], 0)));
+}
+
+function securitySidFromRequest(array $request, array $config)
+{
+    return max(0, intval(firstArrayValue($request, ['sid', 'localsid', 'local_sid', 'gsid'], array_value($config, 'gm_delivery_sid_default', 0))));
+}
+
+function securityAccountForbidMode(array $config)
+{
+    $mode = strtolower(trim((string) array_value($config, 'security_account_forbid_mode', 'auto')));
+    if (!in_array($mode, ['auto', 'gamedbd', 'table'], true)) {
+        $mode = 'auto';
+    }
+
+    if ($mode !== 'auto') {
+        return $mode;
+    }
+
+    $version = preg_replace('/[^0-9]/', '', (string) array_value($config, 'game_version', ''));
+    if ($version !== '' && intval($version) > 0 && intval($version) <= 101) {
+        return 'table';
+    }
+
+    return 'gamedbd';
+}
+
+function securityAccountForbidTableAvailable(array $config)
+{
+    return trim((string) array_value($config, 'security_account_forbid_command', '')) !== '';
+}
+
+function buildSecurityAccountForbidPayload(array $payload, array $config)
+{
+    $typeIds = gmPermissionRuleIdsFromValue(array_value($payload, 'type_ids', array_value($config, 'security_account_forbid_types', [0])));
+    if (empty($typeIds) && !empty($payload['action']) && $payload['action'] === 'banAccount') {
+        $typeIds = gmPermissionRuleIdsFromValue(array_value($config, 'security_account_forbid_types', [0]));
+    }
+
+    return [
+        'userid' => intval(array_value($payload, 'userid', 0)),
+        'seconds' => max(0, intval(array_value($payload, 'seconds', 0))),
+        'reason' => trim((string) array_value($payload, 'reason', '')),
+        'db_name' => trim((string) array_value(
+            $config,
+            'security_account_forbid_db_name',
+            array_value($config, 'gm_permission_db_name', array_value($config, 'mall_cash_db_name', 'pw'))
+        )),
+        'forbid_table' => trim((string) array_value($config, 'security_account_forbid_table', 'forbid')),
+        'userid_field' => trim((string) array_value($config, 'security_account_forbid_userid_field', 'userid')),
+        'type_field' => trim((string) array_value($config, 'security_account_forbid_type_field', 'type')),
+        'ctime_field' => trim((string) array_value($config, 'security_account_forbid_ctime_field', 'ctime')),
+        'forbid_time_field' => trim((string) array_value($config, 'security_account_forbid_time_field', 'forbid_time')),
+        'reason_field' => trim((string) array_value($config, 'security_account_forbid_reason_field', 'reason')),
+        'gmroleid_field' => trim((string) array_value($config, 'security_account_forbid_gmroleid_field', 'gmroleid')),
+        'gmroleid' => max(0, intval(array_value($config, 'security_account_forbid_gmroleid', 0))),
+        'type_ids' => $typeIds,
+    ];
+}
+
+function executeSecurityAccountForbidCommand(array $config, array $payload, $mode = 'inspect')
+{
+    $mode = strtolower(trim((string) $mode));
+    if (!in_array($mode, ['inspect', 'ban', 'unban'], true)) {
+        throw new Exception('Modo invalido para forbid de conta: ' . $mode);
+    }
+
+    $command = trim((string) array_value($config, 'security_account_forbid_command', ''));
+    if ($command === '') {
+        throw new Exception('Comando de forbid de conta nao configurado');
+    }
+
+    $wrapperPayload = buildSecurityAccountForbidPayload($payload, $config);
+    $typeIdsCsv = implode(',', gmPermissionRuleIdsFromValue(array_value($wrapperPayload, 'type_ids', [])));
+    $reasonB64 = base64_encode((string) array_value($wrapperPayload, 'reason', ''));
+
+    $result = executeServerOpsCommand(
+        $command
+        . ' ' . escapeshellarg($mode)
+        . ' ' . escapeshellarg((string) intval(array_value($wrapperPayload, 'userid', 0)))
+        . ' ' . escapeshellarg((string) intval(array_value($wrapperPayload, 'seconds', 0)))
+        . ' ' . escapeshellarg((string) array_value($wrapperPayload, 'db_name', 'pw'))
+        . ' ' . escapeshellarg((string) array_value($wrapperPayload, 'forbid_table', 'forbid'))
+        . ' ' . escapeshellarg((string) array_value($wrapperPayload, 'userid_field', 'userid'))
+        . ' ' . escapeshellarg((string) array_value($wrapperPayload, 'type_field', 'type'))
+        . ' ' . escapeshellarg((string) array_value($wrapperPayload, 'ctime_field', 'ctime'))
+        . ' ' . escapeshellarg((string) array_value($wrapperPayload, 'forbid_time_field', 'forbid_time'))
+        . ' ' . escapeshellarg((string) array_value($wrapperPayload, 'reason_field', 'reason'))
+        . ' ' . escapeshellarg((string) array_value($wrapperPayload, 'gmroleid_field', 'gmroleid'))
+        . ' ' . escapeshellarg($reasonB64)
+        . ' ' . escapeshellarg((string) intval(array_value($wrapperPayload, 'gmroleid', 0)))
+        . ' ' . escapeshellarg($typeIdsCsv),
+        max(0, intval(array_value($config, 'restore_now_timeout_seconds', 1800)))
+    );
+
+    $parsed = is_array(array_value($result, 'parsed', null)) ? array_value($result, 'parsed', []) : [];
+    if (empty($result['success']) && empty($parsed)) {
+        throw new Exception(
+            'Forbid de conta via tabela falhou (exit ' . intval(array_value($result, 'exit_code', 1)) . '): '
+            . trim((string) array_value($result, 'stdout_excerpt', ''))
+        );
+    }
+    if (empty($parsed)) {
+        $parsed = [
+            'stdout' => trim((string) array_value($result, 'stdout_excerpt', '')),
+        ];
+    }
+
+    if (array_key_exists('success', $parsed) && !$parsed['success']) {
+        throw new Exception(trim((string) array_value($parsed, 'error', 'Falha ao aplicar forbid de conta via tabela')));
+    }
+
+    return $parsed;
 }
 
 function buildKickRolePayload(array $request, array $config)
@@ -3323,9 +7240,12 @@ function buildBanAccountPayload(array $request, array $config, GamedProtocol $pr
     $permanent = truthyValue(firstArrayValue($merged, ['permanent', 'is_permanent'], false))
         || in_array(strtolower((string) firstArrayValue($merged, ['ban_type', 'type', 'mode'], '')), ['permanent', 'perm'], true);
 
-    if ($userid <= 0 && $roleid > 0) {
+    if ($roleid > 0) {
         $resolved = securityResolveUserIdFromRole($proto, $config, $roleid);
-        $userid = intval(array_value($resolved, 'userid', 0));
+        securityValidateResolvedUserMatch($roleid, $userid, $resolved);
+        if ($userid <= 0) {
+            $userid = intval(array_value($resolved, 'userid', 0));
+        }
     }
 
     if ($userid <= 0) {
@@ -3340,6 +7260,41 @@ function buildBanAccountPayload(array $request, array $config, GamedProtocol $pr
         throw new InvalidArgumentException('duracao obrigatoria para ban temporario');
     }
 
+    $kickOnline = truthyValue(firstArrayValue($merged, [
+        'kick_online',
+        'kickOnline',
+        'kick_after_ban',
+        'kickAfterBan',
+        'disconnect_online',
+        'disconnectOnline',
+        'force_logout',
+        'forceLogout',
+    ], false));
+
+    $kickSeconds = intval(firstArrayValue($merged, [
+        'kick_seconds',
+        'kickSeconds',
+        'kick_duration_seconds',
+        'kickDurationSeconds',
+    ], array_value($config, 'security_kick_default_seconds', 10)));
+    if ($kickSeconds <= 0) {
+        $kickSeconds = max(1, intval(array_value($config, 'security_kick_default_seconds', 10)));
+    }
+
+    $maxKickSeconds = max(1, intval(array_value($config, 'security_kick_max_seconds', 600)));
+    if ($kickSeconds > $maxKickSeconds) {
+        $kickSeconds = $maxKickSeconds;
+    }
+
+    if ($kickOnline && $roleid <= 0) {
+        throw new InvalidArgumentException('roleid obrigatorio quando kick_online estiver ativo');
+    }
+
+    $kickReason = truncateUtf8Text(firstArrayValue($merged, ['kick_reason', 'kickReason'], ''), 250);
+    if ($kickReason === '') {
+        $kickReason = $reason;
+    }
+
     return [
         'action' => 'banAccount',
         'userid' => $userid,
@@ -3347,6 +7302,10 @@ function buildBanAccountPayload(array $request, array $config, GamedProtocol $pr
         'seconds' => $seconds,
         'permanent' => $permanent,
         'reason' => $reason,
+        'kick_online' => $kickOnline,
+        'kick_seconds' => $kickSeconds,
+        'kick_reason' => $kickReason,
+        'type_ids' => gmPermissionRuleIdsFromValue(firstArrayValue($merged, ['type_ids', 'typeIds', 'types', 'forbid_types'], [])),
         'dry_run' => truthyValue(firstArrayValue($merged, ['dry_run', 'dryRun'], false)),
     ];
 }
@@ -3357,9 +7316,12 @@ function buildUnbanAccountPayload(array $request, array $config, GamedProtocol $
     $roleid = securityResolveRoleId($merged);
     $userid = intval(firstArrayValue($merged, ['userid', 'user_id', 'account_id', 'accountId', 'target_userid'], 0));
 
-    if ($userid <= 0 && $roleid > 0) {
+    if ($roleid > 0) {
         $resolved = securityResolveUserIdFromRole($proto, $config, $roleid);
-        $userid = intval(array_value($resolved, 'userid', 0));
+        securityValidateResolvedUserMatch($roleid, $userid, $resolved);
+        if ($userid <= 0) {
+            $userid = intval(array_value($resolved, 'userid', 0));
+        }
     }
 
     if ($userid <= 0) {
@@ -3377,7 +7339,178 @@ function buildUnbanAccountPayload(array $request, array $config, GamedProtocol $
         'roleid' => $roleid,
         'seconds' => $seconds,
         'reason' => securityReasonFromRequest($merged, $config),
+        'type_ids' => gmPermissionRuleIdsFromValue(firstArrayValue($merged, ['type_ids', 'typeIds', 'types', 'forbid_types'], [])),
+        'refresh_services' => securityUnbanRefreshServicesFromRequest($merged),
         'dry_run' => truthyValue(firstArrayValue($merged, ['dry_run', 'dryRun'], false)),
+    ];
+}
+
+function securityUnbanRefreshServicesFromRequest(array $request)
+{
+    $refresh = truthyValue(firstArrayValue($request, ['refresh_login_cache', 'refreshLoginCache', 'refresh_auth_cache', 'refreshAuthCache', 'restart_authd', 'restartAuthd'], false));
+    $raw = firstArrayValue($request, ['refresh_services', 'refreshServices', 'login_refresh_services', 'loginRefreshServices'], []);
+
+    $values = [];
+    if (is_array($raw)) {
+        $values = $raw;
+    } elseif (is_string($raw)) {
+        $values = preg_split('/[\s,;]+/', trim($raw));
+    } elseif ($raw !== null && $raw !== false && $raw !== '') {
+        $values = [$raw];
+    }
+
+    if ($refresh && empty($values)) {
+        $values = ['authd'];
+    }
+
+    $aliases = [
+        'gauthd' => 'authd',
+        'auth' => 'authd',
+        'delivery' => 'gdeliveryd',
+        'link' => 'glinkd',
+    ];
+    $allowed = ['authd', 'gdeliveryd', 'glinkd'];
+    $normalized = [];
+    foreach ($values as $value) {
+        $value = strtolower(trim((string) $value));
+        if ($value === '') {
+            continue;
+        }
+        if (isset($aliases[$value])) {
+            $value = $aliases[$value];
+        }
+        if (in_array($value, $allowed, true) && !in_array($value, $normalized, true)) {
+            $normalized[] = $value;
+        }
+    }
+
+    return $normalized;
+}
+
+function buildMuteAccountPayload(array $request, array $config, GamedProtocol $proto)
+{
+    $merged = mergedSecurityRequest($request);
+    $reason = securityReasonFromRequest($merged, $config);
+    $roleid = securityResolveRoleId($merged);
+    $userid = intval(firstArrayValue($merged, ['userid', 'user_id', 'account_id', 'accountId', 'target_userid'], 0));
+    if ($roleid > 0) {
+        $resolved = securityResolveUserIdFromRole($proto, $config, $roleid);
+        securityValidateResolvedUserMatch($roleid, $userid, $resolved);
+        if ($userid <= 0) {
+            $userid = intval(array_value($resolved, 'userid', 0));
+        }
+    }
+
+    if ($userid <= 0) {
+        throw new InvalidArgumentException('userid/account_id invalido');
+    }
+
+    $seconds = securityDurationFromRequest($merged);
+    if ($seconds <= 0) {
+        throw new InvalidArgumentException('duracao obrigatoria para muteAccount');
+    }
+
+    return [
+        'action' => 'muteAccount',
+        'userid' => $userid,
+        'roleid' => $roleid,
+        'sid' => securitySidFromRequest($merged, $config),
+        'seconds' => min($seconds, 2147483647),
+        'reason' => $reason,
+        'dry_run' => truthyValue(firstArrayValue($merged, ['dry_run', 'dryRun'], false)),
+    ];
+}
+
+function buildMuteRolePayload(array $request, array $config)
+{
+    $merged = mergedSecurityRequest($request);
+    $roleid = securityResolveRoleId($merged);
+    if ($roleid <= 0) {
+        throw new InvalidArgumentException('roleid invalido');
+    }
+
+    $seconds = securityDurationFromRequest($merged);
+    if ($seconds <= 0) {
+        throw new InvalidArgumentException('duracao obrigatoria para muteRole');
+    }
+
+    return [
+        'action' => 'muteRole',
+        'roleid' => $roleid,
+        'sid' => securitySidFromRequest($merged, $config),
+        'seconds' => min($seconds, 2147483647),
+        'reason' => securityReasonFromRequest($merged, $config),
+        'dry_run' => truthyValue(firstArrayValue($merged, ['dry_run', 'dryRun'], false)),
+    ];
+}
+
+function buildTeleportRolePayload(array $request, array $config)
+{
+    $merged = mergedSecurityRequest($request);
+    $roleid = securityResolveRoleId($merged);
+    if ($roleid <= 0) {
+        throw new InvalidArgumentException('roleid invalido');
+    }
+
+    $tag = intval(firstArrayValue($merged, ['tag', 'worldtag', 'world_tag', 'map_id'], 0));
+    if ($tag <= 0) {
+        throw new InvalidArgumentException('tag/worldtag invalido');
+    }
+
+    foreach (['x', 'y', 'z'] as $axis) {
+        if (!isset($merged[$axis]) && !isset($merged['pos' . $axis])) {
+            throw new InvalidArgumentException('coordenada obrigatoria: ' . $axis);
+        }
+    }
+
+    return [
+        'action' => 'teleportRole',
+        'roleid' => $roleid,
+        'tag' => $tag,
+        'x' => floatval(firstArrayValue($merged, ['x', 'posx'], 0)),
+        'y' => floatval(firstArrayValue($merged, ['y', 'posy'], 0)),
+        'z' => floatval(firstArrayValue($merged, ['z', 'posz'], 0)),
+        'dry_run' => truthyValue(firstArrayValue($merged, ['dry_run', 'dryRun'], false)),
+    ];
+}
+
+function buildClearRolePkPayload(array $request, array $config)
+{
+    $merged = mergedSecurityRequest($request);
+    $roleid = securityResolveRoleId($merged);
+    if ($roleid <= 0) {
+        throw new InvalidArgumentException('roleid invalido');
+    }
+
+    return [
+        'action' => 'clearRolePk',
+        'roleid' => $roleid,
+        'seconds' => 0,
+        'reason' => securityReasonFromRequest($merged, $config),
+        'dry_run' => truthyValue(firstArrayValue($merged, ['dry_run', 'dryRun'], false)),
+        'kick_online' => truthyValue(firstArrayValue($merged, ['kick_online', 'kickOnline'], false)),
+        'kick_seconds' => max(1, intval(firstArrayValue($merged, ['kick_seconds', 'kickSeconds'], array_value($config, 'security_kick_default_seconds', 10)))),
+        'kick_reason' => trim((string) firstArrayValue($merged, ['kick_reason', 'kickReason'], '')),
+    ];
+}
+
+function buildReviveRolePayload(array $request, array $config)
+{
+    $merged = mergedSecurityRequest($request);
+    $roleid = securityResolveRoleId($merged);
+    if ($roleid <= 0) {
+        throw new InvalidArgumentException('roleid invalido');
+    }
+
+    return [
+        'action' => 'reviveRole',
+        'roleid' => $roleid,
+        'seconds' => 0,
+        'reason' => securityReasonFromRequest($merged, $config),
+        'dry_run' => truthyValue(firstArrayValue($merged, ['dry_run', 'dryRun'], false)),
+        'kick_online' => truthyValue(firstArrayValue($merged, ['kick_online', 'kickOnline'], false)),
+        'kick_seconds' => max(1, intval(firstArrayValue($merged, ['kick_seconds', 'kickSeconds'], array_value($config, 'security_kick_default_seconds', 10)))),
+        'kick_reason' => trim((string) firstArrayValue($merged, ['kick_reason', 'kickReason'], '')),
     ];
 }
 
@@ -3413,10 +7546,121 @@ function executeSecurityAction(array $config, array $payload)
         'seconds' => intval(array_value($payload, 'seconds', 0)),
         'reason' => array_value($payload, 'reason', ''),
         'dry_run' => truthyValue(array_value($payload, 'dry_run', false)),
+        'sid' => intval(array_value($payload, 'sid', 0)),
+        'refresh_services' => array_values(array_map('strval', array_value($payload, 'refresh_services', []))),
     ];
+
+    if ($result['action'] === 'banAccount') {
+        $result['kick_online'] = truthyValue(array_value($payload, 'kick_online', false));
+        $result['kick_seconds'] = intval(array_value($payload, 'kick_seconds', 0));
+        $result['kick_reason'] = array_value($payload, 'kick_reason', '');
+    } elseif ($result['action'] === 'clearRolePk') {
+        $result['kick_online'] = truthyValue(array_value($payload, 'kick_online', false));
+        $result['kick_seconds'] = intval(array_value($payload, 'kick_seconds', 0));
+        $result['kick_reason'] = array_value($payload, 'kick_reason', '');
+    }
+
+    if ($result['action'] === 'teleportRole') {
+        $result['tag'] = intval(array_value($payload, 'tag', 0));
+        $result['x'] = floatval(array_value($payload, 'x', 0));
+        $result['y'] = floatval(array_value($payload, 'y', 0));
+        $result['z'] = floatval(array_value($payload, 'z', 0));
+    }
 
     if ($result['dry_run']) {
         $result['message'] = 'Dry run de seguranca validado com sucesso';
+        if ($result['action'] === 'banAccount') {
+            $result['account_ban'] = [
+                'blocks_login' => true,
+                'scope' => 'account',
+                'duration_seconds' => $result['seconds'],
+                'permanent' => truthyValue(array_value($payload, 'permanent', false)),
+                'kick_online' => truthyValue(array_value($payload, 'kick_online', false)),
+                'kick_roleid' => intval(array_value($result, 'roleid', 0)),
+            ];
+        } elseif ($result['action'] === 'unbanAccount') {
+            $refreshServices = array_values(array_map('strval', array_value($result, 'refresh_services', [])));
+            if (!empty($refreshServices)) {
+                $result['login_cache_refresh'] = [
+                    'requested' => true,
+                    'services' => $refreshServices,
+                    'impact' => in_array('gdeliveryd', $refreshServices, true) || in_array('glinkd', $refreshServices, true)
+                        ? 'may_affect_online_players'
+                        : 'login_auth_only',
+                ];
+            }
+        } elseif ($result['action'] === 'clearRolePk') {
+            $pkState = $proto->inspectRolePkState($result['roleid'], $config['gamedbd_ip'], $config['gamedbd_port']);
+            $result['pk_clear'] = [
+                'roleid' => $result['roleid'],
+                'before' => array_value($pkState, 'state', []),
+                'after' => array_value($pkState, 'state', []),
+                'role_forbid_before' => array_value($pkState, 'role_forbid', []),
+                'role_forbid_after' => array_value($pkState, 'role_forbid', []),
+                'cleared' => truthyValue(array_value(array_value($pkState, 'state', []), 'cleared', false)),
+                'changed' => false,
+            ];
+            if (truthyValue(array_value($result, 'kick_online', false))) {
+                $result['session_refresh'] = [
+                    'requested' => true,
+                    'method' => 'kickRole',
+                    'roleid' => $result['roleid'],
+                    'seconds' => max(1, intval(array_value($result, 'kick_seconds', 0))),
+                    'reason' => trim((string) array_value($result, 'kick_reason', '')) !== ''
+                        ? trim((string) array_value($result, 'kick_reason', ''))
+                        : $result['reason'],
+                ];
+            } else {
+                $result['warning'] = 'A limpeza do PK persistido foi validada, mas um personagem online pode manter o estado em memoria ate relog ou kick.';
+            }
+        } elseif ($result['action'] === 'reviveRole') {
+            $reviveState = $proto->inspectRoleReviveState($result['roleid'], $config['gamedbd_ip'], $config['gamedbd_port']);
+            $before = array_value($reviveState, 'state', []);
+            $after = $before;
+            $persistedAlreadyAlive = truthyValue(array_value($before, 'revived', false));
+            $targetHp = max(
+                1,
+                intval(array_value($before, 'hp', 0)),
+                intval(array_value($before, 'property_hp', 0))
+            );
+            $targetMp = max(
+                1,
+                intval(array_value($before, 'mp', 0)),
+                intval(array_value($before, 'property_mp', 0))
+            );
+            $after['hp'] = $targetHp;
+            $after['mp'] = $targetMp;
+            $after['dead_flag'] = 0;
+            $after['resurrect_state'] = 0;
+            $after['resurrect_exp_reduce'] = 0.0;
+            $after['resurrect_hp_factor'] = 1.0;
+            $after['resurrect_mp_factor'] = 1.0;
+            $after['revivable'] = false;
+            $after['revived'] = true;
+            if ($persistedAlreadyAlive) {
+                $result['warning'] = 'O estado persistido indicou personagem vivo, mas a execucao real ainda forçara a escrita de revive. Se o alvo estiver online morto, use kick_online para recarregar a sessao.';
+            }
+            $result['revive'] = [
+                'roleid' => $result['roleid'],
+                'before' => $before,
+                'after' => $after,
+                'revived' => truthyValue(array_value($after, 'revived', false)),
+                'forced_write' => true,
+                'persisted_state_already_alive' => $persistedAlreadyAlive,
+                'changed' => $before !== $after,
+            ];
+            if (truthyValue(array_value($payload, 'kick_online', false)) && $result['roleid'] > 0) {
+                $result['session_refresh'] = [
+                    'requested' => true,
+                    'method' => 'kickRole',
+                    'roleid' => $result['roleid'],
+                    'seconds' => max(1, intval(array_value($payload, 'kick_seconds', array_value($config, 'security_kick_default_seconds', 10)))),
+                    'reason' => trim((string) array_value($payload, 'kick_reason', '')) !== ''
+                        ? trim((string) array_value($payload, 'kick_reason', ''))
+                        : $result['reason'],
+                ];
+            }
+        }
         $logFile = appendSecurityActionLog($config, array_merge($result, [
             'created_at' => gmdate('c'),
             'status' => 'dry_run',
@@ -3424,52 +7668,485 @@ function executeSecurityAction(array $config, array $payload)
         if ($logFile) {
             $result['log_file'] = $logFile;
         }
+
+        $gmHistoryWarning = '';
+        $gmEntry = gmHistoryEntryBase($config, $result['action'], [
+            'status' => 'dry_run',
+            'success' => true,
+            'dry_run' => true,
+            'reason' => $result['reason'],
+            'seconds' => $result['seconds'],
+            'sid' => $result['sid'],
+            'target' => [
+                'roleid' => intval(array_value($result, 'roleid', 0)),
+                'userid' => intval(array_value($result, 'userid', 0)),
+            ],
+            'kick' => ($result['action'] === 'banAccount' && truthyValue(array_value($result, 'kick_online', false))) ? [
+                'requested' => true,
+                'roleid' => intval(array_value($result, 'roleid', 0)),
+                'seconds' => intval(array_value($result, 'kick_seconds', 0)),
+                'reason' => array_value($result, 'kick_reason', ''),
+            ] : null,
+            'teleport' => ($result['action'] === 'teleportRole') ? [
+                'tag' => intval(array_value($result, 'tag', 0)),
+                'x' => floatval(array_value($result, 'x', 0)),
+                'y' => floatval(array_value($result, 'y', 0)),
+                'z' => floatval(array_value($result, 'z', 0)),
+            ] : null,
+            'pk_clear' => ($result['action'] === 'clearRolePk') ? array_value($result, 'pk_clear', null) : null,
+            'session_refresh' => ($result['action'] === 'clearRolePk') ? array_value($result, 'session_refresh', null) : null,
+            'revive' => ($result['action'] === 'reviveRole') ? array_value($result, 'revive', null) : null,
+            'message' => $result['message'],
+        ]);
+        if (gmAppendHistoryBestEffort($config, $gmEntry, $gmHistoryWarning)) {
+            $result['gm_history_file'] = gmActionHistoryFile($config);
+        } elseif ($gmHistoryWarning !== '') {
+            $result['gm_history_warning'] = $gmHistoryWarning;
+        }
         return $result;
     }
 
     $delivery = null;
+    $result['account_forbid_backend'] = null;
     if ($result['action'] === 'kickRole') {
         $delivery = $proto->forbidRole($result['roleid'], $result['seconds'], $result['reason'], $config['gdeliveryd_ip'], $config['gdeliveryd_port']);
         $result['message'] = 'Kick aplicado com sucesso';
+    } elseif ($result['action'] === 'muteAccount') {
+        $delivery = $proto->muteAccount($result['sid'], $result['userid'], $result['seconds'], $result['reason'], $config['gdeliveryd_ip'], $config['gdeliveryd_port']);
+        $result['message'] = 'Mute de conta aplicado com sucesso';
+    } elseif ($result['action'] === 'muteRole') {
+        $delivery = $proto->muteRole($result['sid'], $result['roleid'], $result['seconds'], $result['reason'], $config['gdeliveryd_ip'], $config['gdeliveryd_port']);
+        $result['message'] = 'Mute de personagem aplicado com sucesso';
+    } elseif ($result['action'] === 'teleportRole') {
+        $delivery = $proto->playerTeleport($result['roleid'], $result['tag'], $result['x'], $result['y'], $result['z'], $config['gdeliveryd_ip'], $config['gdeliveryd_port']);
+        $result['message'] = 'Teleport enviado com sucesso';
     } elseif ($result['action'] === 'banAccount') {
-        $delivery = $proto->accountForbidAction(1, $result['userid'], $result['seconds'], $result['reason'], $config['gamedbd_ip'], $config['gamedbd_port']);
-        if (intval(array_value($delivery, 'retcode', -1)) !== 0) {
-            throw new Exception('Falha ao aplicar ban na conta (retcode ' . intval(array_value($delivery, 'retcode', -1)) . ')');
+        $forbidMode = securityAccountForbidMode($config);
+        if ($forbidMode === 'table') {
+            $delivery = executeSecurityAccountForbidCommand($config, $payload, 'ban');
+            $result['account_forbid_backend'] = 'forbid_table';
+            try {
+                $result['deliveryd_forbid'] = $proto->forbidAccount(
+                    $result['userid'],
+                    $result['seconds'],
+                    $result['reason'],
+                    $config['gdeliveryd_ip'],
+                    $config['gdeliveryd_port']
+                );
+            } catch (Exception $e) {
+                $result['deliveryd_forbid'] = [
+                    'success' => false,
+                    'error' => $e->getMessage(),
+                ];
+                $warning = 'Ban gravado na tabela forbid, mas a notificacao complementar ao gdeliveryd falhou.';
+                $result['warning'] = isset($result['warning']) && trim((string) $result['warning']) !== ''
+                    ? (trim((string) $result['warning']) . ' ' . $warning)
+                    : $warning;
+            }
+        } else {
+            try {
+                $delivery = $proto->accountForbidAction(1, $result['userid'], $result['seconds'], $result['reason'], $config['gamedbd_ip'], $config['gamedbd_port']);
+                if (intval(array_value($delivery, 'retcode', -1)) !== 0) {
+                    throw new Exception('Falha ao aplicar ban na conta (retcode ' . intval(array_value($delivery, 'retcode', -1)) . ')');
+                }
+                $result['account_forbid_backend'] = 'gamedbd';
+            } catch (Exception $e) {
+                if (!securityAccountForbidTableAvailable($config)) {
+                    throw $e;
+                }
+
+                $delivery = executeSecurityAccountForbidCommand($config, $payload, 'ban');
+                $result['account_forbid_backend'] = 'forbid_table';
+                $result['warning'] = 'gamedbd nao respondeu para banAccount; fallback via tabela forbid aplicado.';
+                $result['backend_error'] = $e->getMessage();
+            }
         }
         $result['message'] = truthyValue(array_value($payload, 'permanent', false))
             ? 'Ban permanente aplicado com sucesso'
             : 'Ban temporario aplicado com sucesso';
         $result['permanent'] = truthyValue(array_value($payload, 'permanent', false));
-    } elseif ($result['action'] === 'unbanAccount') {
-        $accountDelivery = $proto->accountForbidAction(2, $result['userid'], $result['seconds'], $result['reason'], $config['gamedbd_ip'], $config['gamedbd_port']);
-        if (intval(array_value($accountDelivery, 'retcode', -1)) !== 0) {
-            throw new Exception('Falha ao liberar conta no gamedbd (retcode ' . intval(array_value($accountDelivery, 'retcode', -1)) . ')');
+        if (truthyValue(array_value($payload, 'kick_online', false)) && $result['roleid'] > 0) {
+            try {
+                $kickDelivery = $proto->forbidRole(
+                    $result['roleid'],
+                    max(1, intval(array_value($payload, 'kick_seconds', array_value($config, 'security_kick_default_seconds', 10)))),
+                    (string) array_value($payload, 'kick_reason', $result['reason']),
+                    $config['gdeliveryd_ip'],
+                    $config['gdeliveryd_port']
+                );
+                $result['session_kick'] = [
+                    'success' => true,
+                    'roleid' => $result['roleid'],
+                    'seconds' => max(1, intval(array_value($payload, 'kick_seconds', array_value($config, 'security_kick_default_seconds', 10)))),
+                    'reason' => (string) array_value($payload, 'kick_reason', $result['reason']),
+                    'delivery' => $kickDelivery,
+                ];
+                $result['message'] .= ' e sessao online derrubada';
+            } catch (Exception $e) {
+                $result['session_kick'] = [
+                    'success' => false,
+                    'roleid' => $result['roleid'],
+                    'seconds' => max(1, intval(array_value($payload, 'kick_seconds', array_value($config, 'security_kick_default_seconds', 10)))),
+                    'reason' => (string) array_value($payload, 'kick_reason', $result['reason']),
+                    'error' => $e->getMessage(),
+                ];
+                $warning = 'Ban aplicado na conta, mas nao foi possivel derrubar a sessao online do personagem.';
+                $result['warning'] = isset($result['warning']) && trim((string) $result['warning']) !== ''
+                    ? (trim((string) $result['warning']) . ' ' . $warning)
+                    : $warning;
+            }
         }
-        $accountState = $proto->accountForbidAction(0, $result['userid'], 0, '', $config['gamedbd_ip'], $config['gamedbd_port']);
-        $delivery = [
-            'account' => $accountDelivery,
-            'account_state' => $accountState,
+        $banForbidUntilUnix = intval(array_value($delivery, 'forbid_until_unix', 0));
+        $banForbidUntil = trim((string) array_value($delivery, 'forbid_until', ''));
+        $result['account_ban'] = [
+            'blocks_login' => true,
+            'scope' => 'account',
+            'duration_seconds' => $result['seconds'],
+            'permanent' => truthyValue(array_value($payload, 'permanent', false)),
+            'forbid_until_unix' => $banForbidUntilUnix > 0 ? $banForbidUntilUnix : null,
+            'forbid_until' => $banForbidUntil !== '' ? $banForbidUntil : null,
+            'kick_online' => truthyValue(array_value($payload, 'kick_online', false)),
+            'kick_roleid' => intval(array_value($result, 'roleid', 0)),
         ];
-        if ($result['roleid'] > 0) {
-            $delivery['role_clear'] = $proto->clearRoleForbid($result['roleid'], $config['gamedbd_ip'], $config['gamedbd_port']);
+    } elseif ($result['action'] === 'unbanAccount') {
+        $forbidMode = securityAccountForbidMode($config);
+        if ($forbidMode === 'table') {
+            $accountDelivery = executeSecurityAccountForbidCommand($config, $payload, 'unban');
+            $delivery = [
+                'account' => $accountDelivery,
+            ];
+            $result['account_forbid_backend'] = 'forbid_table';
+            try {
+                $delivery['gamedbd_unforbid'] = $proto->accountForbidAction(
+                    2,
+                    $result['userid'],
+                    0,
+                    $result['reason'],
+                    $config['gamedbd_ip'],
+                    $config['gamedbd_port']
+                );
+                $delivery['gamedbd_account_state'] = $proto->accountForbidAction(
+                    0,
+                    $result['userid'],
+                    0,
+                    '',
+                    $config['gamedbd_ip'],
+                    $config['gamedbd_port']
+                );
+            } catch (Exception $e) {
+                $result['warning'] = 'Conta liberada via tabela forbid, mas o gamedbd nao confirmou a limpeza imediata do bloqueio em memoria.';
+                $result['gamedbd_unforbid_error'] = $e->getMessage();
+            }
+            try {
+                $result['deliveryd_unforbid'] = $proto->forbidAccount(
+                    $result['userid'],
+                    0,
+                    $result['reason'],
+                    $config['gdeliveryd_ip'],
+                    $config['gdeliveryd_port']
+                );
+            } catch (Exception $e) {
+                $deliveryWarning = 'Conta liberada via tabela forbid, mas o gdeliveryd nao confirmou a limpeza imediata do bloqueio em memoria.';
+                $result['warning'] = isset($result['warning']) && trim((string) $result['warning']) !== ''
+                    ? (trim((string) $result['warning']) . ' ' . $deliveryWarning)
+                    : $deliveryWarning;
+                $result['deliveryd_unforbid_error'] = $e->getMessage();
+            }
+            if ($result['roleid'] > 0) {
+                try {
+                    $delivery['role_clear'] = $proto->clearRoleForbid($result['roleid'], $config['gamedbd_ip'], $config['gamedbd_port']);
+                    if (!truthyValue(array_value(array_value($delivery, 'role_clear', []), 'cleared', false))) {
+                        $roleWarning = 'Conta liberada via tabela forbid, mas o role ainda pode possuir forbid na base.';
+                        $result['warning'] = isset($result['warning']) && trim((string) $result['warning']) !== ''
+                            ? (trim((string) $result['warning']) . ' ' . $roleWarning)
+                            : $roleWarning;
+                    }
+                } catch (Exception $e) {
+                    $roleWarning = 'Conta liberada via tabela forbid, mas a limpeza de forbid do role falhou.';
+                    $result['warning'] = isset($result['warning']) && trim((string) $result['warning']) !== ''
+                        ? (trim((string) $result['warning']) . ' ' . $roleWarning)
+                        : $roleWarning;
+                    $result['role_clear_error'] = $e->getMessage();
+                }
+            }
+        } else {
+            try {
+                $accountDelivery = $proto->accountForbidAction(2, $result['userid'], $result['seconds'], $result['reason'], $config['gamedbd_ip'], $config['gamedbd_port']);
+                if (intval(array_value($accountDelivery, 'retcode', -1)) !== 0) {
+                    throw new Exception('Falha ao liberar conta no gamedbd (retcode ' . intval(array_value($accountDelivery, 'retcode', -1)) . ')');
+                }
+                $accountState = $proto->accountForbidAction(0, $result['userid'], 0, '', $config['gamedbd_ip'], $config['gamedbd_port']);
+                $delivery = [
+                    'account' => $accountDelivery,
+                    'account_state' => $accountState,
+                ];
+                if ($result['roleid'] > 0) {
+                    $delivery['role_clear'] = $proto->clearRoleForbid($result['roleid'], $config['gamedbd_ip'], $config['gamedbd_port']);
+                }
+
+                $accountStillForbidden = intval(array_value($accountState, 'retcode', -1)) !== 0
+                    || intval(array_value($accountState, 'forbid_count', 0)) > 0;
+                $roleStillForbidden = $result['roleid'] > 0
+                    && !truthyValue(array_value(array_value($delivery, 'role_clear', []), 'cleared', false));
+
+                if ($accountStillForbidden || $roleStillForbidden) {
+                    $details = [];
+                    if ($accountStillForbidden) {
+                        $details[] = 'conta continua com bloqueios ativos';
+                    }
+                    if ($roleStillForbidden) {
+                        $details[] = 'role ainda possui forbid na base';
+                    }
+                    throw new Exception('Falha ao liberar personagem: ' . implode('; ', $details));
+                }
+                $result['account_forbid_backend'] = 'gamedbd';
+            } catch (Exception $e) {
+                if (!securityAccountForbidTableAvailable($config)) {
+                    throw $e;
+                }
+
+                $accountDelivery = executeSecurityAccountForbidCommand($config, $payload, 'unban');
+                $delivery = [
+                    'account' => $accountDelivery,
+                ];
+                $result['account_forbid_backend'] = 'forbid_table';
+                $result['warning'] = 'gamedbd nao respondeu para unbanAccount; fallback via tabela forbid aplicado.';
+                $result['backend_error'] = $e->getMessage();
+                try {
+                    $result['deliveryd_unforbid'] = $proto->forbidAccount(
+                        $result['userid'],
+                        0,
+                        $result['reason'],
+                        $config['gdeliveryd_ip'],
+                        $config['gdeliveryd_port']
+                    );
+                } catch (Exception $deliveryError) {
+                    $result['warning'] .= ' O gdeliveryd nao confirmou a limpeza imediata do bloqueio em memoria.';
+                    $result['deliveryd_unforbid_error'] = $deliveryError->getMessage();
+                }
+                if ($result['roleid'] > 0) {
+                    try {
+                        $delivery['role_clear'] = $proto->clearRoleForbid($result['roleid'], $config['gamedbd_ip'], $config['gamedbd_port']);
+                    } catch (Exception $roleError) {
+                        $result['role_clear_error'] = $roleError->getMessage();
+                    }
+                }
+            }
         }
-
-        $accountStillForbidden = intval(array_value($accountState, 'retcode', -1)) !== 0
-            || intval(array_value($accountState, 'forbid_count', 0)) > 0;
-        $roleStillForbidden = $result['roleid'] > 0
-            && !truthyValue(array_value(array_value($delivery, 'role_clear', []), 'cleared', false));
-
-        if ($accountStillForbidden || $roleStillForbidden) {
-            $details = [];
-            if ($accountStillForbidden) {
-                $details[] = 'conta continua com bloqueios ativos';
+        $refreshServices = array_values(array_map('strval', array_value($result, 'refresh_services', [])));
+        if (!empty($refreshServices)) {
+            $refreshResults = [];
+            foreach ($refreshServices as $service) {
+                try {
+                    $commandResult = executeServiceControlCommand($config, 'restart', $service);
+                    $refreshResults[] = [
+                        'service' => $service,
+                        'result' => $commandResult,
+                    ];
+                    if (empty($commandResult['success'])) {
+                        throw new Exception('Falha ao reiniciar ' . $service . ' (exit ' . intval(array_value($commandResult, 'exit_code', 1)) . ')');
+                    }
+                } catch (Exception $e) {
+                    $refreshWarning = 'Conta liberada, mas o refresh de login falhou em ' . $service . '.';
+                    $result['warning'] = isset($result['warning']) && trim((string) $result['warning']) !== ''
+                        ? (trim((string) $result['warning']) . ' ' . $refreshWarning)
+                        : $refreshWarning;
+                    $result['login_cache_refresh_error'] = $e->getMessage();
+                    $refreshResults[] = [
+                        'service' => $service,
+                        'success' => false,
+                        'error' => $e->getMessage(),
+                    ];
+                    break;
+                }
             }
-            if ($roleStillForbidden) {
-                $details[] = 'role ainda possui forbid na base';
-            }
-            throw new Exception('Falha ao liberar personagem: ' . implode('; ', $details));
+            $result['login_cache_refresh'] = [
+                'requested' => true,
+                'services' => $refreshServices,
+                'impact' => in_array('gdeliveryd', $refreshServices, true) || in_array('glinkd', $refreshServices, true)
+                    ? 'may_affect_online_players'
+                    : 'login_auth_only',
+                'results' => $refreshResults,
+            ];
         }
         $result['message'] = 'Conta liberada com sucesso';
+    } elseif ($result['action'] === 'clearRolePk') {
+        $delivery = $proto->clearRolePk($result['roleid'], $config['gamedbd_ip'], $config['gamedbd_port']);
+        $result['pk_clear'] = $delivery;
+        if (!truthyValue(array_value($delivery, 'cleared', false))) {
+            throw new Exception('Falha ao limpar estado PK do personagem');
+        }
+        $result['message'] = 'Estado PK limpo com sucesso';
+        if (truthyValue(array_value($payload, 'kick_online', false)) && $result['roleid'] > 0) {
+            try {
+                $kickReason = trim((string) array_value($payload, 'kick_reason', '')) !== ''
+                    ? trim((string) array_value($payload, 'kick_reason', ''))
+                    : $result['reason'];
+                $kickSeconds = max(1, intval(array_value($payload, 'kick_seconds', array_value($config, 'security_kick_default_seconds', 10))));
+                $kickDelivery = $proto->forbidRole(
+                    $result['roleid'],
+                    $kickSeconds,
+                    $kickReason,
+                    $config['gdeliveryd_ip'],
+                    $config['gdeliveryd_port']
+                );
+                $result['session_refresh'] = [
+                    'success' => true,
+                    'method' => 'kickRole',
+                    'roleid' => $result['roleid'],
+                    'seconds' => $kickSeconds,
+                    'reason' => $kickReason,
+                    'delivery' => $kickDelivery,
+                ];
+                try {
+                    $roleForbidCleanup = $proto->clearRoleForbidTypes(
+                        $result['roleid'],
+                        [100],
+                        $config['gamedbd_ip'],
+                        $config['gamedbd_port']
+                    );
+                    $result['session_refresh']['role_forbid_cleanup'] = $roleForbidCleanup;
+                    if (!truthyValue(array_value($roleForbidCleanup, 'cleared', false))) {
+                        $cleanupWarning = 'A sessao foi derrubada, mas o forbid temporario do refresh ainda permaneceu no role.';
+                        $result['warning'] = isset($result['warning']) && trim((string) $result['warning']) !== ''
+                            ? (trim((string) $result['warning']) . ' ' . $cleanupWarning)
+                            : $cleanupWarning;
+                    }
+                } catch (Exception $cleanupError) {
+                    $result['session_refresh']['role_forbid_cleanup'] = [
+                        'success' => false,
+                        'types' => [100],
+                        'error' => $cleanupError->getMessage(),
+                    ];
+                    $cleanupWarning = 'A sessao foi derrubada, mas nao foi possivel limpar o forbid temporario criado pelo refresh.';
+                    $result['warning'] = isset($result['warning']) && trim((string) $result['warning']) !== ''
+                        ? (trim((string) $result['warning']) . ' ' . $cleanupWarning)
+                        : $cleanupWarning;
+                }
+                try {
+                    $roleForbidTableCleanup = $proto->clearRoleForbidTableTypes(
+                        $result['roleid'],
+                        [100],
+                        $config['gamedbd_ip'],
+                        $config['gamedbd_port']
+                    );
+                    $result['session_refresh']['role_forbid_table_cleanup'] = $roleForbidTableCleanup;
+                    if (!truthyValue(array_value($roleForbidTableCleanup, 'cleared', false))) {
+                        $cleanupWarning = 'A sessao foi derrubada, mas o forbid temporario ainda permaneceu na tabela GetRoleForbid.';
+                        $result['warning'] = isset($result['warning']) && trim((string) $result['warning']) !== ''
+                            ? (trim((string) $result['warning']) . ' ' . $cleanupWarning)
+                            : $cleanupWarning;
+                    }
+                } catch (Exception $cleanupError) {
+                    $result['session_refresh']['role_forbid_table_cleanup'] = [
+                        'success' => false,
+                        'types' => [100],
+                        'error' => $cleanupError->getMessage(),
+                    ];
+                }
+                try {
+                    $finalPkBundle = $proto->inspectRolePkState($result['roleid'], $config['gamedbd_ip'], $config['gamedbd_port']);
+                    $finalAfter = array_value($finalPkBundle, 'state', []);
+                    $finalRoleForbid = array_value($finalPkBundle, 'role_forbid', []);
+                    $finalRoleForbidTable = array_value($finalPkBundle, 'role_forbid_table', []);
+                    $result['pk_clear']['after'] = $finalAfter;
+                    $result['pk_clear']['role_forbid_after'] = $finalRoleForbid;
+                    $result['pk_clear']['role_forbid_table_after'] = $finalRoleForbidTable;
+                    $result['pk_clear']['cleared'] = truthyValue(array_value($finalAfter, 'cleared', false));
+                    $result['session_refresh']['post_refresh_state'] = $finalAfter;
+                    $result['session_refresh']['post_refresh_role_forbid'] = $finalRoleForbid;
+                    $result['session_refresh']['post_refresh_role_forbid_table'] = $finalRoleForbidTable;
+                    $delivery = $result['pk_clear'];
+                } catch (Exception $recheckError) {
+                    $recheckWarning = 'O PK foi limpo, mas a releitura final apos o refresh nao pode ser confirmada.';
+                    $result['warning'] = isset($result['warning']) && trim((string) $result['warning']) !== ''
+                        ? (trim((string) $result['warning']) . ' ' . $recheckWarning)
+                        : $recheckWarning;
+                    $result['session_refresh']['post_refresh_state_error'] = $recheckError->getMessage();
+                }
+                $result['message'] .= ' e sessao online derrubada para recarregar o estado';
+            } catch (Exception $e) {
+                $result['session_refresh'] = [
+                    'success' => false,
+                    'method' => 'kickRole',
+                    'roleid' => $result['roleid'],
+                    'seconds' => max(1, intval(array_value($payload, 'kick_seconds', array_value($config, 'security_kick_default_seconds', 10)))),
+                    'reason' => trim((string) array_value($payload, 'kick_reason', '')) !== ''
+                        ? trim((string) array_value($payload, 'kick_reason', ''))
+                        : $result['reason'],
+                    'error' => $e->getMessage(),
+                ];
+                $refreshWarning = 'O PK persistido foi limpo, mas nao foi possivel derrubar a sessao online para recarregar o estado em memoria.';
+                $result['warning'] = isset($result['warning']) && trim((string) $result['warning']) !== ''
+                    ? (trim((string) $result['warning']) . ' ' . $refreshWarning)
+                    : $refreshWarning;
+            }
+        } else {
+            $result['warning'] = isset($result['warning']) && trim((string) $result['warning']) !== ''
+                ? trim((string) $result['warning'])
+                : 'O PK persistido foi limpo. Se o personagem estiver online, o estado visual pode continuar ate relog ou kick.';
+        }
+    } elseif ($result['action'] === 'reviveRole') {
+        $delivery = $proto->reviveRole($result['roleid'], $config['gamedbd_ip'], $config['gamedbd_port']);
+        $result['revive'] = $delivery;
+        if (!truthyValue(array_value($delivery, 'revived', false))) {
+            throw new Exception('Falha ao reviver o personagem');
+        }
+        $result['message'] = 'Personagem revivido com sucesso';
+        if (truthyValue(array_value($payload, 'kick_online', false)) && $result['roleid'] > 0) {
+            try {
+                $kickReason = trim((string) array_value($payload, 'kick_reason', '')) !== ''
+                    ? trim((string) array_value($payload, 'kick_reason', ''))
+                    : $result['reason'];
+                $kickSeconds = max(1, intval(array_value($payload, 'kick_seconds', array_value($config, 'security_kick_default_seconds', 10))));
+                $kickDelivery = $proto->forbidRole(
+                    $result['roleid'],
+                    $kickSeconds,
+                    $kickReason,
+                    $config['gdeliveryd_ip'],
+                    $config['gdeliveryd_port']
+                );
+                $result['session_refresh'] = [
+                    'success' => true,
+                    'method' => 'kickRole',
+                    'roleid' => $result['roleid'],
+                    'seconds' => $kickSeconds,
+                    'reason' => $kickReason,
+                    'delivery' => $kickDelivery,
+                ];
+                try {
+                    $roleForbidCleanup = $proto->clearRoleForbidTypes(
+                        $result['roleid'],
+                        [100],
+                        $config['gamedbd_ip'],
+                        $config['gamedbd_port']
+                    );
+                    $result['session_refresh']['role_forbid_cleanup'] = $roleForbidCleanup;
+                } catch (Exception $cleanupError) {
+                    $result['session_refresh']['role_forbid_cleanup'] = [
+                        'success' => false,
+                        'types' => [100],
+                        'error' => $cleanupError->getMessage(),
+                    ];
+                }
+                $result['message'] .= ' e sessao online derrubada para recarregar o estado';
+            } catch (Exception $e) {
+                $result['session_refresh'] = [
+                    'success' => false,
+                    'method' => 'kickRole',
+                    'roleid' => $result['roleid'],
+                    'seconds' => max(1, intval(array_value($payload, 'kick_seconds', array_value($config, 'security_kick_default_seconds', 10)))),
+                    'reason' => trim((string) array_value($payload, 'kick_reason', '')) !== ''
+                        ? trim((string) array_value($payload, 'kick_reason', ''))
+                        : $result['reason'],
+                    'error' => $e->getMessage(),
+                ];
+                $refreshWarning = 'O revive persistido foi aplicado, mas nao foi possivel derrubar a sessao online para recarregar o estado em memoria.';
+                $result['warning'] = isset($result['warning']) && trim((string) $result['warning']) !== ''
+                    ? (trim((string) $result['warning']) . ' ' . $refreshWarning)
+                    : $refreshWarning;
+            }
+        }
     } else {
         throw new InvalidArgumentException('acao de seguranca invalida');
     }
@@ -3481,6 +8158,50 @@ function executeSecurityAction(array $config, array $payload)
     ]));
     if ($logFile) {
         $result['log_file'] = $logFile;
+    }
+
+    $gmHistoryWarning = '';
+    $gmEntry = gmHistoryEntryBase($config, $result['action'], [
+        'status' => 'success',
+        'success' => true,
+        'dry_run' => false,
+        'reason' => $result['reason'],
+        'seconds' => $result['seconds'],
+        'sid' => $result['sid'],
+        'target' => [
+            'roleid' => intval(array_value($result, 'roleid', 0)),
+            'userid' => intval(array_value($result, 'userid', 0)),
+        ],
+        'ban' => ($result['action'] === 'banAccount') ? array_value($result, 'account_ban', null) : null,
+        'kick' => ($result['action'] === 'banAccount')
+            ? (array_value($result, 'session_kick', truthyValue(array_value($result, 'kick_online', false)) ? [
+                'requested' => true,
+                'roleid' => intval(array_value($result, 'roleid', 0)),
+                'seconds' => intval(array_value($result, 'kick_seconds', 0)),
+                'reason' => array_value($result, 'kick_reason', ''),
+            ] : null))
+            : null,
+        'teleport' => ($result['action'] === 'teleportRole') ? [
+            'tag' => intval(array_value($result, 'tag', 0)),
+            'x' => floatval(array_value($result, 'x', 0)),
+            'y' => floatval(array_value($result, 'y', 0)),
+            'z' => floatval(array_value($result, 'z', 0)),
+        ] : null,
+        'pk_clear' => ($result['action'] === 'clearRolePk') ? array_value($result, 'pk_clear', null) : null,
+        'session_refresh' => in_array($result['action'], ['clearRolePk', 'reviveRole'], true)
+            ? array_value($result, 'session_refresh', null)
+            : null,
+        'revive' => ($result['action'] === 'reviveRole') ? array_value($result, 'revive', null) : null,
+        'message' => $result['message'],
+        'delivery' => $delivery,
+        'deliveryd_forbid' => ($result['action'] === 'banAccount') ? array_value($result, 'deliveryd_forbid', null) : null,
+        'deliveryd_unforbid' => ($result['action'] === 'unbanAccount') ? array_value($result, 'deliveryd_unforbid', null) : null,
+        'login_cache_refresh' => ($result['action'] === 'unbanAccount') ? array_value($result, 'login_cache_refresh', null) : null,
+    ]);
+    if (gmAppendHistoryBestEffort($config, $gmEntry, $gmHistoryWarning)) {
+        $result['gm_history_file'] = gmActionHistoryFile($config);
+    } elseif ($gmHistoryWarning !== '') {
+        $result['gm_history_warning'] = $gmHistoryWarning;
     }
 
     return $result;
@@ -4536,6 +9257,512 @@ function executeMailSendCommand(array $config, array $payload)
     ];
 }
 
+function gmCommanderVersionValue(array $config)
+{
+    $raw = strtolower(trim((string) array_value($config, 'game_version', '')));
+    if ($raw !== '' && preg_match('/(\d+)/', $raw, $m)) {
+        return $m[1];
+    }
+    return $raw;
+}
+
+function gmCommanderFeatureMatrix(array $config)
+{
+    $version = gmCommanderVersionValue($config);
+    $supported = [
+        'muteAccount' => false,
+        'muteRole' => false,
+        'teleportRole' => false,
+        'clearRolePk' => false,
+        'reviveRole' => false,
+    ];
+    $opcodes = [
+        'muteAccount' => 0,
+        'muteRole' => 0,
+        'teleportRole' => 0,
+    ];
+
+    if (in_array($version, ['101', '155'], true)) {
+        $supported['muteAccount'] = true;
+        $supported['muteRole'] = true;
+        $supported['clearRolePk'] = true;
+        $supported['reviveRole'] = true;
+        $opcodes['muteAccount'] = 362;
+        $opcodes['muteRole'] = 356;
+    } elseif ($version === '352') {
+        $supported['muteAccount'] = true;
+        $supported['muteRole'] = true;
+        $supported['teleportRole'] = true;
+        $opcodes['muteAccount'] = 356;
+        $opcodes['muteRole'] = 362;
+        $opcodes['teleportRole'] = 13010;
+    }
+
+    return [
+        'game_version' => $version,
+        'supported' => $supported,
+        'opcodes' => $opcodes,
+        'delivery_sid_default' => intval(array_value($config, 'gm_delivery_sid_default', 0)),
+    ];
+}
+
+function gmCommandDefinitions(array $config)
+{
+    $features = gmCommanderFeatureMatrix($config);
+    $teleportSupported = !empty($features['supported']['teleportRole']);
+    $clearRolePkSupported = !empty($features['supported']['clearRolePk']);
+    $reviveRoleSupported = !empty($features['supported']['reviveRole']);
+    $gmPermissionSupported = gmPermissionEnabled($config);
+    $version = (string) array_value($features, 'game_version', '');
+    $baseUrl = '/apicls/api_cls.php?action=';
+    $sidHint = intval(array_value($features, 'delivery_sid_default', 0));
+
+    return [
+        'sendMailItem' => [
+            'key' => 'sendMailItem',
+            'label' => 'Enviar Item por Correio',
+            'category' => 'compensation',
+            'supported' => true,
+            'status' => 'supported',
+            'method' => 'POST',
+            'endpoint' => $baseUrl . 'sendMailItem',
+            'aliases' => ['mailItem', 'grantItem'],
+            'required_fields' => ['roleid', 'item_id'],
+            'optional_fields' => ['count', 'title', 'message', 'data_hex', 'proctype', 'expire_date', 'guid1', 'guid2', 'mask', 'money', 'dry_run'],
+            'dry_run_supported' => true,
+            'requires_confirmation' => false,
+            'summary' => 'Entrega um item por correio interno para um personagem.',
+            'notes' => ['Use getItemCatalog para pesquisar item_id antes do envio.'],
+        ],
+        'sendMailGold' => [
+            'key' => 'sendMailGold',
+            'label' => 'Enviar Moedas por Correio',
+            'category' => 'compensation',
+            'supported' => true,
+            'status' => 'supported',
+            'method' => 'POST',
+            'endpoint' => $baseUrl . 'sendMailGold',
+            'aliases' => ['mailGold', 'sendCoins'],
+            'required_fields' => ['roleid', 'money'],
+            'optional_fields' => ['title', 'message', 'dry_run'],
+            'dry_run_supported' => true,
+            'requires_confirmation' => false,
+            'summary' => 'Entrega moedas normais do jogo ao personagem por correio interno.',
+            'notes' => [
+                'Este comando usa o campo money do correio interno.',
+                'Nao altera o saldo de cash/gold da loja de itens da conta.',
+            ],
+        ],
+        'grantMallCash' => [
+            'key' => 'grantMallCash',
+            'label' => 'Adicionar Gold da Loja',
+            'category' => 'compensation',
+            'supported' => mallCashEnabled($config),
+            'status' => mallCashEnabled($config) ? 'supported' : 'disabled',
+            'method' => 'POST',
+            'endpoint' => $baseUrl . 'grantMallCash',
+            'aliases' => ['addShopGold', 'grantCash', 'addCash', 'grantItemMallGold'],
+            'required_fields' => ['amount', 'reason'],
+            'optional_fields' => ['userid', 'roleid', 'cash_units', 'dry_run', 'confirm'],
+            'dry_run_supported' => true,
+            'requires_confirmation' => true,
+            'summary' => 'Credita cash/gold da loja de itens diretamente na conta usando a rotina operacional usecash.',
+            'notes' => [
+                'Este gold e diferente das moedas normais enviadas por sendMailGold.',
+                'Quando amount e informado, a API converte gold para cash_units usando units_per_gold=' . mallCashUnitsPerGold($config) . '.',
+                'Voce pode informar userid diretamente ou resolver a conta a partir de um roleid.',
+                'A confirmacao operacional deve observar o delta em cash e tambem em cash_add.',
+            ],
+        ],
+        'grantGmPermission' => [
+            'key' => 'grantGmPermission',
+            'label' => 'Permissao GM para Conta',
+            'category' => 'permissions',
+            'supported' => $gmPermissionSupported,
+            'status' => $gmPermissionSupported ? 'supported' : 'disabled',
+            'method' => 'POST',
+            'endpoint' => $baseUrl . 'grantGmPermission',
+            'aliases' => ['setGmPermission'],
+            'required_fields' => ['reason'],
+            'optional_fields' => ['userid', 'roleid', 'permission_level', 'rule_ids', 'dry_run', 'confirm'],
+            'dry_run_supported' => $gmPermissionSupported,
+            'requires_confirmation' => true,
+            'summary' => 'Concede permissao GM na conta usando a tabela auth do servidor e um template real de regras ja em uso.',
+            'notes' => [
+                'Voce pode enviar rule_ids para conceder apenas permissoes especificas, como no pwadmin.',
+                'Use getGmPermissionState antes do grant para validar o template detectado para esta VPS.',
+                'Quando gm_permission_rule_ids estiver vazio, a API tenta descobrir automaticamente um conjunto real de rid(s) a partir de uma conta GM existente.',
+                'A acao opera no escopo de conta (userid), mesmo quando o alvo e resolvido via roleid.',
+            ],
+        ],
+        'revokeGmPermission' => [
+            'key' => 'revokeGmPermission',
+            'label' => 'Remover Permissao GM',
+            'category' => 'permissions',
+            'supported' => $gmPermissionSupported,
+            'status' => $gmPermissionSupported ? 'supported' : 'disabled',
+            'method' => 'POST',
+            'endpoint' => $baseUrl . 'revokeGmPermission',
+            'aliases' => ['removeGmPermission', 'unsetGmPermission'],
+            'required_fields' => ['reason'],
+            'optional_fields' => ['userid', 'roleid', 'rule_ids', 'dry_run', 'confirm'],
+            'dry_run_supported' => $gmPermissionSupported,
+            'requires_confirmation' => true,
+            'summary' => 'Remove da conta o mesmo conjunto de permissao GM identificado pelo template de auth configurado/detectado.',
+            'notes' => [
+                'Voce pode enviar rule_ids para remover apenas permissoes especificas, como no pwadmin.',
+                'Use getGmPermissionState para revisar os rid(s) atuais antes de remover.',
+                'A remocao usa o mesmo template de auth empregado para o grant nesta VPS.',
+            ],
+        ],
+        'sendSystemMessage' => [
+            'key' => 'sendSystemMessage',
+            'label' => 'Mensagem Global',
+            'category' => 'broadcast',
+            'supported' => true,
+            'status' => 'supported',
+            'method' => 'POST',
+            'endpoint' => $baseUrl . 'sendSystemMessage',
+            'aliases' => ['systemBroadcast', 'broadcastMessage'],
+            'required_fields' => ['message'],
+            'optional_fields' => ['kind', 'priority', 'dry_run'],
+            'dry_run_supported' => true,
+            'requires_confirmation' => false,
+            'summary' => 'Dispara mensagem global pelo gacd.',
+            'notes' => [],
+        ],
+        'kickRole' => [
+            'key' => 'kickRole',
+            'label' => 'Kick de Personagem',
+            'category' => 'moderation',
+            'supported' => true,
+            'status' => 'supported',
+            'method' => 'POST',
+            'endpoint' => $baseUrl . 'kickRole',
+            'aliases' => ['kickCharacter'],
+            'required_fields' => ['roleid', 'reason'],
+            'optional_fields' => ['duration_seconds', 'dry_run'],
+            'dry_run_supported' => true,
+            'requires_confirmation' => false,
+            'summary' => 'Expulsa o personagem da sessao atual usando a rotina de kick ja validada.',
+            'notes' => [],
+        ],
+        'banAccount' => [
+            'key' => 'banAccount',
+            'label' => 'Banir Conta',
+            'category' => 'moderation',
+            'supported' => true,
+            'status' => 'supported',
+            'method' => 'POST',
+            'endpoint' => $baseUrl . 'banAccount',
+            'aliases' => ['forbidAccount'],
+            'required_fields' => ['reason'],
+            'optional_fields' => ['userid', 'account_id', 'roleid', 'duration_seconds', 'permanent', 'kick_online', 'kick_seconds', 'kick_reason', 'dry_run'],
+            'dry_run_supported' => true,
+            'requires_confirmation' => false,
+            'summary' => 'Aplica ban temporario ou permanente em conta, podendo resolver userid via roleid.',
+            'notes' => [
+                'Em servidores legados como game_version 101, a API usa automaticamente a tabela MySQL forbid quando o caminho via gamedbd nao se aplica.',
+                'A operacao age no escopo da conta (userid), mesmo quando o alvo e resolvido via roleid.',
+                'Quando kick_online=true e roleid e informado, a API tenta derrubar a sessao online do personagem apos aplicar o ban da conta.',
+            ],
+        ],
+        'unbanAccount' => [
+            'key' => 'unbanAccount',
+            'label' => 'Desbanir Conta',
+            'category' => 'moderation',
+            'supported' => true,
+            'status' => 'supported',
+            'method' => 'POST',
+            'endpoint' => $baseUrl . 'unbanAccount',
+            'aliases' => ['releaseAccount'],
+            'required_fields' => [],
+            'optional_fields' => ['userid', 'account_id', 'roleid', 'reason', 'refresh_login_cache', 'refresh_services', 'dry_run'],
+            'dry_run_supported' => true,
+            'requires_confirmation' => false,
+            'summary' => 'Remove bloqueios da conta e tenta limpar forbid do role quando informado.',
+            'notes' => [
+                'Em servidores legados como game_version 101, a API usa automaticamente a tabela MySQL forbid quando o caminho via gamedbd nao se aplica.',
+                'Quando roleid e informado, a API ainda tenta limpar o forbid persistido no base do personagem.',
+                'Use refresh_login_cache=true para reiniciar apenas o authd apos o unban, reduzindo o risco de cache de login sem impactar jogadores online.',
+                'Se ainda houver bloqueio preso, refresh_services pode receber authd, gdeliveryd e glinkd nessa ordem de escalada operacional.',
+            ],
+        ],
+        'muteAccount' => [
+            'key' => 'muteAccount',
+            'label' => 'Mutar Conta',
+            'category' => 'moderation',
+            'supported' => !empty($features['supported']['muteAccount']),
+            'status' => !empty($features['supported']['muteAccount']) ? 'supported' : 'version_gated',
+            'method' => 'POST',
+            'endpoint' => $baseUrl . 'muteAccount',
+            'aliases' => ['muteAcc'],
+            'required_fields' => ['reason', 'duration_seconds'],
+            'optional_fields' => ['userid', 'account_id', 'roleid', 'sid', 'localsid', 'dry_run'],
+            'dry_run_supported' => !empty($features['supported']['muteAccount']),
+            'requires_confirmation' => false,
+            'summary' => 'Bloqueia chat da conta no gdeliveryd usando o protocolo legado validado.',
+            'notes' => [
+                'Para game_version ' . $version . ', o SID padrao enviado para o delivery eh ' . $sidHint . '.',
+            ],
+        ],
+        'muteRole' => [
+            'key' => 'muteRole',
+            'label' => 'Mutar Personagem',
+            'category' => 'moderation',
+            'supported' => !empty($features['supported']['muteRole']),
+            'status' => !empty($features['supported']['muteRole']) ? 'supported' : 'version_gated',
+            'method' => 'POST',
+            'endpoint' => $baseUrl . 'muteRole',
+            'aliases' => ['muteCharacter'],
+            'required_fields' => ['roleid', 'reason', 'duration_seconds'],
+            'optional_fields' => ['sid', 'localsid', 'dry_run'],
+            'dry_run_supported' => !empty($features['supported']['muteRole']),
+            'requires_confirmation' => false,
+            'summary' => 'Bloqueia chat do personagem no gdeliveryd usando o protocolo legado validado.',
+            'notes' => [
+                'Para game_version ' . $version . ', o SID padrao enviado para o delivery eh ' . $sidHint . '.',
+            ],
+        ],
+        'teleportRole' => [
+            'key' => 'teleportRole',
+            'label' => 'Teleport de Personagem',
+            'category' => 'mobility',
+            'supported' => $teleportSupported,
+            'status' => $teleportSupported ? 'supported' : 'version_gated',
+            'method' => 'POST',
+            'endpoint' => $baseUrl . 'teleportRole',
+            'aliases' => ['playerTeleport'],
+            'required_fields' => ['roleid', 'tag', 'x', 'y', 'z'],
+            'optional_fields' => ['worldtag', 'dry_run'],
+            'dry_run_supported' => $teleportSupported,
+            'requires_confirmation' => false,
+            'summary' => $teleportSupported
+                ? 'Teleporta o personagem usando o opcode legado validado para esta versao.'
+                : 'Contrato reservado. Ainda nao ha prova tecnica suficiente para esta game_version.',
+            'notes' => $teleportSupported
+                ? []
+                : ['Teleport so ficou validado no legado para protocolos com suporte equivalente ao v352.'],
+        ],
+        'summonRole' => [
+            'key' => 'summonRole',
+            'label' => 'Summon de Personagem',
+            'category' => 'mobility',
+            'supported' => false,
+            'status' => 'contract_only',
+            'method' => 'POST',
+            'endpoint' => $baseUrl . 'summonRole',
+            'aliases' => [],
+            'required_fields' => ['roleid'],
+            'optional_fields' => ['target_roleid', 'dry_run'],
+            'dry_run_supported' => false,
+            'requires_confirmation' => false,
+            'summary' => 'Contrato reservado para comando futuro de summon.',
+            'notes' => ['Sem prova tecnica local suficiente para habilitar com seguranca.'],
+        ],
+        'prisonRole' => [
+            'key' => 'prisonRole',
+            'label' => 'Prender Personagem',
+            'category' => 'mobility',
+            'supported' => false,
+            'status' => 'contract_only',
+            'method' => 'POST',
+            'endpoint' => $baseUrl . 'prisonRole',
+            'aliases' => [],
+            'required_fields' => ['roleid'],
+            'optional_fields' => ['reason', 'dry_run'],
+            'dry_run_supported' => false,
+            'requires_confirmation' => false,
+            'summary' => 'Contrato reservado para especializar teleport em uma prisao operacional.',
+            'notes' => ['Depende de teleport validado + coordenadas oficiais da prisao.'],
+        ],
+        'clearRolePk' => [
+            'key' => 'clearRolePk',
+            'label' => 'Limpar PK',
+            'category' => 'advanced',
+            'supported' => $clearRolePkSupported,
+            'status' => $clearRolePkSupported ? 'supported' : 'contract_only',
+            'method' => 'POST',
+            'endpoint' => $baseUrl . 'clearRolePk',
+            'aliases' => [],
+            'required_fields' => ['roleid'],
+            'optional_fields' => ['reason', 'dry_run', 'kick_online', 'kick_seconds', 'kick_reason'],
+            'dry_run_supported' => $clearRolePkSupported,
+            'requires_confirmation' => false,
+            'summary' => $clearRolePkSupported
+                ? 'Limpa o estado PK persistido do personagem, zerando contadores e timers relevantes.'
+                : 'Contrato reservado para limpar estado de PK do personagem.',
+            'notes' => $clearRolePkSupported
+                ? [
+                    'A limpeza zera pk_count em status.var_data e tambem invader_state, invader_time e pariah_time.',
+                    'Se o personagem estiver online, a API pode opcionalmente derrubar a sessao com kick_online=true para forcar o recarregamento do estado em memoria.',
+                ]
+                : ['Sem prova tecnica local suficiente para habilitar com seguranca.'],
+        ],
+        'reviveRole' => [
+            'key' => 'reviveRole',
+            'label' => 'Reviver Personagem',
+            'category' => 'advanced',
+            'supported' => $reviveRoleSupported,
+            'status' => $reviveRoleSupported ? 'supported' : 'version_gated',
+            'method' => 'POST',
+            'endpoint' => $baseUrl . 'reviveRole',
+            'aliases' => [],
+            'required_fields' => ['roleid'],
+            'optional_fields' => ['reason', 'dry_run', 'kick_online', 'kick_seconds', 'kick_reason'],
+            'dry_run_supported' => $reviveRoleSupported,
+            'requires_confirmation' => false,
+            'summary' => $reviveRoleSupported
+                ? 'Revive o personagem limpando flags persistidas de morte e restaurando HP/MP para valores validos.'
+                : 'Contrato reservado para revive operacional.',
+            'notes' => $reviveRoleSupported
+                ? [
+                    'A rotina limpa dead_flag e resurrect_state em status.var_data, restaurando HP/MP a partir do status persistido do personagem.',
+                    'Se o cliente estiver morto em sessao online mas o persistido parecer vivo, a API ainda forca a escrita de revive.',
+                    'Quando kick_online=true, a API derruba a sessao para recarregar o estado persistido no proximo login.',
+                ]
+                : ['Sem prova tecnica local suficiente para habilitar com seguranca.'],
+        ],
+        'resetRoleQuest' => [
+            'key' => 'resetRoleQuest',
+            'label' => 'Resetar Quest',
+            'category' => 'advanced',
+            'supported' => false,
+            'status' => 'contract_only',
+            'method' => 'POST',
+            'endpoint' => $baseUrl . 'resetRoleQuest',
+            'aliases' => [],
+            'required_fields' => ['roleid'],
+            'optional_fields' => ['quest_id', 'dry_run'],
+            'dry_run_supported' => false,
+            'requires_confirmation' => false,
+            'summary' => 'Contrato reservado para reset de quest.',
+            'notes' => ['Sem prova tecnica local suficiente para habilitar com seguranca.'],
+        ],
+    ];
+}
+
+function gmCommandDefinition(array $config, $key)
+{
+    $definitions = gmCommandDefinitions($config);
+    $key = trim((string) $key);
+    if (isset($definitions[$key])) {
+        return $definitions[$key];
+    }
+
+    foreach ($definitions as $definitionKey => $definition) {
+        $aliases = array_value($definition, 'aliases', []);
+        if (is_array($aliases) && in_array($key, $aliases, true)) {
+            return $definitions[$definitionKey];
+        }
+    }
+
+    return null;
+}
+
+function gmActionHistoryFile(array $config)
+{
+    return trim((string) array_value($config, 'gm_history_file', __DIR__ . '/backups/gm-actions/history.log'));
+}
+
+function gmHistoryEntryBase(array $config, $commandKey, array $entry = [])
+{
+    $definition = gmCommandDefinition($config, $commandKey);
+    $canonicalKey = is_array($definition) ? array_value($definition, 'key', trim((string) $commandKey)) : trim((string) $commandKey);
+    return array_merge([
+        'type' => 'gm_action',
+        'command_key' => $canonicalKey,
+        'label' => is_array($definition) ? array_value($definition, 'label', $canonicalKey) : $canonicalKey,
+        'category' => is_array($definition) ? array_value($definition, 'category', 'general') : 'general',
+        'created_at' => gmdate('c'),
+    ], $entry);
+}
+
+function gmAppendHistoryBestEffort(array $config, array $entry, &$warning = '')
+{
+    $warning = '';
+    try {
+        appendLogLine(gmActionHistoryFile($config), safeJsonEncode($entry));
+        return true;
+    } catch (Exception $e) {
+        $warning = $e->getMessage();
+        return false;
+    }
+}
+
+function gmReadHistory(array $config, $limit)
+{
+    $limit = max(1, min(500, intval($limit)));
+    $path = gmActionHistoryFile($config);
+    if ($path === '' || !is_file($path) || !is_readable($path)) {
+        return [];
+    }
+
+    $lines = @file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if (!is_array($lines) || empty($lines)) {
+        return [];
+    }
+
+    $lines = array_reverse(array_slice($lines, -$limit));
+    $entries = [];
+    foreach ($lines as $line) {
+        $decoded = json_decode((string) $line, true);
+        if (is_array($decoded)) {
+            $entries[] = $decoded;
+        } else {
+            $entries[] = [
+                'type' => 'raw',
+                'line' => (string) $line,
+            ];
+        }
+    }
+
+    return $entries;
+}
+
+function gmCommandCatalogPayload(array $config)
+{
+    $definitions = gmCommandDefinitions($config);
+    $items = array_values($definitions);
+    usort($items, function ($a, $b) {
+        return strnatcasecmp((string) array_value($a, 'label', ''), (string) array_value($b, 'label', ''));
+    });
+
+    $supported = [];
+    $unsupported = [];
+    foreach ($items as $item) {
+        if (!empty($item['supported'])) {
+            $supported[] = array_value($item, 'key', '');
+        } else {
+            $unsupported[] = array_value($item, 'key', '');
+        }
+    }
+
+    return [
+        'success' => true,
+        'game_version' => gmCommanderVersionValue($config),
+        'history_file' => gmActionHistoryFile($config),
+        'commands' => $items,
+        'supported_commands' => $supported,
+        'unsupported_commands' => $unsupported,
+        'helper_endpoints' => [
+            'item_catalog' => '/apicls/api_cls.php?action=getItemCatalog',
+            'history' => '/apicls/api_cls.php?action=getGmActionHistory',
+            'mall_cash_balance' => '/apicls/api_cls.php?action=getMallCashBalance',
+            'gm_permission_catalog' => '/apicls/api_cls.php?action=getGmPermissionCatalog',
+            'gm_permission_state' => '/apicls/api_cls.php?action=getGmPermissionState',
+            'player_directory' => '/apicls/api_cls.php?action=searchPlayerDirectory',
+            'player_profile' => '/apicls/api_cls.php?action=getPlayerTargetProfile',
+            'bulk_targets_preview' => '/apicls/api_cls.php?action=previewBulkTargets',
+            'bulk_targets_resolve' => '/apicls/api_cls.php?action=resolveBulkTargets',
+            'bulk_queue' => '/apicls/api_cls.php?action=queueBulkCommand',
+            'bulk_job' => '/apicls/api_cls.php?action=getBulkCommandJob',
+            'bulk_jobs' => '/apicls/api_cls.php?action=getBulkCommandJobs',
+        ],
+        'collected_at' => gmdate('c'),
+    ];
+}
+
 function restoreHistoryFile(array $config)
 {
     return trim((string) array_value($config, 'restore_history_file', __DIR__ . '/backups/restore/history.log'));
@@ -4617,34 +9844,34 @@ function restoreTypeDefinitions(array $config)
             'label' => 'MySQL/MariaDB Backup',
             'dir_key' => 'mysql_backup_dir',
             'file_regex' => '/^mysql-backup-\d{8}-\d{6}-[a-f0-9]{8}\.sql\.gz$/i',
-            'supported' => false,
+            'supported' => true,
             'severity' => 'medium',
             'restore_level' => 'intermediate',
             'requires_confirmation' => true,
             'confirm_token' => 'RESTORE_MYSQL',
-            'dry_run_supported' => false,
+            'dry_run_supported' => true,
             'requires_gamedbd_backup' => true,
             'safety_backup_types' => ['mysql_backup', 'gamedbd_backup'],
             'affected_components' => ['mysql'],
             'affected_services' => ['mysql'],
-            'summary' => 'Contrato reservado para restore futuro do banco MySQL/MariaDB.',
+            'summary' => 'Restaura um dump completo do MySQL/MariaDB usando o wrapper root da API e gera backups de seguranca antes da aplicacao real.',
         ],
         'uniquenamed_backup' => [
             'key' => 'uniquenamed_backup',
             'label' => 'UniqueNamed Backup',
             'dir_key' => 'uniquenamed_backup_dir',
             'file_regex' => '/^uniquenamed-backup-\d{8}-\d{6}-[a-f0-9]{8}\.tgz$/i',
-            'supported' => false,
+            'supported' => true,
             'severity' => 'medium',
             'restore_level' => 'intermediate',
             'requires_confirmation' => true,
             'confirm_token' => 'RESTORE_UNIQUENAMED',
-            'dry_run_supported' => false,
+            'dry_run_supported' => true,
             'requires_gamedbd_backup' => true,
             'safety_backup_types' => ['uniquenamed_backup', 'gamedbd_backup'],
             'affected_components' => ['uniquenamed'],
             'affected_services' => ['uniquenamed', 'gdeliveryd', 'glinkd', 'gamed'],
-            'summary' => 'Contrato reservado para restore futuro do UniqueNamed.',
+            'summary' => 'Restaura os arquivos do UniqueNamed a partir do pacote .tgz oficial e cria backups de seguranca antes da aplicacao real.',
         ],
         'panel_backup' => [
             'key' => 'panel_backup',
@@ -4854,6 +10081,11 @@ function restoreConfirmOk(array $request, $type)
         $allowed[] = 'RESTORE_FILE_BACKUP';
     }
 
+    if ($type === 'mysql_backup') {
+        $allowed[] = 'RESTORE_MYSQL';
+        $allowed[] = 'RESTORE_MARIADB';
+    }
+
     return in_array($confirm, $allowed, true);
 }
 
@@ -4870,6 +10102,83 @@ function restoreAllowedRoleId(array $config, $roleid)
     }
 
     return in_array($roleid, $allowed, true);
+}
+
+function executeRestoreShellCommand($command, $backupFile, $timeoutSeconds = 0)
+{
+    $command = trim((string) $command);
+    if ($command === '') {
+        throw new Exception('Comando de restore nao configurado');
+    }
+
+    if (!is_file($backupFile) || !is_readable($backupFile)) {
+        throw new Exception('Backup de restore nao encontrado ou sem leitura: ' . basename($backupFile));
+    }
+
+    $result = executeServerOpsCommand(
+        $command . ' ' . escapeshellarg($backupFile),
+        max(0, intval($timeoutSeconds))
+    );
+
+    if (empty($result['success'])) {
+        throw new Exception(
+            'Restore shell falhou (exit ' . intval(array_value($result, 'exit_code', 1)) . '): '
+            . trim((string) array_value($result, 'stdout_excerpt', ''))
+        );
+    }
+
+    $parsed = is_array(array_value($result, 'parsed', null)) ? array_value($result, 'parsed', []) : [];
+    if (empty($parsed)) {
+        $parsed = [
+            'stdout' => trim((string) array_value($result, 'stdout_excerpt', '')),
+        ];
+    }
+
+    return $parsed;
+}
+
+function createRestoreSafetyBackups(array $config, array $plan, $restoreType)
+{
+    $backupName = preg_replace('/[^a-zA-Z0-9_.:-]+/', '_', (string) array_value(array_value($plan, 'backup', []), 'name', 'backup'));
+    $backupName = trim((string) $backupName, '_');
+    if ($backupName === '') {
+        $backupName = 'backup';
+    }
+
+    $reason = 'before_restoreNow_' . restoreNormalizeType($restoreType) . '_' . $backupName;
+    $requestedTypes = array_values(array_unique(array_filter(array_map('strval', array_value($plan, 'safety_backup_types', [])))));
+    if (empty($requestedTypes)) {
+        return [];
+    }
+
+    $created = [];
+    $backupNowMap = [
+        'mysql_backup' => 'mysql',
+        'uniquenamed_backup' => 'uniquenamed',
+        'panel_backup' => 'panel',
+        'full_backup' => 'full',
+        'clsconfig_archive' => 'clsconfig',
+    ];
+
+    foreach ($requestedTypes as $safetyType) {
+        if ($safetyType === 'clsconfig_file') {
+            continue;
+        }
+
+        if ($safetyType === 'gamedbd_backup') {
+            $created[$safetyType] = createGamedbdSafetyBackup($config, $reason);
+            continue;
+        }
+
+        if (!isset($backupNowMap[$safetyType])) {
+            continue;
+        }
+
+        $definition = backupNowDefinition($config, $backupNowMap[$safetyType]);
+        $created[$safetyType] = executeBackupNowByDefinition($config, $definition, $reason, false);
+    }
+
+    return $created;
 }
 
 function resolveRestoreBackupFile(array $config, array $request, &$type)
@@ -5057,6 +10366,92 @@ function restoreClsconfigFileBackup(array $config, GamedProtocol $proto, $backup
     ];
 }
 
+function restoreMysqlBackup(array $config, $backupFile, array $request)
+{
+    if (!is_file($backupFile) || !is_readable($backupFile)) {
+        throw new Exception('Backup MySQL inacessivel: ' . basename($backupFile));
+    }
+
+    $sourceInfo = backupFileInfo($backupFile, 'mysql_backup');
+    if (restoreRequestDryRun($request)) {
+        return [
+            'type' => 'mysql_backup',
+            'dry_run' => true,
+            'source_backup' => $sourceInfo,
+            'target' => 'all_databases',
+            'service' => 'mysql',
+            'warning' => 'Dry-run apenas valida o dump selecionado. Credenciais do MariaDB e aplicacao real do restore so sao verificadas sem dry-run.',
+        ];
+    }
+
+    if (!restoreConfirmOk($request, 'mysql_backup')) {
+        throw new Exception('Confirmacao obrigatoria para restore. Envie confirm=RESTORE_MYSQL');
+    }
+
+    $command = trim((string) array_value($config, 'mysql_restore_command', ''));
+    if ($command === '') {
+        throw new Exception('Comando de restore MySQL nao configurado');
+    }
+
+    $restored = executeRestoreShellCommand(
+        $command,
+        $backupFile,
+        intval(array_value($config, 'restore_now_timeout_seconds', array_value($config, 'backup_now_timeout_seconds', 1800)))
+    );
+
+    return [
+        'type' => 'mysql_backup',
+        'source_backup' => $sourceInfo,
+        'target' => 'all_databases',
+        'service' => 'mysql',
+        'restored' => $restored,
+        'warning' => 'Dump MySQL/MariaDB aplicado sobre todas as bases presentes no backup selecionado.',
+    ];
+}
+
+function restoreUniqueNamedBackup(array $config, $backupFile, array $request)
+{
+    if (!is_file($backupFile) || !is_readable($backupFile)) {
+        throw new Exception('Backup UniqueNamed inacessivel: ' . basename($backupFile));
+    }
+
+    $sourceInfo = backupFileInfo($backupFile, 'uniquenamed_backup');
+    if (restoreRequestDryRun($request)) {
+        return [
+            'type' => 'uniquenamed_backup',
+            'dry_run' => true,
+            'source_backup' => $sourceInfo,
+            'target' => '/home/uniquenamed',
+            'service' => 'uniquenamed',
+            'warning' => 'Dry-run apenas valida o pacote selecionado. A reaplicacao real dos arquivos so e executada sem dry-run.',
+        ];
+    }
+
+    if (!restoreConfirmOk($request, 'uniquenamed_backup')) {
+        throw new Exception('Confirmacao obrigatoria para restore. Envie confirm=RESTORE_UNIQUENAMED');
+    }
+
+    $command = trim((string) array_value($config, 'uniquenamed_restore_command', ''));
+    if ($command === '') {
+        throw new Exception('Comando de restore UniqueNamed nao configurado');
+    }
+
+    $restored = executeRestoreShellCommand(
+        $command,
+        $backupFile,
+        intval(array_value($config, 'restore_now_timeout_seconds', array_value($config, 'backup_now_timeout_seconds', 1800)))
+    );
+
+    return [
+        'type' => 'uniquenamed_backup',
+        'source_backup' => $sourceInfo,
+        'target' => '/home/uniquenamed',
+        'service' => 'uniquenamed',
+        'restored' => $restored,
+        'warning' => 'Arquivos do UniqueNamed reaplicados sobre /home/uniquenamed usando o pacote selecionado.',
+    ];
+}
+
 function restoreBackupFromRequest(array $config, GamedProtocol $proto, array $request)
 {
     $type = '';
@@ -5070,12 +10465,325 @@ function restoreBackupFromRequest(array $config, GamedProtocol $proto, array $re
         return restoreClsconfigFileBackup($config, $proto, $backupFile, $request);
     }
 
+    if ($type === 'mysql_backup') {
+        return restoreMysqlBackup($config, $backupFile, $request);
+    }
+
+    if ($type === 'uniquenamed_backup') {
+        return restoreUniqueNamedBackup($config, $backupFile, $request);
+    }
+
     throw new Exception('Tipo de backup nao restauravel: ' . $type);
+}
+
+function restorePlanHistoryPayload(array $plan)
+{
+    return [
+        'type' => array_value($plan, 'type', ''),
+        'label' => array_value($plan, 'label', ''),
+        'supported' => !empty($plan['supported']),
+        'can_restore_now' => !empty($plan['can_restore_now']),
+        'severity' => array_value($plan, 'severity', 'none'),
+        'restore_level' => array_value($plan, 'restore_level', 'none'),
+        'backup' => is_array(array_value($plan, 'backup', null)) ? array_value($plan, 'backup', null) : null,
+        'target' => is_array(array_value($plan, 'target', null)) ? array_value($plan, 'target', null) : null,
+    ];
+}
+
+function restoreReadHistory(array $config, $limit)
+{
+    $limit = max(1, min(500, intval($limit)));
+    $path = restoreHistoryFile($config);
+    if ($path === '' || !is_file($path) || !is_readable($path)) {
+        return [];
+    }
+
+    $lines = @file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if (!is_array($lines) || empty($lines)) {
+        return [];
+    }
+
+    $lines = array_reverse(array_slice($lines, -$limit));
+    $entries = [];
+    foreach ($lines as $line) {
+        $decoded = json_decode((string) $line, true);
+        if (is_array($decoded)) {
+            $entries[] = $decoded;
+        } else {
+            $entries[] = [
+                'type' => 'raw',
+                'line' => (string) $line,
+            ];
+        }
+    }
+
+    return $entries;
+}
+
+function restoreAppendHistoryBestEffort(array $config, array $entry, &$warning = '')
+{
+    $warning = '';
+    try {
+        appendLogLine(restoreHistoryFile($config), safeJsonEncode($entry));
+        return true;
+    } catch (Exception $e) {
+        $warning = $e->getMessage();
+        return false;
+    }
+}
+
+function buildRestorePlanFromResolvedBackup(array $config, $backupFile, $type)
+{
+    $definition = restoreTypeDefinition($config, $type);
+    if (!is_array($definition)) {
+        throw new Exception('Tipo de backup invalido para plano de restore: ' . $type);
+    }
+
+    $backup = backupFileInfo($backupFile, $type);
+    $warnings = [];
+    $validationErrors = [];
+    $target = [];
+
+    if ($type === 'role_json') {
+        $raw = @file_get_contents($backupFile);
+        if ($raw === false) {
+            throw new Exception('Nao foi possivel ler backup JSON: ' . basename($backupFile));
+        }
+
+        $decoded = json_decode($raw, true);
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
+            throw new Exception('Backup JSON invalido: ' . (function_exists('json_last_error_msg') ? json_last_error_msg() : 'json_decode falhou'));
+        }
+
+        $template = array_value($decoded, 'template', null);
+        if (!is_array($template)) {
+            throw new Exception('Backup JSON sem template restauravel');
+        }
+
+        $roleid = intval(array_value($decoded, 'roleid', array_value($template, 'roleid', array_value($backup, 'roleid', 0))));
+        $sections = [];
+        foreach (['base', 'status', 'inventory', 'equipment', 'storehouse', 'task'] as $section) {
+            if (array_key_exists($section, $template)) {
+                $sections[] = $section;
+            }
+        }
+        if (empty($sections)) {
+            $sections = ['template'];
+        }
+
+        $allowed = restoreAllowedRoleId($config, $roleid);
+        if (!$allowed) {
+            $validationErrors[] = 'roleid nao permitido para restore de clsconfig: ' . $roleid;
+        }
+
+        $target = [
+            'roleid' => $roleid,
+            'allowed_roleid' => $allowed,
+            'sections' => $sections,
+        ];
+        $warnings[] = 'O save no gamedbd segue o modo de exportclsconfig configurado na API.';
+    } elseif ($type === 'clsconfig_file') {
+        $targetFile = trim((string) array_value($config, 'clsconfig_file_path', ''));
+        if ($targetFile === '') {
+            $validationErrors[] = 'Arquivo clsconfig de destino nao configurado';
+        }
+
+        $target = [
+            'target_file' => $targetFile,
+            'roleid' => intval(array_value($backup, 'roleid', 0)),
+        ];
+        $warnings[] = 'O restore cria backup de seguranca do clsconfig atual antes de substituir o arquivo.';
+        $warnings[] = 'Nenhum exportclsconfig e executado automaticamente apos o restore do arquivo.';
+    } elseif ($type === 'mysql_backup') {
+        $target = [
+            'scope' => 'all_databases',
+            'service' => 'mysql',
+            'restore_command' => (string) array_value($config, 'mysql_restore_command', ''),
+        ];
+        $warnings[] = 'O restore reaplica um dump completo com todas as bases, rotinas, triggers e eventos.';
+        $warnings[] = 'A autenticacao do MariaDB depende do wrapper root da API, normalmente usando /root/.my.cnf quando necessario.';
+        $warnings[] = 'Antes do restore real, a API cria backups de seguranca do MySQL e do GameDB.';
+    } elseif ($type === 'uniquenamed_backup') {
+        $target = [
+            'target_dir' => '/home/uniquenamed',
+            'service' => 'uniquenamed',
+            'restore_command' => (string) array_value($config, 'uniquenamed_restore_command', ''),
+        ];
+        $warnings[] = 'O restore reaplica os arquivos do pacote sobre /home/uniquenamed.';
+        $warnings[] = 'Antes do restore real, a API cria backups de seguranca do UniqueNamed e do GameDB.';
+        $warnings[] = 'Se o servidor estiver em uso, pode ser necessario reiniciar o servico uniquenamed apos a restauracao.';
+    } elseif (!restoreCanExecuteType($definition)) {
+        $validationErrors[] = 'Backend ainda nao implementa restoreNow para este tipo de backup';
+    }
+
+    return [
+        'type' => $type,
+        'label' => (string) array_value($definition, 'label', $type),
+        'supported' => restoreCanExecuteType($definition),
+        'can_restore_now' => restoreCanExecuteType($definition) && empty($validationErrors),
+        'severity' => (string) array_value($definition, 'severity', 'none'),
+        'restore_level' => (string) array_value($definition, 'restore_level', 'none'),
+        'summary' => (string) array_value($definition, 'summary', ''),
+        'backup' => $backup,
+        'target' => $target,
+        'confirmation' => [
+            'required' => !empty($definition['requires_confirmation']),
+            'token' => (string) array_value($definition, 'confirm_token', ''),
+        ],
+        'dry_run_supported' => !empty($definition['dry_run_supported']),
+        'requires_gamedbd_backup' => !empty($definition['requires_gamedbd_backup']),
+        'safety_backup_types' => array_values(array_map('strval', array_value($definition, 'safety_backup_types', []))),
+        'affected_components' => array_values(array_map('strval', array_value($definition, 'affected_components', []))),
+        'affected_services' => array_values(array_map('strval', array_value($definition, 'affected_services', []))),
+        'validation_errors' => $validationErrors,
+        'warnings' => $warnings,
+        'suggested_payload' => [
+            'type' => $type,
+            'name' => array_value($backup, 'name', ''),
+            'dry_run' => true,
+            'confirm' => (string) array_value($definition, 'confirm_token', ''),
+        ],
+    ];
+}
+
+function handleGetRestorePlanRequest(array $config, array $request)
+{
+    $name = restoreRequestBackupName($request);
+    $payload = [
+        'success' => true,
+        'supported_types' => restoreTypeCatalog($config),
+        'history_file' => restoreHistoryFile($config),
+        'collected_at' => gmdate('c'),
+    ];
+
+    if ($name === '') {
+        $payload['plan'] = null;
+        $payload['message'] = 'Informe name ou file para obter o plano detalhado de restore';
+        return $payload;
+    }
+
+    $type = '';
+    $backupFile = resolveRestoreBackupFile($config, $request, $type);
+    $payload['plan'] = buildRestorePlanFromResolvedBackup($config, $backupFile, $type);
+    return $payload;
+}
+
+function handleGetRestoreHistoryRequest(array $config, $limit)
+{
+    return [
+        'success' => true,
+        'limit' => max(1, min(500, intval($limit))),
+        'entries' => restoreReadHistory($config, $limit),
+        'history_file' => restoreHistoryFile($config),
+        'collected_at' => gmdate('c'),
+    ];
+}
+
+function handleRestoreNowRequest(array $config, GamedProtocol $proto, array $request)
+{
+    $type = '';
+    $backupFile = resolveRestoreBackupFile($config, $request, $type);
+    $plan = buildRestorePlanFromResolvedBackup($config, $backupFile, $type);
+    if (empty($plan['supported'])) {
+        throw new InvalidArgumentException('Tipo de backup ainda nao suportado por restoreNow: ' . $type);
+    }
+    if (empty($plan['can_restore_now'])) {
+        throw new InvalidArgumentException('Restore bloqueado: ' . implode('; ', array_value($plan, 'validation_errors', [])));
+    }
+
+    $operationId = buildOperationId('restore');
+    $actor = restoreRequestActor($request);
+    $dryRun = restoreRequestDryRun($request);
+    $startedAt = gmdate('c');
+    $safetyBackups = [];
+    $historyWarning = '';
+
+    if ($dryRun && empty($plan['dry_run_supported'])) {
+        throw new InvalidArgumentException('Dry-run nao suportado para este tipo de restore: ' . $type);
+    }
+
+    try {
+        if (!$dryRun) {
+            $safetyBackups = createRestoreSafetyBackups($config, $plan, $type);
+        }
+
+        $result = restoreBackupFromRequest($config, $proto, $request);
+        if (!empty($safetyBackups)) {
+            $result['safety_backups'] = $safetyBackups;
+        }
+        if (is_array(array_value($safetyBackups, 'gamedbd_backup', null))) {
+            $result['gamedbd_backup'] = array_value($safetyBackups, 'gamedbd_backup', null);
+        }
+
+        $historyEntry = [
+            'type' => 'restore',
+            'operation_id' => $operationId,
+            'action' => 'restoreNow',
+            'actor' => $actor,
+            'created_at' => $startedAt,
+            'completed_at' => gmdate('c'),
+            'dry_run' => $dryRun,
+            'success' => true,
+            'restore_type' => $type,
+            'plan' => restorePlanHistoryPayload($plan),
+            'backup' => array_value($plan, 'backup', null),
+            'result' => is_array($result) ? $result : null,
+            'message' => $dryRun ? 'Dry-run de restore validado com sucesso' : 'Restore executado com sucesso',
+        ];
+        if (!empty($safetyBackups)) {
+            $historyEntry['safety_backups'] = $safetyBackups;
+        }
+        if (is_array(array_value($safetyBackups, 'gamedbd_backup', null))) {
+            $historyEntry['gamedbd_backup'] = array_value($safetyBackups, 'gamedbd_backup', null);
+        }
+        restoreAppendHistoryBestEffort($config, $historyEntry, $historyWarning);
+
+        $payload = [
+            'success' => true,
+            'operation_id' => $operationId,
+            'dry_run' => $dryRun,
+            'plan' => $plan,
+            'restored' => $result,
+            'safety_backups' => $safetyBackups,
+            'history_entry' => $historyEntry,
+            'history_file' => restoreHistoryFile($config),
+            'requested_at' => $startedAt,
+            'completed_at' => array_value($historyEntry, 'completed_at', gmdate('c')),
+        ];
+        if ($historyWarning !== '') {
+            $payload['history_warning'] = $historyWarning;
+        }
+
+        return $payload;
+    } catch (Exception $e) {
+        $historyEntry = [
+            'type' => 'restore',
+            'operation_id' => $operationId,
+            'action' => 'restoreNow',
+            'actor' => $actor,
+            'created_at' => $startedAt,
+            'completed_at' => gmdate('c'),
+            'dry_run' => $dryRun,
+            'success' => false,
+            'restore_type' => $type,
+            'plan' => restorePlanHistoryPayload($plan),
+            'backup' => array_value($plan, 'backup', null),
+            'error' => $e->getMessage(),
+        ];
+        if (!empty($safetyBackups)) {
+            $historyEntry['safety_backups'] = $safetyBackups;
+        }
+        if (is_array(array_value($safetyBackups, 'gamedbd_backup', null))) {
+            $historyEntry['gamedbd_backup'] = array_value($safetyBackups, 'gamedbd_backup', null);
+        }
+        restoreAppendHistoryBestEffort($config, $historyEntry, $historyWarning);
+        throw $e;
+    }
 }
 
 function getRoleJsonBackupContent(array $config, array $request)
 {
-    $requestedType = backupContentRequestType($request);
+    $requestedType = backupContentRequestType($config, $request);
     if ($requestedType !== '' && $requestedType !== 'role_json') {
         throw new Exception('getBackupContent permite apenas type=role_json');
     }
@@ -8003,7 +13711,7 @@ function handleSendSystemMessageRequest(array $config, array $request)
     if (!empty($payload['dry_run'])) {
         $entry['result'] = 'validated';
         $logFile = logSystemMessage($config, $entry);
-        return [
+        $response = [
             'success' => true,
             'dry_run' => true,
             'validated' => [
@@ -8014,6 +13722,24 @@ function handleSendSystemMessageRequest(array $config, array $request)
             ],
             'log_file' => $logFile,
         ];
+        $gmHistoryWarning = '';
+        $gmEntry = gmHistoryEntryBase($config, 'sendSystemMessage', [
+            'status' => 'dry_run',
+            'success' => true,
+            'dry_run' => true,
+            'message_payload' => [
+                'message' => $payload['message'],
+                'kind' => $payload['kind'],
+                'priority' => $payload['priority'],
+                'channel' => intval($payload['channel']),
+            ],
+        ]);
+        if (gmAppendHistoryBestEffort($config, $gmEntry, $gmHistoryWarning)) {
+            $response['gm_history_file'] = gmActionHistoryFile($config);
+        } elseif ($gmHistoryWarning !== '') {
+            $response['gm_history_warning'] = $gmHistoryWarning;
+        }
+        return $response;
     }
 
     $delivery = dispatchSystemMessage($payload);
@@ -8021,12 +13747,31 @@ function handleSendSystemMessageRequest(array $config, array $request)
     $entry['delivery'] = $delivery;
     $logFile = logSystemMessage($config, $entry);
 
-    return [
+    $response = [
         'success' => true,
         'message' => 'Broadcast enviado com sucesso',
         'delivery' => $delivery,
         'log_file' => $logFile,
     ];
+    $gmHistoryWarning = '';
+    $gmEntry = gmHistoryEntryBase($config, 'sendSystemMessage', [
+        'status' => 'success',
+        'success' => true,
+        'dry_run' => false,
+        'message_payload' => [
+            'message' => $payload['message'],
+            'kind' => $payload['kind'],
+            'priority' => $payload['priority'],
+            'channel' => intval($payload['channel']),
+        ],
+        'delivery' => $delivery,
+    ]);
+    if (gmAppendHistoryBestEffort($config, $gmEntry, $gmHistoryWarning)) {
+        $response['gm_history_file'] = gmActionHistoryFile($config);
+    } elseif ($gmHistoryWarning !== '') {
+        $response['gm_history_warning'] = $gmHistoryWarning;
+    }
+    return $response;
 }
 
 function tryHandleSendSystemMessageRequest(array $config, array $request)
@@ -10296,6 +16041,188 @@ if (php_sapi_name() !== 'cli' || isset($_GET['action'])) {
             }
             break;
 
+        case 'getGmCommandCatalog':
+        case 'getGmCommanderCatalog':
+            try {
+                respondJson(gmCommandCatalogPayload($CONFIG));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'getGmActionHistory':
+        case 'getGmCommanderHistory':
+            try {
+                $limit = isset($_GET['limit']) ? intval($_GET['limit']) : 20;
+                $limit = max(1, min(200, $limit));
+                respondJson([
+                    'success' => true,
+                    'limit' => $limit,
+                    'entries' => gmReadHistory($CONFIG, $limit),
+                    'history_file' => gmActionHistoryFile($CONFIG),
+                    'collected_at' => gmdate('c'),
+                ]);
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'searchPlayerDirectory':
+            $request = ($_SERVER['REQUEST_METHOD'] === 'POST') ? readRequestPayload() : $_GET;
+            if (isset($request['__json_error'])) {
+                respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
+                exit;
+            }
+
+            try {
+                respondJson(gmV2SearchPlayerDirectoryPayload($CONFIG, is_array($request) ? $request : []));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'getPlayerTargetProfile':
+            $request = ($_SERVER['REQUEST_METHOD'] === 'POST') ? readRequestPayload() : $_GET;
+            if (isset($request['__json_error'])) {
+                respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
+                exit;
+            }
+
+            try {
+                respondJson(gmV2GetPlayerTargetProfilePayload($CONFIG, is_array($request) ? $request : []));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'resolveBulkTargets':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                respondJson(['error' => 'Use POST para resolveBulkTargets'], 405);
+                exit;
+            }
+
+            $request = readRequestPayload();
+            if (isset($request['__json_error'])) {
+                respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
+                exit;
+            }
+
+            try {
+                respondJson(gmV2ResolveBulkTargetsPayload($CONFIG, $request));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'previewBulkTargets':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                respondJson(['error' => 'Use POST para previewBulkTargets'], 405);
+                exit;
+            }
+
+            $request = readRequestPayload();
+            if (isset($request['__json_error'])) {
+                respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
+                exit;
+            }
+
+            try {
+                respondJson(gmV2PreviewBulkTargetsPayload($CONFIG, $request));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'queueBulkCommand':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                respondJson(['error' => 'Use POST para queueBulkCommand'], 405);
+                exit;
+            }
+
+            $request = readRequestPayload();
+            if (isset($request['__json_error'])) {
+                respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
+                exit;
+            }
+
+            try {
+                respondJson(gmV2CreateQueuedJob($CONFIG, $request));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'getBulkCommandJob':
+            try {
+                $jobId = trim((string) firstArrayValue($_GET, ['job_id', 'jobId', 'id'], ''));
+                if ($jobId === '') {
+                    throw new InvalidArgumentException('job_id obrigatorio');
+                }
+                respondJson(gmV2GetQueueJobPayload($CONFIG, $jobId));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'getBulkCommandJobs':
+            try {
+                $limit = max(1, min(200, intval(firstArrayValue($_GET, ['limit'], 20))));
+                respondJson([
+                    'success' => true,
+                    'jobs' => gmV2ListJobs($CONFIG, $limit),
+                    'limit' => $limit,
+                    'collected_at' => gmdate('c'),
+                ]);
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'getMallCashBalance':
+        case 'getUserCashInfo':
+        case 'getAccountMallCash':
+            try {
+                respondJson(getMallCashBalanceSnapshot($CONFIG, $_GET));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'getGmPermissionState':
+        case 'getGmPermissionStatus':
+            try {
+                respondJson(getGmPermissionStateSnapshot($CONFIG, $_GET));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'getGmPermissionCatalog':
+            respondJson(getGmPermissionCatalogSnapshot());
+            break;
+
         case 'sendMailItem':
         case 'sendMailGold':
             if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -10315,13 +16242,160 @@ if (php_sapi_name() !== 'cli' || isset($_GET['action'])) {
                     : buildSendMailGoldPayload($request, $CONFIG);
 
                 $delivery = executeMailSendCommand($CONFIG, $mailPayload);
-                respondJson([
+                $response = [
                     'success' => true,
                     'delivery' => $delivery,
+                ];
+                $gmHistoryWarning = '';
+                $gmEntry = gmHistoryEntryBase($CONFIG, $action, [
+                    'status' => !empty($mailPayload['dry_run']) ? 'dry_run' : 'success',
+                    'success' => true,
+                    'dry_run' => !empty($mailPayload['dry_run']),
+                    'target' => [
+                        'roleid' => intval(array_value($mailPayload, 'roleid', 0)),
+                    ],
+                    'mail' => [
+                        'kind' => array_value($mailPayload, 'kind', ''),
+                        'title' => array_value($mailPayload, 'title', ''),
+                        'message' => array_value($mailPayload, 'message', ''),
+                        'item_id' => intval(array_value($mailPayload, 'item_id', 0)),
+                        'count' => intval(array_value($mailPayload, 'count', 0)),
+                        'money' => intval(array_value($mailPayload, 'money', 0)),
+                    ],
+                    'delivery' => $delivery,
                 ]);
+                if (gmAppendHistoryBestEffort($CONFIG, $gmEntry, $gmHistoryWarning)) {
+                    $response['gm_history_file'] = gmActionHistoryFile($CONFIG);
+                } elseif ($gmHistoryWarning !== '') {
+                    $response['gm_history_warning'] = $gmHistoryWarning;
+                }
+                respondJson($response);
             } catch (InvalidArgumentException $e) {
+                gmAppendHistoryBestEffort($CONFIG, gmHistoryEntryBase($CONFIG, $action, [
+                    'status' => 'error',
+                    'success' => false,
+                    'dry_run' => truthyValue(firstArrayValue($request, ['dry_run', 'dryRun'], false)),
+                    'target' => [
+                        'roleid' => intval(firstArrayValue($request, ['roleid', 'role_id', 'target_roleid', 'receiver_roleid'], 0)),
+                    ],
+                    'error' => $e->getMessage(),
+                ]));
                 respondJson(['error' => $e->getMessage()], 400);
             } catch (Exception $e) {
+                gmAppendHistoryBestEffort($CONFIG, gmHistoryEntryBase($CONFIG, $action, [
+                    'status' => 'error',
+                    'success' => false,
+                    'dry_run' => truthyValue(firstArrayValue($request, ['dry_run', 'dryRun'], false)),
+                    'target' => [
+                        'roleid' => intval(firstArrayValue($request, ['roleid', 'role_id', 'target_roleid', 'receiver_roleid'], 0)),
+                    ],
+                    'error' => $e->getMessage(),
+                ]));
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'grantMallCash':
+        case 'addShopGold':
+        case 'grantCash':
+        case 'addCash':
+        case 'grantItemMallGold':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                respondJson(['error' => 'Use POST para grantMallCash'], 405);
+                exit;
+            }
+
+            $request = readRequestPayload();
+            if (isset($request['__json_error'])) {
+                respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
+                exit;
+            }
+
+            try {
+                respondJson(handleGrantMallCashRequest($CONFIG, $request));
+            } catch (InvalidArgumentException $e) {
+                gmAppendHistoryBestEffort($CONFIG, gmHistoryEntryBase($CONFIG, 'grantMallCash', [
+                    'status' => 'error',
+                    'success' => false,
+                    'dry_run' => truthyValue(firstArrayValue($request, ['dry_run', 'dryRun'], false)),
+                    'target' => [
+                        'roleid' => intval(firstArrayValue($request, ['roleid', 'role_id', 'target_roleid'], 0)),
+                        'userid' => intval(firstArrayValue($request, ['userid', 'user_id', 'account_id', 'accountId', 'target_userid'], 0)),
+                    ],
+                    'grant' => [
+                        'amount' => firstArrayValue($request, ['amount', 'gold', 'cash_gold', 'mall_gold', 'value'], null),
+                        'cash_units' => firstArrayValue($request, ['cash_units', 'cashUnits', 'raw_cash_units'], null),
+                    ],
+                    'error' => $e->getMessage(),
+                ]));
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                gmAppendHistoryBestEffort($CONFIG, gmHistoryEntryBase($CONFIG, 'grantMallCash', [
+                    'status' => 'error',
+                    'success' => false,
+                    'dry_run' => truthyValue(firstArrayValue($request, ['dry_run', 'dryRun'], false)),
+                    'target' => [
+                        'roleid' => intval(firstArrayValue($request, ['roleid', 'role_id', 'target_roleid'], 0)),
+                        'userid' => intval(firstArrayValue($request, ['userid', 'user_id', 'account_id', 'accountId', 'target_userid'], 0)),
+                    ],
+                    'grant' => [
+                        'amount' => firstArrayValue($request, ['amount', 'gold', 'cash_gold', 'mall_gold', 'value'], null),
+                        'cash_units' => firstArrayValue($request, ['cash_units', 'cashUnits', 'raw_cash_units'], null),
+                    ],
+                    'error' => $e->getMessage(),
+                ]));
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'grantGmPermission':
+        case 'setGmPermission':
+        case 'revokeGmPermission':
+        case 'removeGmPermission':
+        case 'unsetGmPermission':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                respondJson(['error' => 'Use POST para permissao GM'], 405);
+                exit;
+            }
+
+            $request = readRequestPayload();
+            if (isset($request['__json_error'])) {
+                respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
+                exit;
+            }
+
+            $permissionMode = in_array($action, ['revokeGmPermission', 'removeGmPermission', 'unsetGmPermission'], true)
+                ? 'revoke'
+                : 'grant';
+            $permissionKey = ($permissionMode === 'revoke') ? 'revokeGmPermission' : 'grantGmPermission';
+
+            try {
+                respondJson(handleGmPermissionRequest($CONFIG, $request, $permissionMode));
+            } catch (InvalidArgumentException $e) {
+                gmAppendHistoryBestEffort($CONFIG, gmHistoryEntryBase($CONFIG, $permissionKey, [
+                    'status' => 'error',
+                    'success' => false,
+                    'dry_run' => truthyValue(firstArrayValue($request, ['dry_run', 'dryRun'], false)),
+                    'reason' => firstArrayValue($request, ['reason', 'message', 'note', 'moderation_reason'], ''),
+                    'target' => [
+                        'roleid' => intval(firstArrayValue($request, ['roleid', 'role_id', 'target_roleid'], 0)),
+                        'userid' => intval(firstArrayValue($request, ['userid', 'user_id', 'account_id', 'accountId', 'target_userid'], 0)),
+                    ],
+                    'error' => $e->getMessage(),
+                ]));
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                gmAppendHistoryBestEffort($CONFIG, gmHistoryEntryBase($CONFIG, $permissionKey, [
+                    'status' => 'error',
+                    'success' => false,
+                    'dry_run' => truthyValue(firstArrayValue($request, ['dry_run', 'dryRun'], false)),
+                    'reason' => firstArrayValue($request, ['reason', 'message', 'note', 'moderation_reason'], ''),
+                    'target' => [
+                        'roleid' => intval(firstArrayValue($request, ['roleid', 'role_id', 'target_roleid'], 0)),
+                        'userid' => intval(firstArrayValue($request, ['userid', 'user_id', 'account_id', 'accountId', 'target_userid'], 0)),
+                    ],
+                    'error' => $e->getMessage(),
+                ]));
                 respondJson(['error' => $e->getMessage()], 500);
             }
             break;
@@ -10329,6 +16403,13 @@ if (php_sapi_name() !== 'cli' || isset($_GET['action'])) {
         case 'kickRole':
         case 'banAccount':
         case 'unbanAccount':
+        case 'muteAccount':
+        case 'muteAcc':
+        case 'muteRole':
+        case 'clearRolePk':
+        case 'reviveRole':
+        case 'teleportRole':
+        case 'playerTeleport':
             if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                 respondJson(['error' => 'Use POST para moderacao'], 405);
                 exit;
@@ -10347,13 +16428,29 @@ if (php_sapi_name() !== 'cli' || isset($_GET['action'])) {
                     $payload = buildKickRolePayload($request, $CONFIG);
                 } elseif ($action === 'banAccount') {
                     $payload = buildBanAccountPayload($request, $CONFIG, $proto);
-                } else {
+                } elseif ($action === 'unbanAccount') {
                     $payload = buildUnbanAccountPayload($request, $CONFIG, $proto);
+                } elseif ($action === 'muteAccount' || $action === 'muteAcc') {
+                    $payload = buildMuteAccountPayload($request, $CONFIG, $proto);
+                } elseif ($action === 'muteRole') {
+                    $payload = buildMuteRolePayload($request, $CONFIG);
+                } elseif ($action === 'clearRolePk') {
+                    $payload = buildClearRolePkPayload($request, $CONFIG);
+                } elseif ($action === 'reviveRole') {
+                    $payload = buildReviveRolePayload($request, $CONFIG);
+                } else {
+                    $payload = buildTeleportRolePayload($request, $CONFIG);
+                }
+
+                $gmDefinition = gmCommandDefinition($CONFIG, array_value($payload, 'action', $action));
+                if (is_array($gmDefinition) && empty($gmDefinition['supported'])) {
+                    throw new InvalidArgumentException('Acao GM nao suportada nesta game_version: ' . array_value($gmDefinition, 'key', $action));
                 }
 
                 $result = executeSecurityAction($CONFIG, $payload);
                 respondJson([
                     'success' => true,
+                    'gm_action' => $result,
                     'moderation' => $result,
                 ]);
             } catch (InvalidArgumentException $e) {
@@ -10365,6 +16462,16 @@ if (php_sapi_name() !== 'cli' || isset($_GET['action'])) {
                     'userid' => intval(firstArrayValue($request, ['userid', 'user_id', 'account_id', 'accountId', 'target_userid'], 0)),
                     'error' => $e->getMessage(),
                 ]);
+                gmAppendHistoryBestEffort($CONFIG, gmHistoryEntryBase($CONFIG, $action, [
+                    'status' => 'error',
+                    'success' => false,
+                    'dry_run' => truthyValue(firstArrayValue($request, ['dry_run', 'dryRun'], false)),
+                    'target' => [
+                        'roleid' => intval(firstArrayValue($request, ['roleid', 'role_id', 'target_roleid'], 0)),
+                        'userid' => intval(firstArrayValue($request, ['userid', 'user_id', 'account_id', 'accountId', 'target_userid'], 0)),
+                    ],
+                    'error' => $e->getMessage(),
+                ]));
                 respondJson(['error' => $e->getMessage()], 400);
             } catch (Exception $e) {
                 appendSecurityActionLog($CONFIG, [
@@ -10375,6 +16482,16 @@ if (php_sapi_name() !== 'cli' || isset($_GET['action'])) {
                     'userid' => intval(firstArrayValue($request, ['userid', 'user_id', 'account_id', 'accountId', 'target_userid'], 0)),
                     'error' => $e->getMessage(),
                 ]);
+                gmAppendHistoryBestEffort($CONFIG, gmHistoryEntryBase($CONFIG, $action, [
+                    'status' => 'error',
+                    'success' => false,
+                    'dry_run' => truthyValue(firstArrayValue($request, ['dry_run', 'dryRun'], false)),
+                    'target' => [
+                        'roleid' => intval(firstArrayValue($request, ['roleid', 'role_id', 'target_roleid'], 0)),
+                        'userid' => intval(firstArrayValue($request, ['userid', 'user_id', 'account_id', 'accountId', 'target_userid'], 0)),
+                    ],
+                    'error' => $e->getMessage(),
+                ]));
                 respondJson(['error' => $e->getMessage()], 500);
             }
             break;
@@ -10622,10 +16739,42 @@ if (php_sapi_name() !== 'cli' || isset($_GET['action'])) {
             try {
                 respondJson(handleSendSystemMessageRequest($CONFIG, $request));
             } catch (InvalidArgumentException $e) {
+                gmAppendHistoryBestEffort($CONFIG, gmHistoryEntryBase($CONFIG, 'sendSystemMessage', [
+                    'status' => 'error',
+                    'success' => false,
+                    'dry_run' => truthyValue(array_value($request, 'dry_run', array_value($request, 'dryRun', false))),
+                    'message_payload' => [
+                        'message' => trim((string) array_value($request, 'message', '')),
+                        'kind' => trim((string) array_value($request, 'kind', 'system')),
+                    ],
+                    'error' => $e->getMessage(),
+                ]));
                 respondJson(['error' => $e->getMessage()], 400);
             } catch (Exception $e) {
+                gmAppendHistoryBestEffort($CONFIG, gmHistoryEntryBase($CONFIG, 'sendSystemMessage', [
+                    'status' => 'error',
+                    'success' => false,
+                    'dry_run' => truthyValue(array_value($request, 'dry_run', array_value($request, 'dryRun', false))),
+                    'message_payload' => [
+                        'message' => trim((string) array_value($request, 'message', '')),
+                        'kind' => trim((string) array_value($request, 'kind', 'system')),
+                    ],
+                    'error' => $e->getMessage(),
+                ]));
                 respondJson(['error' => $e->getMessage()], 500);
             }
+            break;
+
+        case 'summonRole':
+        case 'prisonRole':
+        case 'resetRoleQuest':
+            $definition = gmCommandDefinition($CONFIG, $action);
+            respondJson([
+                'success' => false,
+                'supported' => false,
+                'error' => 'Acao GM ainda nao implementada com suporte real nesta game_version',
+                'command' => $definition,
+            ], 501);
             break;
 
         case 'getMaintenanceMode':
@@ -10865,6 +17014,54 @@ if (php_sapi_name() !== 'cli' || isset($_GET['action'])) {
             }
             break;
 
+        case 'getRestorePlan':
+            $request = array_merge($_GET, readRequestPayload());
+            if (isset($request['__json_error'])) {
+                respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
+                exit;
+            }
+
+            try {
+                respondJson(handleGetRestorePlanRequest($CONFIG, $request));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'getRestoreHistory':
+            $limit = isset($_GET['limit']) ? intval($_GET['limit']) : 20;
+            try {
+                respondJson(handleGetRestoreHistoryRequest($CONFIG, $limit));
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'restoreNow':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                respondJson(['error' => 'Use POST para restoreNow'], 405);
+                exit;
+            }
+
+            $request = readRequestPayload();
+            if (isset($request['__json_error'])) {
+                respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
+                exit;
+            }
+
+            $proto = new GamedProtocol();
+
+            try {
+                respondJson(handleRestoreNowRequest($CONFIG, $proto, $request));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
         case 'exportClsconfig':
             if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                 respondJson(['error' => 'Use POST para exportClsconfig'], 405);
@@ -10991,7 +17188,7 @@ if (php_sapi_name() !== 'cli' || isset($_GET['action'])) {
 
         default:
             respondJson([
-                'error' => 'Acao invalida. Use: getRole, getRoles, getRoleEditable, getRolesEditable, getClasses, getClsconfig, getClsconfigDebug, getItemCatalog, getServiceStatus, getControlCenterSnapshot, getManageableServices, getManageableInstances, setInstanceAutoStart, startInstance, startInstances, stopInstance, stopInstances, restartInstance, restartInstances, getServerOperationStatus, getServerOperationsHistory, getServerLogs, sendSystemMessage, getMaintenanceMode, setMaintenanceMode, getWatchdogStatus, getWatchdogHistory, saveWatchdogConfig, enableWatchdog, disableWatchdog, runWatchdogCheckNow, startServer, stopServer, restartServer, startService, stopService, restartService, sendMailItem, sendMailGold, kickRole, banAccount, unbanAccount, listBackups, backupGamedbd, backupNow, getBackupContent, restoreBackup, exportClsconfig, saveRoleEditable, saveClsconfigTemplate',
+                'error' => 'Acao invalida. Use: getRole, getRoles, getRoleEditable, getRolesEditable, getClasses, getClsconfig, getClsconfigDebug, getItemCatalog, getGmCommandCatalog, getGmActionHistory, getGmPermissionCatalog, getGmPermissionState, getMallCashBalance, searchPlayerDirectory, getPlayerTargetProfile, resolveBulkTargets, previewBulkTargets, queueBulkCommand, getBulkCommandJob, getBulkCommandJobs, getServiceStatus, getControlCenterSnapshot, getManageableServices, getManageableInstances, setInstanceAutoStart, startInstance, startInstances, stopInstance, stopInstances, restartInstance, restartInstances, getServerOperationStatus, getServerOperationsHistory, getServerLogs, sendSystemMessage, getMaintenanceMode, setMaintenanceMode, getWatchdogStatus, getWatchdogHistory, saveWatchdogConfig, enableWatchdog, disableWatchdog, runWatchdogCheckNow, startServer, stopServer, restartServer, startService, stopService, restartService, sendMailItem, sendMailGold, grantMallCash, grantGmPermission, revokeGmPermission, kickRole, banAccount, unbanAccount, muteAccount, muteRole, clearRolePk, reviveRole, teleportRole, listBackups, backupGamedbd, backupNow, getBackupContent, getRestorePlan, getRestoreHistory, restoreNow, restoreBackup, exportClsconfig, saveRoleEditable, saveClsconfigTemplate',
             ], 400);
             break;
     }
@@ -11013,6 +17210,22 @@ if (php_sapi_name() !== 'cli' || isset($_GET['action'])) {
             $payload = [
                 'success' => false,
                 'result' => 'error',
+                'error' => $e->getMessage(),
+                'checked_at' => gmdate('c'),
+            ];
+            echo safeJsonEncode($payload) . PHP_EOL;
+            exit(1);
+        }
+    } elseif ($cliAction === 'gm-queue-worker') {
+        try {
+            $result = gmV2RunQueueWorker($CONFIG, [
+                'source' => 'cli',
+            ]);
+            echo safeJsonEncode($result) . PHP_EOL;
+            exit(!empty($result['success']) ? 0 : 1);
+        } catch (Exception $e) {
+            $payload = [
+                'success' => false,
                 'error' => $e->getMessage(),
                 'checked_at' => gmdate('c'),
             ];

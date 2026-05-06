@@ -377,6 +377,69 @@ export type Database = {
         }
         Relationships: []
       }
+      gm_bulk_schedules: {
+        Row: {
+          command_key: string
+          command_payload: Json
+          created_at: string
+          created_by: string
+          day_of_week: number
+          id: string
+          is_active: boolean
+          last_error: string | null
+          last_run_at: string | null
+          last_run_job_id: string | null
+          last_run_status: string | null
+          name: string
+          selection: Json
+          tenant_id: string
+          time_utc: string
+          timezone: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          command_key: string
+          command_payload?: Json
+          created_at?: string
+          created_by: string
+          day_of_week: number
+          id?: string
+          is_active?: boolean
+          last_error?: string | null
+          last_run_at?: string | null
+          last_run_job_id?: string | null
+          last_run_status?: string | null
+          name: string
+          selection?: Json
+          tenant_id: string
+          time_utc?: string
+          timezone?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          command_key?: string
+          command_payload?: Json
+          created_at?: string
+          created_by?: string
+          day_of_week?: number
+          id?: string
+          is_active?: boolean
+          last_error?: string | null
+          last_run_at?: string | null
+          last_run_job_id?: string | null
+          last_run_status?: string | null
+          name?: string
+          selection?: Json
+          tenant_id?: string
+          time_utc?: string
+          timezone?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       ingame_events: {
         Row: {
           created_at: string

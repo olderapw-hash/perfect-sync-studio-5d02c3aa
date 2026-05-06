@@ -110,6 +110,10 @@ while [ "$#" -gt 0 ]; do
       BACKUP_EXISTING=0
       shift
       ;;
+    --superadmin-bypass)
+      SUPERADMIN_BYPASS=1
+      shift
+      ;;
     -h|--help)
       usage
       exit 0

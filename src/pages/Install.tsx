@@ -480,13 +480,12 @@ const Install = () => {
           <div className="mb-3 flex items-center gap-2">
             <Terminal className="h-4 w-4 text-primary" />
             <h2 className="text-sm font-extrabold uppercase tracking-wider">
-              Método recomendado · instalador automático
+            Método recomendado · 2 comandos
             </h2>
           </div>
           <p className="mb-3 text-xs text-muted-foreground">
-            Baixe os dois arquivos abaixo, suba pra VPS e rode o instalador. Ele
-            instala Apache + PHP, configura sudoers, cria as pastas de backup e
-            testa a conexão sozinho.
+            Baixe <strong>api_cls.php</strong> e <strong>install-apicls-centos7.sh</strong>, suba pra VPS e rode o instalador. 
+            Ele instala tudo automaticamente: Apache, PHP, sudoers, scripts auxiliares e testa a conexão.
           </p>
 
           {/* Toggle: placeholders vs valores reais */}

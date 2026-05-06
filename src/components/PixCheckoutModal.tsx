@@ -34,12 +34,11 @@ export function PixCheckoutModal({
   useEffect(() => {
     if (status === "approved") {
       const t = setTimeout(() => {
-        onClose();
         navigate("/onboarding");
-      }, 2500);
+      }, 2000);
       return () => clearTimeout(t);
     }
-  }, [status, onClose, navigate]);
+  }, [status, navigate]);
 
   if (!open || !pixData) return null;
 

@@ -240,28 +240,10 @@ if ! grep -q "scheduleBulkCommand" "$TMP_API" || ! grep -q "getBulkSchedules" "$
   die "api_cls.php parece desatualizado. Ele precisa conter scheduleBulkCommand, getBulkSchedules e runDueBulkSchedules."
 fi
 
+# Nao faz mais sed no api_cls.php — secrets vao no .env
+# Mantemos compatibilidade: se o PHP ainda tiver api_secret hardcoded, limpamos
 if grep -q "'api_secret'" "$TMP_API"; then
-  sed -i -E "s/('api_secret'[[:space:]]*=>[[:space:]]*)'[^']*'/\1'$SECRET'/" "$TMP_API"
-elif grep -q "\$SECRET[[:space:]]*=" "$TMP_API"; then
-  sed -i -E "s/(\$SECRET[[:space:]]*=[[:space:]]*)'[^']*'/\1'$SECRET'/" "$TMP_API"
-else
-  die "Nao encontrei campo api_secret/\$SECRET no api_cls.php."
-fi
-
-# ---- VPS Activation Token ----
-if [ -n "$ACTIVATION_TOKEN" ]; then
-  sed -i -E "s/('vps_activation_token'[[:space:]]*=>[[:space:]]*)'[^']*'/\1'$ACTIVATION_TOKEN'/" "$TMP_API"
-  log "Token de ativacao configurado."
-
-  # Set activation URL
-  if [ -z "$ACTIVATION_URL" ]; then
-    # Auto-detect from VITE_SUPABASE_URL pattern in api_cls.php or use default
-    ACTIVATION_URL="https://ezgjmioxmyqgxgdpigeb.supabase.co/functions/v1/validate-vps-activation"
-  fi
-  sed -i -E "s|('vps_activation_url'[[:space:]]*=>[[:space:]]*)'[^']*'|\1'$ACTIVATION_URL'|" "$TMP_API"
-  log "URL de validacao: $ACTIVATION_URL"
-else
-  warn "Nenhum token de ativacao informado. A API funcionara sem protecao de VPS."
+  sed -i -E "s/('api_secret'[[:space:]]*=>[[:space:]]*)'[^']*'/\1''/" "$TMP_API"
 fi
 
 php -l "$TMP_API" >/dev/null || die "api_cls.php baixado/copied tem erro de sintaxe."

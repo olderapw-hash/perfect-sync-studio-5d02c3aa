@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, Check, Crown, Loader2, Server, Shield, Sparkles, Zap, QrCode } from "lucide-react";
+import { Check, Crown, Loader2, Server, Shield, Sparkles, Zap, QrCode } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { usePaddleCheckout } from "@/hooks/usePaddleCheckout";
 import { usePixCheckout } from "@/hooks/usePixCheckout";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useServers } from "@/hooks/useServers";

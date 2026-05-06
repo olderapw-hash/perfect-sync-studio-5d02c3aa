@@ -490,6 +490,31 @@ Deno.serve(async (req: Request) => {
   const isActionRoute = actionIdx !== -1 && segments[actionIdx + 1];
   const isClsRoute = !isActionRoute && (route === "clsconfig" || route === "clsconfig-proxy");
 
+  // Actions that require the "ultimate" plan (manage_servers gated features).
+  const ULTIMATE_ONLY_ACTIONS = new Set([
+    "startServer", "stopServer", "restartServer",
+    "startService", "stopService", "restartService",
+    "setMaintenanceMode",
+    "setInstanceAutoStart", "startInstance", "startInstances",
+    "stopInstance", "stopInstances", "restartInstance", "restartInstances",
+    "backupNow", "saveWatchdogConfig", "enableWatchdog", "disableWatchdog", "runWatchdogCheckNow",
+  ]);
+
+  /** Checks if the caller has an active ultimate subscription. */
+  async function callerHasUltimatePlan(): Promise<boolean> {
+    if (!admin) return false;
+    const { data, error } = await admin
+      .from("subscriptions")
+      .select("product_id")
+      .eq("user_id", callerUserId)
+      .in("status", ["active", "trialing"])
+      .or("current_period_end.is.null,current_period_end.gt.now()")
+      .eq("environment", "live")
+      .limit(1);
+    if (error || !data || data.length === 0) return false;
+    return data[0].product_id === "pw_admin_ultimate";
+  }
+
   /** Bloqueia se a permissão não for atendida. */
   async function ensurePermission(action: string): Promise<Response | null> {
     const perm = ACTION_PERMISSION[action];
@@ -498,6 +523,14 @@ Deno.serve(async (req: Request) => {
     if (!ok) {
       void logAction(action, `permission_denied:${perm}`, false, 403, `Missing permission: ${perm}`);
       return jsonError(`Permissão negada: ${perm}`, 403);
+    }
+    // Server-side plan enforcement: ultimate-only actions require pw_admin_ultimate subscription.
+    if (ULTIMATE_ONLY_ACTIONS.has(action)) {
+      const hasUltimate = await callerHasUltimatePlan();
+      if (!hasUltimate) {
+        void logAction(action, `plan_denied:ultimate_required`, false, 403, "Plan upgrade required");
+        return jsonError("Ação disponível apenas no plano Ultimate. Faça upgrade para continuar.", 403);
+      }
     }
     return null;
   }

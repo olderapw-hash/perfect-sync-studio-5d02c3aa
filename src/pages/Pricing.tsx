@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, Check, Crown, Loader2, LogOut, Server, Shield, Sparkles, Zap, QrCode } from "lucide-react";
+import { ArrowRight, Check, Clock, Crown, Loader2, LogOut, Server, Shield, Sparkles, Zap, QrCode } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { usePixCheckout } from "@/hooks/usePixCheckout";
@@ -137,18 +137,23 @@ const Pricing = () => {
   const [pixPlanName, setPixPlanName] = useState("");
   const [pixAmount, setPixAmount] = useState("");
   const [hasPaidPix, setHasPaidPix] = useState(false);
+  const [hasPendingPix, setHasPendingPix] = useState(false);
 
-  // Checa se o usuário tem pagamento Pix aprovado (fallback visual)
+  // Checa se o usuário tem pagamento Pix aprovado ou pendente
   useEffect(() => {
     if (!session?.user) return;
     supabase
       .from("pix_payments")
-      .select("id")
+      .select("id, status")
       .eq("user_id", session.user.id)
-      .eq("status", "approved")
-      .limit(1)
+      .in("status", ["approved", "pending"])
+      .order("created_at", { ascending: false })
+      .limit(5)
       .then(({ data }) => {
-        if (data && data.length > 0) setHasPaidPix(true);
+        if (data) {
+          setHasPaidPix(data.some((p) => p.status === "approved"));
+          setHasPendingPix(!data.some((p) => p.status === "approved") && data.some((p) => p.status === "pending"));
+        }
       });
   }, [session?.user?.id]);
 
@@ -286,6 +291,22 @@ const Pricing = () => {
               Configurar meu servidor
               <ArrowRight className="h-4 w-4" />
             </button>
+          </div>
+        )}
+
+        {/* Banner: pagamento pendente */}
+        {hasPendingPix && session && !hasPaidPix && (
+          <div className="mb-8 rounded-2xl border-2 border-yellow-500/40 bg-yellow-500/10 p-6 text-center">
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-yellow-500/20">
+              <Clock className="h-7 w-7 text-yellow-400" />
+            </div>
+            <h3 className="text-lg font-extrabold text-yellow-400">Pagamento pendente</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Seu pagamento Pix ainda não foi confirmado. Após a confirmação, você poderá configurar seu servidor.
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              A verificação é automática — assim que o pagamento for processado, esta página será atualizada.
+            </p>
           </div>
         )}
 

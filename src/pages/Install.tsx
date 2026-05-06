@@ -145,6 +145,8 @@ const API_FEATURES: { label: string; detail: string }[] = [
   { label: "Backups", detail: "backupGamedbd, listBackups, getBackupContent, restoreBackup" },
   { label: "Item catalog", detail: "getItemCatalog (webtradeid, auctionid, valuables, visibleid)" },
   { label: "Correio real via gdeliveryd", detail: "sendMailItem, sendMailGold (com fallback queue + dry_run)" },
+  { label: "GM Commander Bulk", detail: "resolveBulkTargets, previewBulkTargets, queueBulkCommand, getBulkCommandJobs" },
+  { label: "Moderação", detail: "kickRole, banAccount, unbanAccount, muteAccount, clearRolePk" },
 ];
 
 /** Tenta inferir uma URL "esperada" do api_cls.php a partir da URL cadastrada. */

@@ -2,140 +2,128 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Perfect World Sync Panel — Dark MMORPG design system.
+/* Orphea Core — Ultra Premium Dark Design System
+   Inspired by Battle.net / Riot Client / Enterprise AAA
    All colors MUST be HSL.
 */
 
 @layer base {
   :root {
-    /* Dark blue palette — Orphea Core */
-    --background: 220 40% 5%;
-    --foreground: 210 30% 96%;
+    /* ── Core surfaces ── */
+    --background: 228 50% 3%;          /* #06070A */
+    --foreground: 216 20% 91%;         /* #E5E7EB */
 
-    --card: 220 35% 8%;
-    --card-foreground: 210 30% 96%;
+    --card: 222 39% 11%;              /* #111827 */
+    --card-foreground: 216 20% 91%;
 
-    --popover: 220 38% 9%;
-    --popover-foreground: 210 30% 96%;
+    --popover: 224 42% 9%;
+    --popover-foreground: 216 20% 91%;
 
-    /* Blue primary — #4a90e2-ish */
-    --primary: 210 85% 60%;
-    --primary-rgb: 64, 150, 235;
-    --primary-foreground: 220 40% 8%;
-    --primary-dark: 215 75% 42%;
+    /* ── Primary blue ── */
+    --primary: 217 91% 60%;           /* #3B82F6 */
+    --primary-rgb: 59, 130, 246;
+    --primary-foreground: 228 50% 4%;
+    --primary-dark: 221 83% 53%;      /* #2563EB */
 
-    --secondary: 220 30% 12%;
-    --secondary-foreground: 210 25% 92%;
+    --secondary: 222 30% 10%;
+    --secondary-foreground: 215 17% 78%;
 
-    --muted: 220 30% 11%;
-    --muted-foreground: 215 20% 60%;
+    --muted: 222 30% 9%;
+    --muted-foreground: 215 17% 56%;  /* #94A3B8 */
 
-    /* Accent uses primary tone for cohesion */
-    --accent: 210 85% 60%;
-    --accent-foreground: 220 40% 8%;
+    --accent: 217 91% 60%;
+    --accent-foreground: 228 50% 4%;
 
-    --destructive: 1 71% 64%;
+    --destructive: 0 62% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 160 55% 50%;
-    --success-foreground: 220 40% 8%;
+    --success: 160 50% 45%;
+    --success-foreground: 228 50% 4%;
 
-    --warning: 38 80% 58%;
+    --warning: 38 75% 55%;
     --warning-rgb: 232, 168, 56;
 
-    --error: 1 71% 64%;
+    --error: 0 62% 55%;
     --error-rgb: 229, 115, 115;
 
-    --border: 218 30% 16%;
-    --border-light: 218 30% 12%;
-    --input: 220 30% 12%;
-    --ring: 210 85% 60%;
+    /* ── Borders & inputs ── */
+    --border: 217 33% 17%;            /* #1E293B */
+    --border-light: 217 30% 13%;
+    --input: 222 30% 12%;
+    --ring: 217 91% 60%;
 
-    --text-primary: 210 30% 96%;
-    --text-secondary: 215 22% 78%;
-    --text-muted: 215 18% 55%;
+    /* ── Text hierarchy ── */
+    --text-primary: 216 20% 91%;
+    --text-secondary: 215 17% 78%;
+    --text-muted: 215 17% 56%;
 
-    --radius: 0.75rem;
-    --radius-lg: 16px;
+    /* ── Radius ── */
+    --radius: 0.625rem;
+    --radius-lg: 14px;
 
-    /* Per-class aura colors (HSL triplets) */
-    --class-warrior: 0 72% 55%;
-    --class-mage: 260 78% 65%;
-    --class-archer: 140 60% 50%;
-    --class-priest: 45 95% 60%;
-    --class-assassin: 280 50% 45%;
-    --class-default: 210 85% 60%;
+    /* ── Per-class aura colors (HSL triplets) ── */
+    --class-warrior: 0 60% 50%;
+    --class-mage: 260 60% 58%;
+    --class-archer: 140 50% 45%;
+    --class-priest: 45 80% 55%;
+    --class-assassin: 280 40% 42%;
+    --class-default: 217 91% 60%;
 
-    /* Gradients */
-    --gradient-hero: linear-gradient(180deg, hsl(220 40% 7%) 0%, hsl(220 45% 4%) 100%);
-    --gradient-card: linear-gradient(135deg, hsl(220 35% 9% / 0.6) 0%, hsl(220 40% 6% / 0.6) 100%);
-    --gradient-gold: linear-gradient(135deg, hsl(210 90% 65%) 0%, hsl(215 75% 42%) 100%);
-    --gradient-border: linear-gradient(135deg, hsl(210 85% 60% / 0.5), hsl(210 85% 60% / 0.2));
-    /* Blue panel — frio, profundo */
-    --gradient-bronze: linear-gradient(160deg, hsl(215 50% 14%) 0%, hsl(220 55% 9%) 45%, hsl(222 60% 6%) 100%);
-    --gradient-bronze-soft: linear-gradient(160deg, hsl(215 45% 10% / 0.85) 0%, hsl(220 50% 5% / 0.85) 100%);
-    --gradient-hero-profile: radial-gradient(ellipse 80% 60% at 20% 0%, hsl(210 80% 35% / 0.28), transparent 60%), linear-gradient(135deg, hsl(215 45% 11%) 0%, hsl(220 45% 5%) 70%);
+    /* ── Gradients ── */
+    --gradient-hero: linear-gradient(180deg, hsl(228 50% 4%) 0%, hsl(228 55% 2%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(222 39% 12% / 0.7) 0%, hsl(224 42% 8% / 0.7) 100%);
+    --gradient-gold: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(221 83% 53%) 100%);
+    --gradient-border: linear-gradient(135deg, hsl(217 91% 60% / 0.3), hsl(217 91% 60% / 0.08));
+    --gradient-bronze: linear-gradient(160deg, hsl(222 35% 10%) 0%, hsl(226 40% 6%) 45%, hsl(228 45% 4%) 100%);
+    --gradient-bronze-soft: linear-gradient(160deg, hsl(222 30% 9% / 0.9) 0%, hsl(226 35% 5% / 0.9) 100%);
+    --gradient-hero-profile: radial-gradient(ellipse 80% 60% at 20% 0%, hsl(217 80% 30% / 0.18), transparent 60%), linear-gradient(135deg, hsl(222 35% 9%) 0%, hsl(228 40% 4%) 70%);
 
-    /* Shadows & glow */
-    --shadow-elegant: 0 15px 40px -12px hsl(220 80% 2% / 0.6);
-    --shadow-glow: 0 6px 20px hsl(210 85% 60% / 0.4);
-    --shadow-accent-glow: 0 4px 15px hsl(210 85% 60% / 0.35);
+    /* ── Shadows ── */
+    --shadow-elegant: 0 20px 50px -15px hsl(228 80% 2% / 0.7);
+    --shadow-glow: 0 4px 16px hsl(217 91% 60% / 0.15);
+    --shadow-accent-glow: 0 2px 10px hsl(217 91% 60% / 0.12);
 
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* ── Sidebar ── */
+    --sidebar-background: 226 42% 5%;
+    --sidebar-foreground: 216 20% 91%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 30% 10%;
+    --sidebar-accent-foreground: 216 20% 91%;
+    --sidebar-border: 217 33% 14%;
+    --sidebar-ring: 217 91% 60%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --background: 228 50% 3%;
+    --foreground: 216 20% 91%;
+    --card: 222 39% 11%;
+    --card-foreground: 216 20% 91%;
+    --popover: 224 42% 9%;
+    --popover-foreground: 216 20% 91%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 228 50% 4%;
+    --secondary: 222 30% 10%;
+    --secondary-foreground: 215 17% 78%;
+    --muted: 222 30% 9%;
+    --muted-foreground: 215 17% 56%;
+    --accent: 222 30% 10%;
+    --accent-foreground: 216 20% 91%;
+    --destructive: 0 62% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 217 33% 17%;
+    --input: 222 30% 12%;
+    --ring: 217 91% 60%;
+    --sidebar-background: 226 42% 5%;
+    --sidebar-foreground: 216 20% 91%;
+    --sidebar-primary: 217 91% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 222 30% 10%;
+    --sidebar-accent-foreground: 216 20% 91%;
+    --sidebar-border: 217 33% 14%;
+    --sidebar-ring: 217 91% 60%;
   }
 }
 
@@ -150,17 +138,17 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
     background-image:
-      radial-gradient(ellipse 60% 40% at 50% -5%, hsl(210 85% 60% / 0.08), transparent),
-      radial-gradient(ellipse 50% 40% at 100% 100%, hsl(215 80% 55% / 0.06), transparent);
+      radial-gradient(ellipse 50% 35% at 50% -5%, hsl(217 91% 60% / 0.04), transparent),
+      radial-gradient(ellipse 40% 30% at 100% 100%, hsl(221 83% 53% / 0.03), transparent);
     background-attachment: fixed;
   }
 }
 
 @layer utilities {
   .bg-hero { background: var(--gradient-hero); }
-  .bg-card-gradient { background: var(--gradient-card); backdrop-filter: blur(15px); }
+  .bg-card-gradient { background: var(--gradient-card); backdrop-filter: blur(12px); }
   .bg-gold { background: var(--gradient-gold); }
   .shadow-elegant { box-shadow: var(--shadow-elegant); }
   .shadow-glow { box-shadow: var(--shadow-glow); }
@@ -168,81 +156,81 @@
   .transition-smooth { transition: var(--transition-smooth); }
 
   .text-glow-gold {
-    text-shadow: 0 0 20px hsl(var(--primary) / 0.4);
+    text-shadow: 0 0 16px hsl(var(--primary) / 0.25);
   }
 
   .ornate-divider {
-    background-image: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.6), transparent);
+    background-image: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.35), transparent);
     height: 1px;
   }
 
   .glass-card {
-    background: hsl(220 40% 7% / 0.6);
-    backdrop-filter: blur(15px);
-    border: 1px solid hsl(210 50% 70% / 0.06);
+    background: hsl(222 39% 11% / 0.65);
+    backdrop-filter: blur(16px) saturate(1.2);
+    border: 1px solid hsl(217 33% 17% / 0.6);
   }
 
   .glass-card-hover:hover {
-    border-color: hsl(var(--border));
-    box-shadow: 0 15px 40px hsl(220 80% 2% / 0.5);
-    transform: translateY(-4px);
+    border-color: hsl(217 91% 60% / 0.2);
+    box-shadow: 0 12px 35px hsl(228 80% 2% / 0.5);
+    transform: translateY(-2px);
   }
 
   .uppercase-label {
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-weight: 700;
-    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    font-size: 0.7rem;
     color: hsl(var(--muted-foreground));
   }
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.4); }
-  50% { box-shadow: 0 0 24px 4px hsl(var(--primary) / 0.15); }
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.2); }
+  50% { box-shadow: 0 0 16px 2px hsl(var(--primary) / 0.08); }
 }
 
 @keyframes fade-in-up {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-.animate-pulse-glow { animation: pulse-glow 2.4s ease-in-out infinite; }
-.animate-fade-in-up { animation: fade-in-up 0.4s ease-out both; }
+.animate-pulse-glow { animation: pulse-glow 3s ease-in-out infinite; }
+.animate-fade-in-up { animation: fade-in-up 0.35s ease-out both; }
 
-/* ───────── Character profile (bronze MMO) ───────── */
+/* ───────── Character profile (premium dark) ───────── */
 @layer utilities {
   .bg-bronze { background: var(--gradient-bronze); }
   .bg-bronze-soft { background: var(--gradient-bronze-soft); }
   .bg-hero-profile { background: var(--gradient-hero-profile); }
 
   .border-bronze {
-    border: 1px solid hsl(210 55% 40% / 0.4);
+    border: 1px solid hsl(217 33% 20% / 0.5);
     box-shadow:
-      inset 0 1px 0 hsl(210 70% 65% / 0.15),
-      0 0 0 1px hsl(220 60% 4% / 0.6),
-      0 20px 50px -20px hsl(220 80% 2% / 0.7);
+      inset 0 1px 0 hsl(217 50% 50% / 0.06),
+      0 0 0 1px hsl(228 50% 3% / 0.6),
+      0 20px 50px -20px hsl(228 80% 2% / 0.7);
   }
 
   .border-bronze-soft {
-    border: 1px solid hsl(210 50% 35% / 0.35);
-    box-shadow: inset 0 1px 0 hsl(210 60% 60% / 0.08);
+    border: 1px solid hsl(217 30% 22% / 0.4);
+    box-shadow: inset 0 1px 0 hsl(217 40% 45% / 0.05);
   }
 
-  .text-bronze { color: hsl(210 75% 70%); }
-  .text-bronze-muted { color: hsl(215 30% 65%); }
+  .text-bronze { color: hsl(215 50% 70%); }
+  .text-bronze-muted { color: hsl(215 25% 58%); }
 
   .nav-card {
     position: relative;
     display: flex;
     align-items: center;
     gap: 0.875rem;
-    padding: 1rem 1.125rem;
-    border-radius: 14px;
-    background: linear-gradient(135deg, hsl(220 35% 10% / 0.85), hsl(222 40% 6% / 0.85));
-    border: 1px solid hsl(210 40% 30% / 0.4);
-    color: hsl(215 25% 75%);
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 0.875rem 1rem;
+    border-radius: 10px;
+    background: hsl(222 35% 9% / 0.8);
+    border: 1px solid hsl(217 33% 17% / 0.5);
+    color: hsl(215 17% 65%);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     text-align: left;
     overflow: hidden;
   }
@@ -250,41 +238,41 @@
     content: "";
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, hsl(210 80% 55% / 0.1), transparent 60%);
+    background: linear-gradient(135deg, hsl(217 91% 60% / 0.05), transparent 60%);
     opacity: 0;
-    transition: opacity 0.25s;
+    transition: opacity 0.2s;
     pointer-events: none;
   }
   .nav-card:hover {
-    border-color: hsl(210 75% 55% / 0.55);
-    color: hsl(210 80% 80%);
+    border-color: hsl(217 91% 60% / 0.25);
+    color: hsl(215 30% 80%);
     transform: translateY(-1px);
   }
   .nav-card:hover::before { opacity: 1; }
   .nav-card[data-active="true"] {
-    border-color: hsl(210 80% 55% / 0.7);
-    color: hsl(210 90% 80%);
-    background: linear-gradient(135deg, hsl(215 65% 22% / 0.9), hsl(220 55% 12% / 0.9));
+    border-color: hsl(217 91% 60% / 0.4);
+    color: hsl(217 80% 85%);
+    background: hsl(222 40% 12% / 0.9);
     box-shadow:
-      0 0 0 1px hsl(210 75% 50% / 0.3),
-      0 0 25px hsl(210 75% 50% / 0.25),
-      inset 0 1px 0 hsl(210 85% 65% / 0.25);
+      0 0 0 1px hsl(217 91% 60% / 0.15),
+      0 0 20px hsl(217 91% 60% / 0.1),
+      inset 0 1px 0 hsl(217 80% 60% / 0.1);
   }
 
   .pill-gold {
     display: inline-flex;
     align-items: center;
     gap: 0.375rem;
-    padding: 0.375rem 0.875rem;
+    padding: 0.375rem 0.75rem;
     border-radius: 999px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
-    background: linear-gradient(135deg, hsl(215 70% 25%), hsl(220 65% 16%));
-    border: 1px solid hsl(210 70% 50% / 0.5);
-    color: hsl(210 90% 80%);
-    box-shadow: inset 0 1px 0 hsl(210 85% 65% / 0.2);
+    background: hsl(222 35% 12%);
+    border: 1px solid hsl(217 91% 60% / 0.3);
+    color: hsl(217 80% 75%);
+    box-shadow: inset 0 1px 0 hsl(217 60% 50% / 0.08);
   }
 
   .pill-tab {
@@ -294,32 +282,32 @@
     padding: 0.5rem 1rem;
     border-radius: 999px;
     font-size: 0.75rem;
-    font-weight: 600;
-    color: hsl(215 25% 65%);
-    background: hsl(220 30% 10% / 0.6);
-    border: 1px solid hsl(210 35% 25% / 0.5);
+    font-weight: 500;
+    color: hsl(215 17% 58%);
+    background: hsl(222 30% 8% / 0.6);
+    border: 1px solid hsl(217 33% 17% / 0.5);
     transition: all 0.2s;
     cursor: pointer;
   }
   .pill-tab:hover {
-    color: hsl(210 75% 75%);
-    border-color: hsl(210 65% 45% / 0.6);
+    color: hsl(215 30% 75%);
+    border-color: hsl(217 91% 60% / 0.2);
   }
   .pill-tab[data-active="true"] {
-    color: hsl(220 50% 10%);
-    background: linear-gradient(135deg, hsl(210 85% 70%), hsl(215 75% 55%));
-    border-color: hsl(210 85% 60%);
-    box-shadow: 0 4px 14px hsl(210 75% 45% / 0.4);
+    color: hsl(0 0% 100%);
+    background: hsl(217 91% 60%);
+    border-color: hsl(217 91% 60%);
+    box-shadow: 0 4px 12px hsl(217 91% 60% / 0.25);
   }
 
   .frame-bronze {
     position: relative;
-    border-radius: 20px;
+    border-radius: 14px;
     background: var(--gradient-bronze);
-    border: 1px solid hsl(210 55% 35% / 0.5);
+    border: 1px solid hsl(217 33% 17% / 0.6);
     box-shadow:
-      inset 0 1px 0 hsl(210 70% 65% / 0.18),
-      0 30px 70px -30px hsl(220 80% 2% / 0.8);
+      inset 0 1px 0 hsl(217 40% 45% / 0.06),
+      0 25px 60px -25px hsl(228 80% 2% / 0.8);
   }
   .frame-bronze::before,
   .frame-bronze::after {
@@ -328,7 +316,7 @@
     left: 1.25rem;
     right: 1.25rem;
     height: 1px;
-    background: linear-gradient(90deg, transparent, hsl(210 70% 60% / 0.5), transparent);
+    background: linear-gradient(90deg, transparent, hsl(217 50% 40% / 0.25), transparent);
     pointer-events: none;
   }
   .frame-bronze::before { top: 0.65rem; }
@@ -336,16 +324,16 @@
 
   .avatar-frame {
     position: relative;
-    border-radius: 18px;
-    padding: 4px;
-    background: linear-gradient(135deg, hsl(210 85% 65%), hsl(220 60% 25%) 60%, hsl(210 80% 50%));
+    border-radius: 14px;
+    padding: 3px;
+    background: linear-gradient(135deg, hsl(217 91% 60% / 0.6), hsl(222 30% 18%) 60%, hsl(217 91% 60% / 0.4));
     box-shadow:
-      0 0 0 1px hsl(220 60% 4%),
-      0 0 30px hsl(210 75% 45% / 0.4);
+      0 0 0 1px hsl(228 50% 3%),
+      0 0 20px hsl(217 91% 60% / 0.15);
   }
   .avatar-frame > * {
-    border-radius: 14px;
-    background: hsl(220 35% 7%);
+    border-radius: 11px;
+    background: hsl(222 39% 11%);
     overflow: hidden;
   }
 }
@@ -353,28 +341,19 @@
 
 /* ==========================================================================
    Admin background passthrough
-   Quando o superadmin define um background customizado, queremos que ele
-   apareça através das páginas internas. As páginas usam bg-background /
-   bg-card como superfícies opacas — aqui transformamos esses tokens em
-   variantes semi-transparentes APENAS dentro do AdminLayout marcado.
    ========================================================================== */
 .admin-bg-transparent main { background-color: transparent !important; }
 .admin-bg-transparent main > * { background-color: transparent !important; }
-.admin-bg-transparent main .bg-background { background-color: hsl(var(--background) / 0.55) !important; backdrop-filter: blur(8px); }
-.admin-bg-transparent main .bg-card { background-color: hsl(var(--card) / 0.65) !important; backdrop-filter: blur(8px); }
+.admin-bg-transparent main .bg-background { background-color: hsl(var(--background) / 0.6) !important; backdrop-filter: blur(12px); }
+.admin-bg-transparent main .bg-card { background-color: hsl(var(--card) / 0.7) !important; backdrop-filter: blur(12px); }
 
 /* ==========================================================================
    Admin custom cursor
-   PNG 32×32 funciona em todos os navegadores modernos. Mantemos o .ani como
-   segundo fallback (Edge legado / IE) e "auto" como fallback final.
-   Hotspot 4,4 = ponta da seta no canto superior esquerdo do ícone.
-   Aplicado em toda a árvore /admin via classe .admin-cursor.
    ========================================================================== */
 .admin-cursor,
 .admin-cursor * {
   cursor: url("/cursors/normal.png") 4 4, url("/cursors/normal.ani"), auto;
 }
-/* Mantém o pointer visual em elementos clicáveis dentro do admin. */
 .admin-cursor a,
 .admin-cursor button,
 .admin-cursor [role="button"],
@@ -384,4 +363,3 @@
 .admin-cursor summary {
   cursor: url("/cursors/normal.png") 4 4, url("/cursors/normal.ani"), pointer;
 }
-

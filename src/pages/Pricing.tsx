@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, Check, Crown, Loader2, Server, Shield, Sparkles, Zap, QrCode } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { usePaddleCheckout } from "@/hooks/usePaddleCheckout";
 import { usePixCheckout } from "@/hooks/usePixCheckout";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useServers } from "@/hooks/useServers";
@@ -130,12 +129,10 @@ const Pricing = () => {
   const { session, user, isAdmin, isSuperadmin, loading: authLoading } = useAuth();
   const { isActive, isTrial, plan, loading: subLoading, refetch: refetchSub } = useSubscription();
   const { active, loading: serversLoading } = useServers();
-  const { openCheckout, loading } = usePaddleCheckout();
   const { createPixPayment, pixData, loading: pixLoading, status: pixStatus, checking: pixChecking, reset: resetPix } = usePixCheckout();
   const { settings } = useAppSettings();
   const [trialLoading, setTrialLoading] = useState(false);
   const [cycle, setCycle] = useState<BillingCycle>("monthly");
-  const [checkoutTarget, setCheckoutTarget] = useState<string | null>(null);
   const [pixModalOpen, setPixModalOpen] = useState(false);
   const [pixPlanName, setPixPlanName] = useState("");
   const [pixAmount, setPixAmount] = useState("");
@@ -164,27 +161,6 @@ const Pricing = () => {
     active?.onboarding_completed,
     navigate,
   ]);
-
-  const handleCheckout = async (priceId: string) => {
-    if (!session) {
-      navigate("/auth?next=/pricing");
-      return;
-    }
-    setCheckoutTarget(priceId);
-    try {
-      await openCheckout({
-        priceId,
-        customerEmail: user?.email,
-        userId: user?.id,
-        successUrl: `${window.location.origin}/checkout/success`,
-      });
-    } catch (e) {
-      console.error(e);
-      toast.error("Erro ao abrir checkout. Tenta de novo.");
-    } finally {
-      setCheckoutTarget(null);
-    }
-  };
 
   const handleStartTrial = async () => {
     if (!session) {
@@ -311,12 +287,10 @@ const Pricing = () => {
         <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
           {/* Iniciante / Pro / Ultimate */}
           {PAID_PLANS.map((p) => {
-            const priceId = cycle === "monthly" ? p.monthlyPriceId : p.yearlyPriceId;
             const value = cycle === "monthly" ? p.monthly : p.yearly;
             const suffix = cycle === "monthly" ? "/mês" : "/ano";
             const monthlyEquivalent = cycle === "yearly" ? p.yearly / 12 : null;
             const isCurrent = plan === p.id;
-            const isThisLoading = loading && checkoutTarget === priceId;
             const Icon = p.id === "ultimate" ? Crown : p.id === "iniciante" ? Sparkles : Zap;
             return (
               <div
@@ -384,52 +358,37 @@ const Pricing = () => {
                     ))}
                   </ul>
 
-                  <button
-                    onClick={() => handleCheckout(priceId)}
-                    disabled={loading || isCurrent}
-                    className={`mt-auto inline-flex w-full items-center justify-center gap-2 rounded-md px-6 py-3 text-sm font-bold transition-smooth disabled:opacity-60 ${
-                      p.highlight
-                        ? "bg-primary text-primary-foreground shadow-glow hover:brightness-110"
-                        : "border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"
-                    }`}
-                  >
-                    {isThisLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : isCurrent ? (
-                      "Plano atual"
-                    ) : (
-                      <>
-                        Assinar {p.name}
-                        <ArrowRight className="h-4 w-4" />
-                      </>
-                    )}
-                  </button>
-
-                  <p className="mt-3 text-center text-xs text-muted-foreground">
-                    Cartão de crédito via Paddle
-                  </p>
-
-                  {!isCurrent && (
+                  {!isCurrent ? (
                     <button
                       onClick={() => handlePixCheckout(p)}
                       disabled={pixLoading}
-                      className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-6 py-2.5 text-sm font-bold text-emerald-400 transition-smooth hover:bg-emerald-500/20 disabled:opacity-60"
+                      className={`mt-auto inline-flex w-full items-center justify-center gap-2 rounded-md px-6 py-3 text-sm font-bold transition-smooth disabled:opacity-60 ${
+                        p.highlight
+                          ? "bg-primary text-primary-foreground shadow-glow hover:brightness-110"
+                          : "border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"
+                      }`}
                     >
                       {pixLoading ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <>
                           <QrCode className="h-4 w-4" />
-                          Pagar com Pix
+                          Assinar {p.name} via Pix
                         </>
                       )}
                     </button>
+                  ) : (
+                    <button
+                      disabled
+                      className="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-md px-6 py-3 text-sm font-bold transition-smooth disabled:opacity-60 border border-primary/40 bg-primary/10 text-primary"
+                    >
+                      Plano atual
+                    </button>
                   )}
-                  {!isCurrent && (
-                    <p className="mt-1 text-center text-[11px] text-muted-foreground">
-                      Renovação mensal manual · QR Code instantâneo
-                    </p>
-                  )}
+
+                  <p className="mt-2 text-center text-[11px] text-muted-foreground">
+                    Pagamento via Pix · Renovação mensal manual
+                  </p>
                 </div>
               </div>
             );

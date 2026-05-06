@@ -11,6 +11,50 @@ const BodySchema = z.object({
   pixPaymentId: z.string().uuid(),
 });
 
+/** Auto-cria licença com validade + plano se ainda não existir para o usuário */
+async function ensureLicense(supabase: any, userId: string, productId: string, expiresAt: string) {
+  try {
+    const { data: existingLicense } = await supabase
+      .from("licenses")
+      .select("id")
+      .eq("created_by", userId)
+      .maybeSingle();
+
+    if (existingLicense) return;
+
+    // Buscar superadmin para ser o criador do sistema
+    const { data: superadminRole } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "superadmin")
+      .limit(1)
+      .maybeSingle();
+
+    const creatorId = superadminRole?.user_id || userId;
+    const plan = productId?.includes("ultimate") ? "ultimate" : "pro";
+
+    // Buscar email do usuário
+    const { data: { user: fullUser } } = await supabase.auth.admin.getUserById(userId);
+    const email = fullUser?.email || null;
+
+    await supabase.from("licenses").insert({
+      client_name: email || "Cliente Pix",
+      client_email: email,
+      plan,
+      status: "active",
+      created_by: creatorId,
+      payment_method: "pix",
+      expires_at: expiresAt,
+      activated_at: new Date().toISOString(),
+      notes: `Auto-criado via Pix para user ${userId}`,
+    });
+
+    console.log("Auto-created license for Pix user:", userId);
+  } catch (err) {
+    console.error("Failed to auto-create license:", err);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -101,6 +145,9 @@ Deno.serve(async (req) => {
         });
       }
 
+      // Auto-criar licença se não existir
+      await ensureLicense(supabase, user.id, pixPayment.product_id, periodEnd);
+
       return new Response(
         JSON.stringify({ status: "approved", paid_at: pixPayment.paid_at }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -170,6 +217,9 @@ Deno.serve(async (req) => {
           current_period_end: periodEnd,
         });
       }
+
+      // Auto-criar licença se não existir
+      await ensureLicense(supabase, user.id, pixPayment.product_id, periodEnd);
 
       return new Response(
         JSON.stringify({ status: "approved", paid_at: now }),

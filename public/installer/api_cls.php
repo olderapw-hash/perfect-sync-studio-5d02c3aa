@@ -62,7 +62,7 @@
 $CONFIG = [
     'gamedbd_ip'   => '127.0.0.1',
     'gamedbd_port' => 29400,
-    'api_secret'   => '91639268',
+    'api_secret'   => '', // loaded from .env
     'game_version' => '101',
     'clsconfig_export_workdir' => '/',
     'clsconfig_export_command' => '/usr/bin/sudo -n /usr/local/sbin/exportclsconfig-api.sh',

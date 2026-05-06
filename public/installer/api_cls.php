@@ -16670,6 +16670,19 @@ if (php_sapi_name() !== 'cli' || isset($_GET['action'])) {
         exit;
     }
 
+    // ---- VPS Activation Token Validation ----
+    if (!empty($CONFIG['vps_activation_token']) && !empty($CONFIG['vps_activation_url'])) {
+        $vpsValid = vpsActivationCheck($CONFIG);
+        if (!$vpsValid['valid']) {
+            respondJson([
+                'error' => 'VPS_ACTIVATION_FAILED',
+                'reason' => isset($vpsValid['reason']) ? $vpsValid['reason'] : 'unknown',
+                'message' => isset($vpsValid['message']) ? $vpsValid['message'] : 'Este token de ativacao nao e valido para esta VPS.',
+            ], 403);
+            exit;
+        }
+    }
+
     $action = isset($_GET['action']) ? $_GET['action'] : (isset($_POST['action']) ? $_POST['action'] : '');
 
     switch ($action) {

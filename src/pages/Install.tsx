@@ -489,8 +489,13 @@ const Install = () => {
             <div className="mt-3 space-y-1 text-[11px] text-muted-foreground">
               <p>✅ Instala Apache + PHP automaticamente</p>
               <p>✅ Configura sudoers e scripts auxiliares</p>
-              <p>✅ Injeta o secret no api_cls.php</p>
+              <p>✅ Secrets salvos no .env (nunca no código-fonte)</p>
               <p>✅ Testa a conexão com o gamedbd</p>
+              {vpsToken ? (
+                <p className="text-primary font-semibold">🔒 Token de ativação VPS incluído — protegido contra redistribuição</p>
+              ) : (
+                <p className="text-amber-500">⚠️ Sem token de ativação VPS — sem proteção contra cópia</p>
+              )}
             </div>
 
             {showRealValues && (

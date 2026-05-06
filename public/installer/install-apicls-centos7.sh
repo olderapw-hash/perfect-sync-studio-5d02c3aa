@@ -69,6 +69,14 @@ while [ "$#" -gt 0 ]; do
       SECRET="${2:-}"
       shift 2
       ;;
+    --activation-token)
+      ACTIVATION_TOKEN="${2:-}"
+      shift 2
+      ;;
+    --activation-url)
+      ACTIVATION_URL="${2:-}"
+      shift 2
+      ;;
     --api-src)
       API_SRC="${2:-}"
       shift 2

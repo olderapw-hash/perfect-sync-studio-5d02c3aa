@@ -26,6 +26,7 @@ import Audit from "./pages/Audit.tsx";
 import Members from "./pages/Members.tsx";
 import Invites from "./pages/Invites.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import ResetPassword from "./pages/ResetPassword.tsx";
 
 // Páginas internas do painel /admin (Fase 1 da nova arquitetura).
 import TemplatesPage from "./pages/admin/TemplatesPage.tsx";
@@ -85,6 +86,7 @@ const App = () => (
                   {/* No modo VPS, "/" vai direto pro login; páginas públicas ficam ocultas */}
                   <Route path="/" element={isVpsMode ? <Navigate to="/auth" replace /> : <Landing />} />
                   <Route path="/auth" element={<Auth />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/pricing" element={isVpsMode ? <Navigate to="/auth" replace /> : <Pricing />} />
                   <Route path="/privacy" element={<PrivacyPolicy />} />
                   <Route path="/terms" element={<TermsOfService />} />

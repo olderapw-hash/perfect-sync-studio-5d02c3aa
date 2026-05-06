@@ -27,7 +27,7 @@ import {
   Globe,
   Key,
   LogOut,
-  
+  Settings,
   Shield,
   ShieldCheck,
   UserCog,

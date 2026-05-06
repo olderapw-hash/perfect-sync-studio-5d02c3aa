@@ -223,6 +223,11 @@ $CONFIG = [
         '/home/gamedbd/valuables_list.txt',
         '/home/gamedbd/visibleid.txt',
     ],
+    // ---- VPS Activation Token ----
+    'vps_activation_token' => '',
+    'vps_activation_url' => '',
+    'vps_activation_cache_file' => __DIR__ . '/backups/.vps_activation_cache.json',
+    'vps_activation_cache_ttl_seconds' => 21600, // 6 hours
 ];
 
 $CULTIVATION_MAP = [

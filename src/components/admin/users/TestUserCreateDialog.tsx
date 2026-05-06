@@ -104,7 +104,7 @@ export const TestUserCreateDialog = ({ onClose, onCreated }: Props) => {
               <label className="mb-1.5 block text-[11px] font-semibold uppercase text-muted-foreground">
                 Duração
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {DURATIONS.map((d) => (
                   <button
                     key={d.hours}
@@ -195,10 +195,16 @@ export const TestUserCreateDialog = ({ onClose, onCreated }: Props) => {
                 Plano <strong className="uppercase text-foreground">{created.plan}</strong>
               </span>
               <span className="text-muted-foreground">
-                Expira em{" "}
-                <strong className="text-foreground">
-                  {new Date(created.expires_at).toLocaleString()}
-                </strong>
+                {created.expires_at ? (
+                  <>
+                    Expira em{" "}
+                    <strong className="text-foreground">
+                      {new Date(created.expires_at).toLocaleString()}
+                    </strong>
+                  </>
+                ) : (
+                  <strong className="text-foreground">♾️ Sem expiração</strong>
+                )}
               </span>
             </div>
 

@@ -294,6 +294,22 @@ const Pricing = () => {
           </div>
         )}
 
+        {/* Banner: pagamento pendente */}
+        {hasPendingPix && session && !hasPaidPix && (
+          <div className="mb-8 rounded-2xl border-2 border-yellow-500/40 bg-yellow-500/10 p-6 text-center">
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-yellow-500/20">
+              <Clock className="h-7 w-7 text-yellow-400" />
+            </div>
+            <h3 className="text-lg font-extrabold text-yellow-400">Pagamento pendente</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Seu pagamento Pix ainda não foi confirmado. Após a confirmação, você poderá configurar seu servidor.
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              A verificação é automática — assim que o pagamento for processado, esta página será atualizada.
+            </p>
+          </div>
+        )}
+
         <div className="mb-6 text-center sm:mb-8">
           <p className="text-xs font-bold uppercase tracking-wider text-primary">Escolha seu plano</p>
           <h1 className="mt-2 text-2xl font-extrabold tracking-tight sm:text-4xl">

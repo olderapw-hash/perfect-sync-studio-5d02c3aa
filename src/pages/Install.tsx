@@ -99,6 +99,17 @@ const Install = () => {
       });
   }, []);
 
+  // Fetch user's VPS activation token
+  useEffect(() => {
+    if (!session?.user) return;
+    supabase.rpc("get_my_vps_activation_token").then(({ data }) => {
+      if (data && Array.isArray(data) && data.length > 0) {
+        setVpsToken(data[0].activation_token);
+        setVpsStatus(data[0].vps_status);
+      }
+    });
+  }, [session?.user?.id]);
+
   useEffect(() => {
     if (!selectedId) {
       const fallback = active?.id ?? servers[0]?.id ?? "";

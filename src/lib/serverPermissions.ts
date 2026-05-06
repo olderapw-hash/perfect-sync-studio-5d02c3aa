@@ -56,6 +56,14 @@ export const ACTION_PERMISSION: Record<string, ServerPermissionKey> = {
   unbanAccount: "manage_security",
   clearRolePk: "manage_security",
   listSecurityHistory: "view_audit",
+
+  // GM Commander v2 — Bulk Operations
+  searchPlayerDirectory: "manage_security",
+  resolveBulkTargets: "manage_security",
+  previewBulkTargets: "manage_security",
+  queueBulkCommand: "manage_security",
+  getBulkCommandJob: "view_audit",
+  getBulkCommandJobs: "view_audit",
 };
 
 /** Operações UI que mapeiam pra mais de uma action. */

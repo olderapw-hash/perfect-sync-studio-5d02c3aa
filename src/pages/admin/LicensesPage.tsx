@@ -49,6 +49,7 @@ import {
 interface License {
   id: string;
   license_key: string;
+  vps_activation_token: string | null;
   client_name: string;
   client_email: string | null;
   plan: string;

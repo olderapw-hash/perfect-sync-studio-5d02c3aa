@@ -8,6 +8,8 @@ import {
   Pencil,
   Plus,
   RefreshCw,
+  Shield,
+  Terminal,
   Trash2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";

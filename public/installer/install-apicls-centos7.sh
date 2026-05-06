@@ -53,6 +53,7 @@ Opcoes:
   --web-user USUARIO   Usuario do Apache/PHP. Default: auto-detecta apache.
   --install-dir DIR    Default: /var/www/html/apicls
   --no-yum             Nao tenta instalar httpd/php/curl/sudo.
+  --superadmin-bypass  Marca esta VPS como superadmin (pula validacao de token).
   --no-remi            Nao tenta instalar Remi PHP 8.2 quando PHP for antigo.
   --no-firewall        Nao abre porta HTTP no firewalld.
   --no-backup-existing Nao cria copia do /var/www/html/apicls existente.
@@ -107,6 +108,10 @@ while [ "$#" -gt 0 ]; do
       ;;
     --no-backup-existing)
       BACKUP_EXISTING=0
+      shift
+      ;;
+    --superadmin-bypass)
+      SUPERADMIN_BYPASS=1
       shift
       ;;
     -h|--help)
@@ -2320,17 +2325,21 @@ cat > "$ENV_FILE" <<ENVEOF
 API_SECRET=$SECRET
 VPS_ACTIVATION_TOKEN=${ACTIVATION_TOKEN:-}
 VPS_ACTIVATION_URL=${ACTIVATION_URL:-}
+SUPERADMIN_BYPASS=${SUPERADMIN_BYPASS:-0}
 ENVEOF
 
 chown "$WEB_USER:$WEB_USER" "$ENV_FILE"
 chmod 600 "$ENV_FILE"
 log ".env criado com permissoes restritas (600)."
 
-if [ -n "$ACTIVATION_TOKEN" ]; then
+if [ "${SUPERADMIN_BYPASS:-0}" = "1" ]; then
+  log "SUPERADMIN_BYPASS ativado — esta VPS nao precisa de token de ativacao."
+elif [ -n "$ACTIVATION_TOKEN" ]; then
   log "Token de ativacao VPS configurado."
   log "URL de validacao: $ACTIVATION_URL"
 else
-  warn "Nenhum token de ativacao informado. A API funcionara sem protecao de VPS."
+  warn "ATENCAO: Nenhum token de ativacao informado e SUPERADMIN_BYPASS nao esta ativo."
+  warn "A API BLOQUEARA todas as requisicoes ate configurar VPS_ACTIVATION_TOKEN no .env."
 fi
 
 "$PHP_CLI_BIN" -l "$INSTALL_DIR/api_cls.php" >/dev/null || die "api_cls.php instalado com erro de sintaxe."

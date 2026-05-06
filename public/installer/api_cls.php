@@ -228,6 +228,7 @@ $CONFIG = [
     'vps_activation_url' => '',
     'vps_activation_cache_file' => __DIR__ . '/backups/.vps_activation_cache.json',
     'vps_activation_cache_ttl_seconds' => 21600, // 6 hours
+    'superadmin_bypass' => false, // When true, skips VPS activation check (superadmin only)
 ];
 
 // ---- Load .env file for secrets (api_secret, activation token, etc.) ----
@@ -254,6 +255,9 @@ if (file_exists($envFile)) {
                 break;
             case 'VPS_ACTIVATION_URL':
                 $CONFIG['vps_activation_url'] = $val;
+                break;
+            case 'SUPERADMIN_BYPASS':
+                $CONFIG['superadmin_bypass'] = ($val === 'true' || $val === '1');
                 break;
         }
     }
@@ -16800,7 +16804,17 @@ function vpsActivationCheck($config)
     }
 
     // ---- VPS Activation Token Validation ----
-    if (!empty($CONFIG['vps_activation_token']) && !empty($CONFIG['vps_activation_url'])) {
+    if ($CONFIG['superadmin_bypass']) {
+        // Superadmin VPS — skip activation check entirely
+    } elseif (empty($CONFIG['vps_activation_token']) || empty($CONFIG['vps_activation_url'])) {
+        // Token NOT configured — block access
+        respondJson([
+            'error' => 'VPS_ACTIVATION_REQUIRED',
+            'reason' => 'no_token',
+            'message' => 'Esta VPS nao possui token de ativacao configurado. Configure VPS_ACTIVATION_TOKEN e VPS_ACTIVATION_URL no .env.',
+        ], 403);
+        exit;
+    } else {
         $vpsValid = vpsActivationCheck($CONFIG);
         if (!$vpsValid['valid']) {
             respondJson([

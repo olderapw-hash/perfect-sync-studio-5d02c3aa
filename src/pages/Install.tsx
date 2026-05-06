@@ -74,7 +74,7 @@ function expectedApiUrl(rawUrl: string | null | undefined): string {
 
 const Install = () => {
   const navigate = useNavigate();
-  const { session, loading: authLoading } = useAuth();
+  const { session, isSuperadmin, loading: authLoading } = useAuth();
   const { servers, active, loading: serversLoading } = useServers();
 
   const [selectedId, setSelectedId] = useState<string>("");
@@ -188,7 +188,8 @@ const Install = () => {
   // ---- Commands ----
   const step2Command = `scp -r C:\\orphea\\* root@${ipDisplay}:/root/orphea/`;
   const activationPart = vpsToken ? ` --activation-token ${vpsToken}` : "";
-  const step3Command = `ssh root@${ipDisplay} "bash /root/orphea/install-apicls-centos7.sh --secret ${secretDisplay}${activationPart}"`;
+  const superadminPart = isSuperadmin && !vpsToken ? " --superadmin-bypass" : "";
+  const step3Command = `ssh root@${ipDisplay} "bash /root/orphea/install-apicls-centos7.sh --secret ${secretDisplay}${activationPart}${superadminPart}"`;
 
   if (authLoading) {
     return (
@@ -493,8 +494,10 @@ const Install = () => {
               <p>✅ Testa a conexão com o gamedbd</p>
               {vpsToken ? (
                 <p className="text-primary font-semibold">🔒 Token de ativação VPS incluído — protegido contra redistribuição</p>
+              ) : isSuperadmin ? (
+                <p className="text-primary font-semibold">👑 Superadmin bypass ativo — token não necessário</p>
               ) : (
-                <p className="text-amber-500">⚠️ Sem token de ativação VPS — sem proteção contra cópia</p>
+                <p className="text-destructive font-semibold">🚫 Sem token de ativação VPS — a API será BLOQUEADA. Crie uma licença primeiro.</p>
               )}
             </div>
 

@@ -137,18 +137,23 @@ const Pricing = () => {
   const [pixPlanName, setPixPlanName] = useState("");
   const [pixAmount, setPixAmount] = useState("");
   const [hasPaidPix, setHasPaidPix] = useState(false);
+  const [hasPendingPix, setHasPendingPix] = useState(false);
 
-  // Checa se o usuário tem pagamento Pix aprovado (fallback visual)
+  // Checa se o usuário tem pagamento Pix aprovado ou pendente
   useEffect(() => {
     if (!session?.user) return;
     supabase
       .from("pix_payments")
-      .select("id")
+      .select("id, status")
       .eq("user_id", session.user.id)
-      .eq("status", "approved")
-      .limit(1)
+      .in("status", ["approved", "pending"])
+      .order("created_at", { ascending: false })
+      .limit(5)
       .then(({ data }) => {
-        if (data && data.length > 0) setHasPaidPix(true);
+        if (data) {
+          setHasPaidPix(data.some((p) => p.status === "approved"));
+          setHasPendingPix(!data.some((p) => p.status === "approved") && data.some((p) => p.status === "pending"));
+        }
       });
   }, [session?.user?.id]);
 

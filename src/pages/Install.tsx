@@ -59,7 +59,7 @@ const FILES: InstallerFile[] = [
   {
     name: "api_cls.php",
     description:
-      "Bridge HTTP completa: gamedbd, templates CLS, backups, restore, item catalog e correio (sendMailItem/sendMailGold).",
+      "Bridge HTTP completa: gamedbd, templates CLS, backups, restore, item catalog, correio, GM Commander bulk e moderação.",
     staticPath: "/installer/api_cls.php",
     icon: FileCode,
     language: "php",
@@ -77,19 +77,42 @@ const FILES: InstallerFile[] = [
   {
     name: "pw_send_mail.php",
     description:
-      "Handler do correio real (item/gold). Conversa com o gdeliveryd via send_mail.lua. Sem ele o correio fica em modo queue-only.",
+      "Handler do correio real (item/gold). Conversa com o gdeliveryd via send_mail.lua.",
     staticPath: "/installer/pw_send_mail.php",
     icon: FileCode,
     language: "php",
-    primary: true,
   },
   {
     name: "sendreward-api.sh",
     description:
-      "Wrapper sudo chamado pelo Apache para executar o pw_send_mail.php como root (acesso ao console do gdeliveryd).",
+      "Wrapper sudo chamado pelo Apache para executar o pw_send_mail.php como root.",
     staticPath: "/installer/sendreward-api.sh",
     icon: Terminal,
     language: "bash",
+  },
+  {
+    name: "backupgamedbd-api.sh",
+    description:
+      "Wrapper sudo para backups do gamedbd. Chamado pelo api_cls.php via sudoers.",
+    staticPath: "/installer/backupgamedbd-api.sh",
+    icon: Terminal,
+    language: "bash",
+  },
+  {
+    name: "gm-queue-worker.php",
+    description:
+      "Worker que processa jobs bulk do GM Commander (premiação em massa).",
+    staticPath: "/installer/gm-queue-worker.php",
+    icon: FileCode,
+    language: "php",
+  },
+  {
+    name: "gm-schedule-worker.php",
+    description:
+      "Worker de agendamento: cria jobs bulk a partir de schedules configurados.",
+    staticPath: "/installer/gm-schedule-worker.php",
+    icon: FileCode,
+    language: "php",
   },
   {
     name: "README.md",

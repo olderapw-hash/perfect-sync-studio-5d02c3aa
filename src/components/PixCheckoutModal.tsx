@@ -28,6 +28,7 @@ export function PixCheckoutModal({
   amount,
 }: PixCheckoutModalProps) {
   const [copied, setCopied] = useState(false);
+  const navigate = useNavigate();
 
   if (!open || !pixData) return null;
 

@@ -174,6 +174,9 @@ Deno.serve(async (req) => {
         });
       }
 
+      // Auto-criar licença se não existir
+      await ensureLicense(supabase, user.id, pixPayment.product_id, periodEnd);
+
       return new Response(
         JSON.stringify({ status: "approved", paid_at: now }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

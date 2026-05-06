@@ -74,7 +74,7 @@ function expectedApiUrl(rawUrl: string | null | undefined): string {
 
 const Install = () => {
   const navigate = useNavigate();
-  const { session, loading: authLoading } = useAuth();
+  const { session, isSuperadmin, loading: authLoading } = useAuth();
   const { servers, active, loading: serversLoading } = useServers();
 
   const [selectedId, setSelectedId] = useState<string>("");

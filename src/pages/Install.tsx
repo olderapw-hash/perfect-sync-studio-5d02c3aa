@@ -494,8 +494,10 @@ const Install = () => {
               <p>✅ Testa a conexão com o gamedbd</p>
               {vpsToken ? (
                 <p className="text-primary font-semibold">🔒 Token de ativação VPS incluído — protegido contra redistribuição</p>
+              ) : isSuperadmin ? (
+                <p className="text-primary font-semibold">👑 Superadmin bypass ativo — token não necessário</p>
               ) : (
-                <p className="text-amber-500">⚠️ Sem token de ativação VPS — sem proteção contra cópia</p>
+                <p className="text-destructive font-semibold">🚫 Sem token de ativação VPS — a API será BLOQUEADA. Crie uma licença primeiro.</p>
               )}
             </div>
 

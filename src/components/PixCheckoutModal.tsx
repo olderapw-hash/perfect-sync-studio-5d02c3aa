@@ -78,10 +78,13 @@ export function PixCheckoutModal({
               Seu plano foi ativado por 30 dias.
             </p>
             <button
-              onClick={onClose}
+              onClick={() => {
+                onClose();
+                navigate("/onboarding");
+              }}
               className="mt-4 rounded-md bg-primary px-6 py-2.5 text-sm font-bold text-primary-foreground hover:brightness-110 transition-smooth"
             >
-              Continuar
+              Configurar meu servidor
             </button>
           </div>
         ) : isExpired ? (

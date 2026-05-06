@@ -240,28 +240,10 @@ if ! grep -q "scheduleBulkCommand" "$TMP_API" || ! grep -q "getBulkSchedules" "$
   die "api_cls.php parece desatualizado. Ele precisa conter scheduleBulkCommand, getBulkSchedules e runDueBulkSchedules."
 fi
 
+# Nao faz mais sed no api_cls.php — secrets vao no .env
+# Mantemos compatibilidade: se o PHP ainda tiver api_secret hardcoded, limpamos
 if grep -q "'api_secret'" "$TMP_API"; then
-  sed -i -E "s/('api_secret'[[:space:]]*=>[[:space:]]*)'[^']*'/\1'$SECRET'/" "$TMP_API"
-elif grep -q "\$SECRET[[:space:]]*=" "$TMP_API"; then
-  sed -i -E "s/(\$SECRET[[:space:]]*=[[:space:]]*)'[^']*'/\1'$SECRET'/" "$TMP_API"
-else
-  die "Nao encontrei campo api_secret/\$SECRET no api_cls.php."
-fi
-
-# ---- VPS Activation Token ----
-if [ -n "$ACTIVATION_TOKEN" ]; then
-  sed -i -E "s/('vps_activation_token'[[:space:]]*=>[[:space:]]*)'[^']*'/\1'$ACTIVATION_TOKEN'/" "$TMP_API"
-  log "Token de ativacao configurado."
-
-  # Set activation URL
-  if [ -z "$ACTIVATION_URL" ]; then
-    # Auto-detect from VITE_SUPABASE_URL pattern in api_cls.php or use default
-    ACTIVATION_URL="https://ezgjmioxmyqgxgdpigeb.supabase.co/functions/v1/validate-vps-activation"
-  fi
-  sed -i -E "s|('vps_activation_url'[[:space:]]*=>[[:space:]]*)'[^']*'|\1'$ACTIVATION_URL'|" "$TMP_API"
-  log "URL de validacao: $ACTIVATION_URL"
-else
-  warn "Nenhum token de ativacao informado. A API funcionara sem protecao de VPS."
+  sed -i -E "s/('api_secret'[[:space:]]*=>[[:space:]]*)'[^']*'/\1''/" "$TMP_API"
 fi
 
 php -l "$TMP_API" >/dev/null || die "api_cls.php baixado/copied tem erro de sintaxe."
@@ -2321,6 +2303,35 @@ find "$INSTALL_DIR/backups" -type d -exec chmod 750 {} \;
 find "$INSTALL_DIR/backups" -type f -exec chmod 640 {} \; 2>/dev/null || true
 chown root:"$WEB_USER" /usr/local/sbin/pw-watchdog-runner.sh
 chmod 750 /usr/local/sbin/pw-watchdog-runner.sh
+
+# ---- Create .env with secrets ----
+ENV_FILE="$INSTALL_DIR/.env"
+log "Criando $ENV_FILE com secrets..."
+
+if [ -z "$ACTIVATION_URL" ] && [ -n "$ACTIVATION_TOKEN" ]; then
+  ACTIVATION_URL="https://ezgjmioxmyqgxgdpigeb.supabase.co/functions/v1/validate-vps-activation"
+fi
+
+cat > "$ENV_FILE" <<ENVEOF
+# Orphea Core API - Secrets
+# Este arquivo contem credenciais sensiveis. NAO compartilhe.
+# Gerado automaticamente pelo instalador em $(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+API_SECRET=$SECRET
+VPS_ACTIVATION_TOKEN=${ACTIVATION_TOKEN:-}
+VPS_ACTIVATION_URL=${ACTIVATION_URL:-}
+ENVEOF
+
+chown "$WEB_USER:$WEB_USER" "$ENV_FILE"
+chmod 600 "$ENV_FILE"
+log ".env criado com permissoes restritas (600)."
+
+if [ -n "$ACTIVATION_TOKEN" ]; then
+  log "Token de ativacao VPS configurado."
+  log "URL de validacao: $ACTIVATION_URL"
+else
+  warn "Nenhum token de ativacao informado. A API funcionara sem protecao de VPS."
+fi
 
 "$PHP_CLI_BIN" -l "$INSTALL_DIR/api_cls.php" >/dev/null || die "api_cls.php instalado com erro de sintaxe."
 "$PHP_CLI_BIN" -l "$INSTALL_DIR/gm-queue-worker.php" >/dev/null || die "gm-queue-worker.php instalado com erro de sintaxe."

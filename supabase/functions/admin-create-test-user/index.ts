@@ -66,14 +66,16 @@ Deno.serve(async (req) => {
     // 3) Lê parâmetros.
     const body = await req.json().catch(() => ({}));
     const plan: Plan = (body?.plan ?? "ultimate") as Plan;
-    const durationHours = Math.max(1, Math.min(24 * 60, Number(body?.duration_hours ?? 24)));
+    const rawHours = Number(body?.duration_hours ?? 24);
+    const isUnlimited = rawHours === 0;
+    const durationHours = isUnlimited ? 0 : Math.max(1, Math.min(24 * 60, rawHours));
     if (!["free", "pro", "ultimate"].includes(plan)) {
       return json({ error: "Invalid plan" }, 400);
     }
 
     const email = genEmail();
     const password = genPassword();
-    const expiresAt = new Date(Date.now() + durationHours * 60 * 60 * 1000);
+    const expiresAt = isUnlimited ? null : new Date(Date.now() + durationHours * 60 * 60 * 1000);
 
     // 4) Cria usuário no auth (já confirmado).
     const { data: created, error: createErr } = await admin.auth.admin.createUser({
@@ -93,7 +95,7 @@ Deno.serve(async (req) => {
       _user_id: created.user.id,
       _email: email,
       _plan: plan,
-      _expires_at: expiresAt.toISOString(),
+      _expires_at: expiresAt ? expiresAt.toISOString() : null,
       _created_by: callerId,
     });
     if (regErr) {
@@ -108,7 +110,7 @@ Deno.serve(async (req) => {
       email,
       password,
       plan,
-      expires_at: expiresAt.toISOString(),
+      expires_at: expiresAt ? expiresAt.toISOString() : null,
     });
   } catch (e) {
     return json({ error: (e as Error).message }, 500);

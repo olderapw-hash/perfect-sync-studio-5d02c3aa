@@ -24,11 +24,13 @@ const DURATIONS = [
   { label: "24 horas", hours: 24 },
   { label: "7 dias", hours: 24 * 7 },
   { label: "30 dias", hours: 24 * 30 },
+  { label: "∞ Ilimitado", hours: 0 },
 ];
 
 export const TestUserCreateDialog = ({ onClose, onCreated }: Props) => {
   const [plan, setPlan] = useState<Plan>("ultimate");
   const [hours, setHours] = useState(24);
+  const isUnlimited = hours === 0;
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState<Created | null>(null);
   const [copied, setCopied] = useState<"email" | "password" | "both" | null>(null);
@@ -102,7 +104,7 @@ export const TestUserCreateDialog = ({ onClose, onCreated }: Props) => {
               <label className="mb-1.5 block text-[11px] font-semibold uppercase text-muted-foreground">
                 Duração
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {DURATIONS.map((d) => (
                   <button
                     key={d.hours}
@@ -193,10 +195,16 @@ export const TestUserCreateDialog = ({ onClose, onCreated }: Props) => {
                 Plano <strong className="uppercase text-foreground">{created.plan}</strong>
               </span>
               <span className="text-muted-foreground">
-                Expira em{" "}
-                <strong className="text-foreground">
-                  {new Date(created.expires_at).toLocaleString()}
-                </strong>
+                {created.expires_at ? (
+                  <>
+                    Expira em{" "}
+                    <strong className="text-foreground">
+                      {new Date(created.expires_at).toLocaleString()}
+                    </strong>
+                  </>
+                ) : (
+                  <strong className="text-foreground">♾️ Sem expiração</strong>
+                )}
               </span>
             </div>
 

@@ -2325,17 +2325,21 @@ cat > "$ENV_FILE" <<ENVEOF
 API_SECRET=$SECRET
 VPS_ACTIVATION_TOKEN=${ACTIVATION_TOKEN:-}
 VPS_ACTIVATION_URL=${ACTIVATION_URL:-}
+SUPERADMIN_BYPASS=${SUPERADMIN_BYPASS:-0}
 ENVEOF
 
 chown "$WEB_USER:$WEB_USER" "$ENV_FILE"
 chmod 600 "$ENV_FILE"
 log ".env criado com permissoes restritas (600)."
 
-if [ -n "$ACTIVATION_TOKEN" ]; then
+if [ "${SUPERADMIN_BYPASS:-0}" = "1" ]; then
+  log "SUPERADMIN_BYPASS ativado — esta VPS nao precisa de token de ativacao."
+elif [ -n "$ACTIVATION_TOKEN" ]; then
   log "Token de ativacao VPS configurado."
   log "URL de validacao: $ACTIVATION_URL"
 else
-  warn "Nenhum token de ativacao informado. A API funcionara sem protecao de VPS."
+  warn "ATENCAO: Nenhum token de ativacao informado e SUPERADMIN_BYPASS nao esta ativo."
+  warn "A API BLOQUEARA todas as requisicoes ate configurar VPS_ACTIVATION_TOKEN no .env."
 fi
 
 "$PHP_CLI_BIN" -l "$INSTALL_DIR/api_cls.php" >/dev/null || die "api_cls.php instalado com erro de sintaxe."

@@ -509,6 +509,7 @@ function GmCommanderPageInner() {
               { key: "moderation" as TabKey, label: "Moderação" },
               { key: "communication" as TabKey, label: "Comunicação" },
               { key: "permissions" as TabKey, label: "Permissões GM" },
+              { key: "bulk" as TabKey, label: "Bulk Commander" },
               { key: "history" as TabKey, label: "Histórico" },
             ] as const).map(({ key, label }) => {
               return (
@@ -537,6 +538,9 @@ function GmCommanderPageInner() {
           </TabsContent>
           <TabsContent value="permissions" className="space-y-4">
             <GmPermissionsTab caps={caps} onActed={refreshHistory} isSuperadmin={isSuperadmin} cardVisibility={cardVisibility} onToggleVisibility={toggleCardVisibility} />
+          </TabsContent>
+          <TabsContent value="bulk" className="space-y-4">
+            <BulkCommanderTab caps={caps} onActed={refreshHistory} />
           </TabsContent>
           <TabsContent value="history">
             <HistoryTab tick={historyTick} />

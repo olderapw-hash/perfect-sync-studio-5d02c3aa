@@ -187,7 +187,8 @@ const Install = () => {
 
   // ---- Commands ----
   const step2Command = `scp -r C:\\orphea\\* root@${ipDisplay}:/root/orphea/`;
-  const step3Command = `ssh root@${ipDisplay} "bash /root/orphea/install-apicls-centos7.sh --secret ${secretDisplay}"`;
+  const activationPart = vpsToken ? ` --activation-token ${vpsToken}` : "";
+  const step3Command = `ssh root@${ipDisplay} "bash /root/orphea/install-apicls-centos7.sh --secret ${secretDisplay}${activationPart}"`;
 
   if (authLoading) {
     return (

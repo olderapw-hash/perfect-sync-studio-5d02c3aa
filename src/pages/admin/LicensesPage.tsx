@@ -257,6 +257,7 @@ export default function LicensesPage() {
                   <TableHead>Plano</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Chave</TableHead>
+                  <TableHead>Token VPS</TableHead>
                   <TableHead>Validade</TableHead>
                   <TableHead>VPS</TableHead>
                   <TableHead>Valor</TableHead>

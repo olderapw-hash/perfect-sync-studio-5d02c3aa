@@ -77,14 +77,17 @@ const Auth = () => {
     setBusy(true);
     try {
       if (mode === "signup") {
+        if (confirmEmail !== email) {
+          toast.error("Os emails não coincidem.");
+          return;
+        }
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: { emailRedirectTo: `${window.location.origin}/auth` },
         });
         if (error) throw error;
-        toast.success("Conta criada. Faça login para continuar.");
-        setMode("signin");
+        setShowConfirmation(true);
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;

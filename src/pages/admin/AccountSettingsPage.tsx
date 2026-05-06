@@ -228,10 +228,6 @@ const CancelSubscriptionButton = ({
   const handleCancel = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase.functions.invoke("payments-webhook", {
-        method: "POST",
-        body: {},
-      });
       // Use the Paddle API via edge function to cancel
       const res = await supabase.functions.invoke("cancel-subscription", {
         body: {

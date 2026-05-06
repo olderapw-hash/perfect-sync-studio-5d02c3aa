@@ -97,6 +97,14 @@ const ALLOWED_ACTIONS = new Set([
   "revokeGmPermission",
   // GM Commander — moderação extra.
   "clearRolePk",
+  // GM Commander v2 — Bulk Commands (Phase A).
+  "searchPlayerDirectory",
+  "getPlayerTargetProfile",
+  "resolveBulkTargets",
+  "previewBulkTargets",
+  "queueBulkCommand",
+  "getBulkCommandJob",
+  "getBulkCommandJobs",
 ]);
 
 // Mapa Action → permissão exigida (deve refletir src/lib/serverPermissions.ts).
@@ -172,6 +180,14 @@ const ACTION_PERMISSION: Record<string, string> = {
   revokeGmPermission: "manage_security",
   // GM Commander — moderação extra.
   clearRolePk: "manage_security",
+  // GM Commander v2 — Bulk Commands (Phase A).
+  searchPlayerDirectory: "view",
+  getPlayerTargetProfile: "view",
+  resolveBulkTargets: "manage_security",
+  previewBulkTargets: "manage_security",
+  queueBulkCommand: "manage_security",
+  getBulkCommandJob: "view_audit",
+  getBulkCommandJobs: "view_audit",
 };
 
 function jsonError(message: string, status: number): Response {

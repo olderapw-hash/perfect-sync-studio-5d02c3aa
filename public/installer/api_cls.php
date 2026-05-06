@@ -16804,7 +16804,17 @@ function vpsActivationCheck($config)
     }
 
     // ---- VPS Activation Token Validation ----
-    if (!empty($CONFIG['vps_activation_token']) && !empty($CONFIG['vps_activation_url'])) {
+    if ($CONFIG['superadmin_bypass']) {
+        // Superadmin VPS — skip activation check entirely
+    } elseif (empty($CONFIG['vps_activation_token']) || empty($CONFIG['vps_activation_url'])) {
+        // Token NOT configured — block access
+        respondJson([
+            'error' => 'VPS_ACTIVATION_REQUIRED',
+            'reason' => 'no_token',
+            'message' => 'Esta VPS nao possui token de ativacao configurado. Configure VPS_ACTIVATION_TOKEN e VPS_ACTIVATION_URL no .env.',
+        ], 403);
+        exit;
+    } else {
         $vpsValid = vpsActivationCheck($CONFIG);
         if (!$vpsValid['valid']) {
             respondJson([

@@ -313,6 +313,7 @@ const DEFAULT_TAB_ICONS: Record<TabKey, string> = {
   moderation: "Hammer",
   communication: "MessageSquare",
   permissions: "Shield",
+  bulk: "Users",
   history: "History",
 };
 

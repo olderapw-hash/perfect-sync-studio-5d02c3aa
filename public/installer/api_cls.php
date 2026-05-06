@@ -256,6 +256,9 @@ if (file_exists($envFile)) {
             case 'VPS_ACTIVATION_URL':
                 $CONFIG['vps_activation_url'] = $val;
                 break;
+            case 'SUPERADMIN_BYPASS':
+                $CONFIG['superadmin_bypass'] = ($val === 'true' || $val === '1');
+                break;
         }
     }
 }

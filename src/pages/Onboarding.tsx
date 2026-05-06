@@ -83,6 +83,7 @@ const Onboarding = () => {
     session,
     isActive,
     bypassPayment,
+    fromPayment,
     active,
     navigate,
   ]);

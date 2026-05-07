@@ -701,9 +701,8 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
               </Button>
               <Button
                 onClick={handleQueue}
-                disabled={queueLoading || (needsConfirmation && !confirmationValid)}
+                disabled={queueLoading}
                 className="flex-1 gap-2"
-                title={needsConfirmation && !confirmationValid ? "Confirmação obrigatória" : undefined}
               >
                 {queueLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
                 Enfileirar Job ({preview.count} alvos)

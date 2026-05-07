@@ -73,6 +73,7 @@ import {
   type PreviewBulkTargetsResponse,
 } from "@/lib/pwApiActions";
 import { BulkScheduleManager } from "@/components/admin/BulkScheduleManager";
+import { BulkTemplatesManager } from "@/components/admin/BulkTemplatesManager";
 
 const PW_CLASSES = [
   { id: 0, name: "Guerreiro" },
@@ -792,6 +793,10 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
       {selectedJob && (
         <JobDetailDialog job={selectedJob} onClose={() => setSelectedJob(null)} />
       )}
+
+      {/* Templates Manager */}
+      <Separator className="bg-border/30" />
+      <BulkTemplatesManager />
 
       {/* Schedule Manager */}
       <Separator className="bg-border/30" />

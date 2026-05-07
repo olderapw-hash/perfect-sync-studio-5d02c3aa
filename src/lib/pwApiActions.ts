@@ -726,6 +726,30 @@ export const pwApi = {
       query,
     });
   },
+  /* ─────────── GM Commander v2 — Bulk Templates ─────────── */
+  saveBulkTemplate(body: SaveBulkTemplatePayload) {
+    return callAction<BulkTemplateResponse>("saveBulkTemplate", { method: "POST", body });
+  },
+  getBulkTemplate(template_key: string) {
+    return callAction<BulkTemplateResponse>("getBulkTemplate", { method: "GET", query: { template_key } });
+  },
+  getBulkTemplates(params: { category?: string } = {}) {
+    const query: Record<string, string> = {};
+    if (params.category) query.category = params.category;
+    return callAction<BulkTemplatesListResponse>("getBulkTemplates", { method: "GET", query });
+  },
+  updateBulkTemplate(body: UpdateBulkTemplatePayload) {
+    return callAction<BulkTemplateResponse>("updateBulkTemplate", { method: "POST", body });
+  },
+  deleteBulkTemplate(template_key: string) {
+    return callAction<{ success: boolean; error?: string }>("deleteBulkTemplate", { method: "POST", body: { template_key } });
+  },
+  previewBulkTemplate(template_key: string) {
+    return callAction<PreviewBulkTargetsResponse>("previewBulkTemplate", { method: "POST", body: { template_key } });
+  },
+  executeBulkTemplate(body: ExecuteBulkTemplatePayload) {
+    return callAction<QueueBulkCommandResponse>("executeBulkTemplate", { method: "POST", body });
+  },
 };
 
 /* ─────────── GM Commander v1 — tipos ─────────── */
@@ -2051,5 +2075,65 @@ export interface GetBulkCommandJobsResponse {
   jobs: BulkJobSummary[];
   limit: number;
   collected_at: string;
+  error?: string;
+}
+
+/* ─────────── GM Commander v2 — Bulk Templates tipos ─────────── */
+
+export type BulkTemplateCategory = "evento" | "punicao" | "recompensa" | "broadcast";
+
+export interface BulkTemplate {
+  template_key: string;
+  label: string;
+  category: BulkTemplateCategory;
+  command_key: BulkCommandKey;
+  selection: BulkSelectionParams;
+  default_payload: Record<string, unknown>;
+  requires_preview: boolean;
+  requires_confirmation: boolean;
+  created_by?: string;
+  updated_by?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface SaveBulkTemplatePayload {
+  template_key: string;
+  label: string;
+  category: BulkTemplateCategory;
+  command_key: BulkCommandKey;
+  selection: BulkSelectionParams;
+  default_payload: Record<string, unknown>;
+  requires_preview?: boolean;
+  requires_confirmation?: boolean;
+}
+
+export interface UpdateBulkTemplatePayload extends SaveBulkTemplatePayload {}
+
+export interface ExecuteBulkTemplatePayload {
+  template_key: string;
+  mode: "queue" | "schedule";
+  /** For schedule mode */
+  schedule?: {
+    day_of_week: number;
+    time_utc: string;
+    timezone?: string;
+    name?: string;
+  };
+  /** Override default_payload */
+  payload_overrides?: Record<string, unknown>;
+  confirm?: string;
+}
+
+export interface BulkTemplateResponse {
+  success: boolean;
+  template: BulkTemplate;
+  error?: string;
+}
+
+export interface BulkTemplatesListResponse {
+  success: boolean;
+  templates: BulkTemplate[];
+  count: number;
   error?: string;
 }

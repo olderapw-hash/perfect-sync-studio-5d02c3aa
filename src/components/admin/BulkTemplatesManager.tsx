@@ -516,8 +516,20 @@ function TemplateFormDialog({
                 onChange={(e) => setSelectionJson(e.target.value)}
                 rows={4}
                 className="border-border/40 bg-card/60 font-mono text-[11px]"
-                placeholder='{"all_online": true}'
+                placeholder={commandKey === "sendSystemMessage"
+                  ? '{}'
+                  : '{"all_online": true}'}
               />
+              <div className="space-y-0.5 text-[9px] text-muted-foreground/60">
+                {commandKey === "sendSystemMessage" ? (
+                  <p>Broadcast é global — use <code className="font-mono">{'{}'}</code></p>
+                ) : (
+                  <>
+                    <p>Exemplos: <code className="font-mono">{'{"roleids":[1024]}'}</code> · <code className="font-mono">{'{"names":["Criador"]}'}</code> · <code className="font-mono">{'{"guild_ids":[1]}'}</code></p>
+                    <p><code className="font-mono">{'{"class_ids":[4],"online_only":true}'}</code> · <code className="font-mono">{'{"level_min":100,"level_max":105}'}</code> · <code className="font-mono">{'{"all_online":true}'}</code></p>
+                  </>
+                )}
+              </div>
             </div>
 
             <div className="space-y-1.5">
@@ -527,7 +539,12 @@ function TemplateFormDialog({
                 onChange={(e) => setPayloadJson(e.target.value)}
                 rows={4}
                 className="border-border/40 bg-card/60 font-mono text-[11px]"
-                placeholder='{"item_id": 1234, "count": 1}'
+                placeholder={
+                  commandKey === "sendMailItem" ? '{"item_id": 12980, "count": 1, "title": "Premio", "message": "Entrega por template"}'
+                  : commandKey === "sendMailGold" ? '{"money": 1000, "title": "Guild Reward", "message": "Entrega por template"}'
+                  : commandKey === "grantMallCash" ? '{"amount": 1000, "reason": "Bulk grant via GM Commander"}'
+                  : '{"message": "Evento diario ativo", "kind": "system", "priority": "normal"}'
+                }
               />
               {commandKey === "grantMallCash" && (
                 <p className="flex items-center gap-1.5 text-[10px] text-amber-400">

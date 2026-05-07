@@ -275,7 +275,7 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
     } finally {
       setQueueLoading(false);
     }
-  }, [commandKey, buildSelection, buildCommandPayload, onActed, needsConfirmation, confirmationValid]);
+  }, [commandKey, buildSelection, buildCommandPayload, onActed]);
 
   const loadJobs = useCallback(async () => {
     setJobsLoading(true);

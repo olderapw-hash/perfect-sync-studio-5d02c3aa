@@ -375,24 +375,41 @@ const ServerFormDialog = ({ open, editing, onClose, onSaved, userId }: FormDialo
       return;
     }
     setSaving(true);
-    const payload = {
+    const tenantPayload = {
       owner_id: userId,
       server_name: serverName || "Meu Servidor PW",
       pw_api_base_url: apiUrl.replace(/\/+$/, ""),
-      pw_api_secret: apiSecret,
       icon_base_url: iconBase ? iconBase.replace(/\/+$/, "/") : null,
       onboarding_completed: true,
     };
 
-    const { error } = editing
-      ? await supabase.from("tenants").update(payload).eq("id", editing.id)
-      : await supabase.from("tenants").insert(payload);
+    let tenantId = editing?.id;
+    if (editing) {
+      const { error } = await supabase.from("tenants").update(tenantPayload).eq("id", editing.id);
+      if (error) {
+        setSaving(false);
+        toast.error("Erro ao salvar: " + error.message);
+        return;
+      }
+    } else {
+      const { data, error } = await supabase.from("tenants").insert(tenantPayload).select("id").single();
+      if (error || !data) {
+        setSaving(false);
+        toast.error("Erro ao salvar: " + (error?.message ?? "desconhecido"));
+        return;
+      }
+      tenantId = data.id;
+    }
+
+    // Store secret in separate protected table
+    if (tenantId) {
+      await supabase.from("tenant_secrets").upsert({
+        tenant_id: tenantId,
+        pw_api_secret: apiSecret,
+      });
+    }
 
     setSaving(false);
-    if (error) {
-      toast.error("Erro ao salvar: " + error.message);
-      return;
-    }
     toast.success(editing ? "Servidor atualizado" : "Servidor adicionado");
     onSaved();
   };

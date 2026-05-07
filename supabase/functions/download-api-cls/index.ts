@@ -99,18 +99,13 @@ Deno.serve(async (req: Request) => {
     return jsonError("Unauthorized", 401);
   }
 
-  // Tenant row is RLS-scoped to owner_id = auth.uid(), so this only ever
-  // returns the caller's secret.
-  const { data: tenant, error: tenantErr } = await supabase
-    .from("tenants")
-    .select("pw_api_secret")
-    .eq("owner_id", userData.user.id)
-    .maybeSingle();
+  // Read secret from the dedicated tenant_secrets table via RPC (owner-scoped)
+  const { data: secretData, error: tenantErr } = await supabase.rpc("get_my_tenant_secret");
 
   if (tenantErr) {
     return jsonError("Failed to load tenant", 500);
   }
-  const secret = (tenant?.pw_api_secret as string | null) ?? "";
+  const secret = (secretData as string | null) ?? "";
   if (!secret) {
     return jsonError(
       "Configure o secret da API antes de baixar o arquivo.",

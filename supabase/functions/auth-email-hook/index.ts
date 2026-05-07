@@ -94,13 +94,7 @@ async function handlePreview(req: Request): Promise<Response> {
   const apiKey = Deno.env.get('LOVABLE_API_KEY')
   const authHeader = req.headers.get('Authorization')
 
-  // Accept the auth token from the preview system OR the stored LOVABLE_API_KEY
-  // Both should be valid sk_ keys. After key rotation, the stored key and
-  // the preview system key may temporarily be different (both valid).
-  const bearerToken = authHeader?.replace('Bearer ', '') ?? ''
-  const isValidKey = bearerToken.startsWith('sk_') && bearerToken.length > 10
-  
-  if (!isValidKey && (!apiKey || authHeader !== `Bearer ${apiKey}`)) {
+  if (!apiKey || authHeader !== `Bearer ${apiKey}`) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
       headers: { ...previewCorsHeaders, 'Content-Type': 'application/json' },

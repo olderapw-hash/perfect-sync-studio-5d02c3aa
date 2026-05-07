@@ -17,14 +17,12 @@ import {
 interface InviteEmailProps {
   siteName: string
   siteUrl: string
-  recipient: string
   confirmationUrl: string
 }
 
 export const InviteEmail = ({
   siteName,
   siteUrl,
-  recipient,
   confirmationUrl,
 }: InviteEmailProps) => (
   <Html lang="pt-BR" dir="ltr">
@@ -32,10 +30,13 @@ export const InviteEmail = ({
     <Preview>Você foi convidado — {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>📜 Convite</Heading>
+        <Heading style={h1}>📩 Convite</Heading>
         <Text style={text}>
           Você foi convidado para participar do{' '}
-          <Link href={siteUrl} style={link}><strong>{siteName}</strong></Link>.
+          <Link href={siteUrl} style={link}>
+            <strong>{siteName}</strong>
+          </Link>
+          !
         </Text>
         <Button style={button} href={confirmationUrl}>
           Aceitar Convite

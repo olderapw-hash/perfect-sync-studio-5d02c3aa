@@ -237,7 +237,14 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
     }
   }, [commandKey, buildSelection, buildCommandPayload]);
 
+  const needsConfirmation = commandKey === "grantMallCash";
+  const confirmationValid = !needsConfirmation || confirmToken === "GRANT_MALL_CASH";
+
   const handleQueue = useCallback(async () => {
+    if (needsConfirmation && !confirmationValid) {
+      setError("Confirmação obrigatória: digite GRANT_MALL_CASH para autorizar esta operação.");
+      return;
+    }
     setQueueLoading(true);
     setError(null);
     try {
@@ -265,12 +272,15 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
       if (e instanceof EndpointMissingError) {
         setEndpointMissing(true);
       } else {
-        setError(e instanceof Error ? e.message : String(e));
+        const msg = e instanceof Error ? e.message : String(e);
+        // Confirmation/validation errors are not retryable
+        const isConfirmErr = /confirm|validation|GRANT_MALL_CASH/i.test(msg);
+        setError(isConfirmErr ? `⛔ Erro de confirmação (não retentável): ${msg}` : msg);
       }
     } finally {
       setQueueLoading(false);
     }
-  }, [commandKey, buildSelection, buildCommandPayload, onActed]);
+  }, [commandKey, buildSelection, buildCommandPayload, onActed, needsConfirmation, confirmationValid]);
 
   const loadJobs = useCallback(async () => {
     setJobsLoading(true);

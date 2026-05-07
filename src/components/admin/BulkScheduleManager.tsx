@@ -67,6 +67,7 @@ interface BulkSchedule {
   last_run_status: string | null;
   last_run_job_id: string | null;
   last_error: string | null;
+  next_run_at: string | null;
   created_at: string;
   updated_at: string;
   every_day?: boolean;

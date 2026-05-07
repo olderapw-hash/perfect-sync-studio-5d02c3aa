@@ -355,6 +355,18 @@ function ScheduleFormDialog({
 
   const handleSave = async () => {
     if (!name.trim()) { setError("Nome obrigatório"); return; }
+
+    // Duplicate detection: same command + day + time
+    if (!isEdit) {
+      const dup = existingSchedules.find(
+        s => s.command_key === commandKey && s.day_of_week === parseInt(dayOfWeek) && s.time_utc === timeUtc
+      );
+      if (dup) {
+        setError(`Já existe um agendamento "${dup.name}" com o mesmo comando, dia e horário. Edite o existente ou escolha outro horário.`);
+        return;
+      }
+    }
+
     setSaving(true);
     setError(null);
 

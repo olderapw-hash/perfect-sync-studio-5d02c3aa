@@ -285,7 +285,6 @@ export function BulkScheduleManager() {
             const everyDay = isEveryDay(s);
             const tz = s.timezone || DEFAULT_TIMEZONE;
             const timeLocal = s.time_utc; // stored as local time despite column name
-            const { date: nextFireDate, pushed } = getNextFire(s.day_of_week, timeLocal, tz, everyDay);
             const utcTime = localTimeToUtcDisplay(timeLocal, tz);
 
             return (
@@ -327,29 +326,17 @@ export function BulkScheduleManager() {
                           UTC: {utcTime}
                         </span>
 
-                        {/* Next execution */}
-                        {s.is_active && (
+                        {/* Next execution — from backend */}
+                        {s.is_active && s.next_run_at && (
                           <div className="flex items-center gap-1 ml-4">
                             <span className="text-primary/80">
-                              Próximo: {formatInTz(nextFireDate, tz)} ({formatRelative(nextFireDate)})
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Pushed explanation */}
-                        {s.is_active && pushed && (
-                          <div className="flex items-center gap-1 ml-4 text-amber-400/70">
-                            <Info className="h-3 w-3 shrink-0" />
-                            <span>
-                              {everyDay
-                                ? "Horário de hoje já passou; próxima execução amanhã."
-                                : "Horário desta semana já passou; próxima execução calculada para a semana seguinte."}
+                              Próximo: {new Date(s.next_run_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: tz })} ({formatRelative(new Date(s.next_run_at))})
                             </span>
                           </div>
                         )}
 
                         {/* Last run info */}
-                        {s.last_run_at && (
+                        {s.last_run_at ? (
                           <div className="flex items-center gap-3 flex-wrap">
                             <span className="flex items-center gap-1">
                               {s.last_run_status === "ok" ? (
@@ -372,6 +359,8 @@ export function BulkScheduleManager() {
                               </span>
                             )}
                           </div>
+                        ) : (
+                          <span className="ml-4 text-muted-foreground/50 italic">Ainda não executado</span>
                         )}
                       </div>
                     </div>

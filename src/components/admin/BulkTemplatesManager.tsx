@@ -681,6 +681,27 @@ function TemplateFormDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Overwrite confirmation */}
+      {pendingCommand && (
+        <Dialog open onOpenChange={() => setPendingCommand(null)}>
+          <DialogContent className="max-w-sm border-border/40 bg-card/95 backdrop-blur-xl">
+            <DialogHeader>
+              <DialogTitle className="text-sm font-extrabold">Substituir campos?</DialogTitle>
+              <DialogDescription className="text-[11px]">
+                Deseja substituir Seleção e Payload pelo modelo padrão de <strong>{COMMAND_LABELS[pendingCommand]}</strong>? As edições manuais atuais serão perdidas.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" size="sm" onClick={cancelOverwrite}>Manter meus dados</Button>
+              <Button size="sm" onClick={confirmOverwrite} className="gap-1">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Substituir
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </Dialog>
   );
 }

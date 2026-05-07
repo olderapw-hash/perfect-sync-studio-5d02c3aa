@@ -379,7 +379,7 @@ function ScheduleFormDialog({
   schedule: BulkSchedule | null;
   existingSchedules: BulkSchedule[];
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: () => void | Promise<void>;
 }) {
   const isEdit = !!schedule;
   const [name, setName] = useState(schedule?.name || "");

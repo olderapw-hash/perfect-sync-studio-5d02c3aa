@@ -113,6 +113,12 @@ const ALLOWED_ACTIONS = new Set([
   "deleteBulkTemplate",
   "previewBulkTemplate",
   "executeBulkTemplate",
+  // GM Commander v2 — Bulk Schedules (Phase B).
+  "scheduleBulkCommand",
+  "getBulkSchedule",
+  "getBulkSchedules",
+  "updateBulkSchedule",
+  "deleteBulkSchedule",
 ]);
 
 // Mapa Action → permissão exigida (deve refletir src/lib/serverPermissions.ts).
@@ -204,6 +210,12 @@ const ACTION_PERMISSION: Record<string, string> = {
   deleteBulkTemplate: "manage_security",
   previewBulkTemplate: "manage_security",
   executeBulkTemplate: "manage_security",
+  // GM Commander v2 — Bulk Schedules
+  scheduleBulkCommand: "manage_security",
+  getBulkSchedules: "manage_security",
+  getBulkSchedule: "manage_security",
+  updateBulkSchedule: "manage_security",
+  deleteBulkSchedule: "manage_security",
 };
 
 function jsonError(message: string, status: number): Response {

@@ -750,6 +750,24 @@ export const pwApi = {
   executeBulkTemplate(body: ExecuteBulkTemplatePayload) {
     return callAction<QueueBulkCommandResponse>("executeBulkTemplate", { method: "POST", body });
   },
+  /* ─────────── GM Commander v2 — Bulk Schedules ─────────── */
+  scheduleBulkCommand(body: ScheduleBulkCommandPayload) {
+    return callAction<ScheduleBulkCommandResponse>("scheduleBulkCommand", { method: "POST", body });
+  },
+  getBulkSchedules(params: { limit?: number } = {}) {
+    const query: Record<string, string | number> = {};
+    if (params.limit != null) query.limit = params.limit;
+    return callAction<GetBulkSchedulesResponse>("getBulkSchedules", { method: "GET", query });
+  },
+  getBulkSchedule(scheduleId: string) {
+    return callAction<GetBulkScheduleResponse>("getBulkSchedule", { method: "GET", query: { schedule_id: scheduleId } });
+  },
+  updateBulkSchedule(scheduleId: string, body: Partial<ScheduleBulkCommandPayload>) {
+    return callAction<ScheduleBulkCommandResponse>("updateBulkSchedule", { method: "POST", body: { ...body, schedule_id: scheduleId } });
+  },
+  deleteBulkSchedule(scheduleId: string) {
+    return callAction<{ success: boolean; deleted: boolean; schedule_id: string; error?: string }>("deleteBulkSchedule", { method: "POST", body: { schedule_id: scheduleId } });
+  },
 };
 
 /* ─────────── GM Commander v1 — tipos ─────────── */

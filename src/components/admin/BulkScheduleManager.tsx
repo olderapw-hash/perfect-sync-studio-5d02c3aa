@@ -9,7 +9,7 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
-  Info,
+  // Info removed — no longer used
   Loader2,
   Megaphone,
   Pause,

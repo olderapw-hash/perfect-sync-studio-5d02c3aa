@@ -36,7 +36,7 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration
-const SITE_NAME = "perfect-sync-studio"
+const SITE_NAME = "Orphea Core"
 const SENDER_DOMAIN = "notify.orpheacore.com"
 const ROOT_DOMAIN = "orpheacore.com"
 const FROM_DOMAIN = "notify.orpheacore.com" // Domain shown in From address (may be root or sender subdomain)

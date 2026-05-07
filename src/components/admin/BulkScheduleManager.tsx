@@ -538,7 +538,8 @@ function ScheduleFormDialog({
       setError(err.message);
       setSaving(false);
     } else {
-      onSaved();
+      await onSaved();
+      setSaving(false);
     }
   };
 

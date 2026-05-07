@@ -357,7 +357,7 @@ export function BulkScheduleManager() {
           schedule={editSchedule}
           existingSchedules={schedules}
           onClose={() => { setShowCreate(false); setEditSchedule(null); }}
-          onSaved={() => { setShowCreate(false); setEditSchedule(null); void loadSchedules(); }}
+          onSaved={async () => { await loadSchedules(); setShowCreate(false); setEditSchedule(null); }}
         />
       )}
     </div>
@@ -379,7 +379,7 @@ function ScheduleFormDialog({
   schedule: BulkSchedule | null;
   existingSchedules: BulkSchedule[];
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: () => void | Promise<void>;
 }) {
   const isEdit = !!schedule;
   const [name, setName] = useState(schedule?.name || "");
@@ -538,7 +538,8 @@ function ScheduleFormDialog({
       setError(err.message);
       setSaving(false);
     } else {
-      onSaved();
+      await onSaved();
+      setSaving(false);
     }
   };
 

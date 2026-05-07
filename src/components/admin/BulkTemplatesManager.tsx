@@ -585,6 +585,7 @@ function ExecuteTemplateDialog({
   onClose: () => void;
 }) {
   const [mode, setMode] = useState<"queue" | "schedule">("queue");
+  const [everyDay, setEveryDay] = useState(false);
   const [dayOfWeek, setDayOfWeek] = useState(1);
   const [timeUtc, setTimeUtc] = useState("12:00");
   const [scheduleName, setScheduleName] = useState(`${template.label} — Agendamento`);

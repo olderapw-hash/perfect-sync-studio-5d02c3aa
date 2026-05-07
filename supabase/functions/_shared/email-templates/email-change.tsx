@@ -22,12 +22,7 @@ interface EmailChangeEmailProps {
   confirmationUrl: string
 }
 
-export const EmailChangeEmail = ({
-  siteName,
-  oldEmail,
-  newEmail,
-  confirmationUrl,
-}: EmailChangeEmailProps) => (
+export const EmailChangeEmail = ({ siteName, oldEmail, newEmail, confirmationUrl }: EmailChangeEmailProps) => (
   <Html lang="pt-BR" dir="ltr">
     <Head />
     <Preview>Confirmar alteração de email — {siteName}</Preview>
@@ -36,24 +31,13 @@ export const EmailChangeEmail = ({
         <Heading style={h1}>Confirmar alteração de email</Heading>
         <Text style={text}>
           Você solicitou a alteração do email da sua conta no {siteName} de{' '}
-          <Link href={`mailto:${oldEmail}`} style={link}>
-            {oldEmail}
-          </Link>{' '}
+          <Link href={`mailto:${oldEmail}`} style={link}>{oldEmail}</Link>{' '}
           para{' '}
-          <Link href={`mailto:${newEmail}`} style={link}>
-            {newEmail}
-          </Link>
-          .
+          <Link href={`mailto:${newEmail}`} style={link}>{newEmail}</Link>.
         </Text>
-        <Text style={text}>
-          Clique no botão abaixo para confirmar esta alteração:
-        </Text>
-        <Button style={button} href={confirmationUrl}>
-          Confirmar Alteração
-        </Button>
-        <Text style={footer}>
-          Se você não solicitou esta alteração, proteja sua conta imediatamente.
-        </Text>
+        <Text style={text}>Clique no botão abaixo para confirmar esta alteração:</Text>
+        <Button style={button} href={confirmationUrl}>Confirmar Alteração</Button>
+        <Text style={footer}>Se você não solicitou esta alteração, proteja sua conta imediatamente.</Text>
       </Container>
     </Body>
   </Html>
@@ -63,25 +47,8 @@ export default EmailChangeEmail
 
 const main = { backgroundColor: '#ffffff', fontFamily: 'Inter, Arial, sans-serif' }
 const container = { padding: '20px 25px' }
-const h1 = {
-  fontSize: '22px',
-  fontWeight: 'bold' as const,
-  color: '#7F1D1D',
-  margin: '0 0 20px',
-}
-const text = {
-  fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.5',
-  margin: '0 0 25px',
-}
+const h1 = { fontSize: '22px', fontWeight: 'bold' as const, color: '#7F1D1D', margin: '0 0 20px' }
+const text = { fontSize: '14px', color: '#55575d', lineHeight: '1.5', margin: '0 0 25px' }
 const link = { color: '#7F1D1D', textDecoration: 'underline' }
-const button = {
-  backgroundColor: '#7F1D1D',
-  color: '#ffffff',
-  fontSize: '14px',
-  borderRadius: '8px',
-  padding: '12px 20px',
-  textDecoration: 'none',
-}
+const button = { backgroundColor: '#7F1D1D', color: '#ffffff', fontSize: '14px', borderRadius: '8px', padding: '12px 20px', textDecoration: 'none' }
 const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }

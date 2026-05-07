@@ -629,7 +629,7 @@ function TemplateFormDialog({
               <Label className="text-[11px]">Payload padrão (JSON)</Label>
               <Textarea
                 value={payloadJson}
-                onChange={(e) => setPayloadJson(e.target.value)}
+                onChange={(e) => { setPayloadJson(e.target.value); setPayloadDirty(true); }}
                 rows={4}
                 className="border-border/40 bg-card/60 font-mono text-[11px]"
                 placeholder={

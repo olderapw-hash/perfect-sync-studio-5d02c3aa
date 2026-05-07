@@ -105,7 +105,7 @@ Deno.serve(async (req: Request) => {
   if (tenantErr) {
     return jsonError("Failed to load tenant", 500);
   }
-  const secret = (tenant?.pw_api_secret as string | null) ?? "";
+  const secret = (secretData as string | null) ?? "";
   if (!secret) {
     return jsonError(
       "Configure o secret da API antes de baixar o arquivo.",

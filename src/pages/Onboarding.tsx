@@ -143,18 +143,23 @@ const Onboarding = () => {
         owner_id: session.user.id,
         server_name: serverName || "Meu Servidor PW",
         pw_api_base_url: urlValidation.normalized,
-        pw_api_secret: apiSecret,
         icon_base_url: iconBase ? iconBase.replace(/\/+$/, "/") : null,
         onboarding_completed: false,
         is_active: true,
       })
       .select("id")
       .single();
-    setSaving(false);
     if (error || !data) {
+      setSaving(false);
       toast.error("Erro ao criar servidor: " + (error?.message ?? "desconhecido"));
       return;
     }
+    // Store secret in separate protected table
+    await supabase.from("tenant_secrets").upsert({
+      tenant_id: data.id,
+      pw_api_secret: apiSecret,
+    });
+    setSaving(false);
     setCreatedId(data.id);
     setApiUrl(urlValidation.normalized);
     await refetch();

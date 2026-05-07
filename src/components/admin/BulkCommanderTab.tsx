@@ -73,6 +73,7 @@ import {
   type PreviewBulkTargetsResponse,
 } from "@/lib/pwApiActions";
 import { BulkScheduleManager } from "@/components/admin/BulkScheduleManager";
+import { BulkTemplatesManager } from "@/components/admin/BulkTemplatesManager";
 
 const PW_CLASSES = [
   { id: 0, name: "Guerreiro" },

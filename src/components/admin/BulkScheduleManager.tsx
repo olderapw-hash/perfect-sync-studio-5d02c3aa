@@ -208,24 +208,42 @@ export function BulkScheduleManager() {
                         {s.is_active ? "Ativo" : "Pausado"}
                       </Badge>
                     </div>
-                    <div className="mt-1 flex items-center gap-3 text-[10px] text-muted-foreground">
-                      <span>{DAY_NAMES[s.day_of_week]} às {s.time_utc} UTC</span>
-                      {s.last_run_at && (
-                        <span className="flex items-center gap-1">
-                          {s.last_run_status === "ok" ? (
-                            <CheckCircle2 className="h-3 w-3 text-emerald-400" />
-                          ) : s.last_run_status === "error" ? (
-                            <XCircle className="h-3 w-3 text-red-400" />
-                          ) : (
+                    <div className="mt-1.5 flex flex-col gap-1 text-[10px] text-muted-foreground">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span>{DAY_NAMES[s.day_of_week]} às {s.time_utc} UTC</span>
+                        {s.is_active && (
+                          <span className="flex items-center gap-1 text-primary/80">
                             <Clock className="h-3 w-3" />
+                            Próximo: {(() => {
+                              const nf = getNextFire(s.day_of_week, s.time_utc);
+                              return `${nf.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} ${nf.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })} UTC (${formatRelative(nf)})`;
+                            })()}
+                          </span>
+                        )}
+                      </div>
+                      {s.last_run_at && (
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="flex items-center gap-1">
+                            {s.last_run_status === "ok" ? (
+                              <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                            ) : s.last_run_status === "error" ? (
+                              <XCircle className="h-3 w-3 text-red-400" />
+                            ) : (
+                              <Clock className="h-3 w-3" />
+                            )}
+                            Último disparo: {new Date(s.last_run_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+                          </span>
+                          {s.last_run_job_id && (
+                            <span className="font-mono text-muted-foreground/60" title={`Job ID: ${s.last_run_job_id}`}>
+                              Job: {s.last_run_job_id.length > 12 ? s.last_run_job_id.slice(0, 12) + "…" : s.last_run_job_id}
+                            </span>
                           )}
-                          Último: {new Date(s.last_run_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
-                        </span>
-                      )}
-                      {s.last_error && (
-                        <span className="text-red-400 truncate max-w-[200px]" title={s.last_error}>
-                          {s.last_error}
-                        </span>
+                          {s.last_error && (
+                            <span className="text-red-400 truncate max-w-[200px]" title={s.last_error}>
+                              {s.last_error}
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>

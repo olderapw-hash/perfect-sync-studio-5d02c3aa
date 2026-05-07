@@ -1349,6 +1349,32 @@ export type Database = {
         }
         Relationships: []
       }
+      tenant_secrets: {
+        Row: {
+          pw_api_secret: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          pw_api_secret?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          pw_api_secret?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_secrets_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           connection_error: string | null

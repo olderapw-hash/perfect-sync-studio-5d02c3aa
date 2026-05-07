@@ -133,7 +133,7 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [sysMessage, setSysMessage] = useState("");
-  const [confirmToken, setConfirmToken] = useState("");
+  
 
   // Preview/Queue state
   const [preview, setPreview] = useState<PreviewBulkTargetsResponse | null>(null);
@@ -204,7 +204,7 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
       case "grantMallCash":
         p.amount = parseInt(cashAmount) || 0;
         p.reason = subject || "Bulk grant via GM Commander";
-        if (confirmToken) p.confirm = confirmToken;
+        p.confirm = "GRANT_MALL_CASH";
         break;
       case "sendSystemMessage":
         p.message = sysMessage;
@@ -238,13 +238,8 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
   }, [commandKey, buildSelection, buildCommandPayload]);
 
   const needsConfirmation = commandKey === "grantMallCash";
-  const confirmationValid = !needsConfirmation || confirmToken === "GRANT_MALL_CASH";
 
   const handleQueue = useCallback(async () => {
-    if (needsConfirmation && !confirmationValid) {
-      setError("Confirmação obrigatória: digite GRANT_MALL_CASH para autorizar esta operação.");
-      return;
-    }
     setQueueLoading(true);
     setError(null);
     try {
@@ -280,7 +275,7 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
     } finally {
       setQueueLoading(false);
     }
-  }, [commandKey, buildSelection, buildCommandPayload, onActed, needsConfirmation, confirmationValid]);
+  }, [commandKey, buildSelection, buildCommandPayload, onActed]);
 
   const loadJobs = useCallback(async () => {
     setJobsLoading(true);
@@ -563,23 +558,11 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
                     <Label className="text-[11px] text-muted-foreground">Motivo</Label>
                     <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Premiação de evento" className="h-9 text-xs border-border/60 bg-card/60" />
                   </div>
-                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
+                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
                     <div className="flex items-start gap-2 text-[10px] text-amber-400">
                       <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
-                      <span>Operação sensível: digite <code className="font-mono font-bold text-amber-300">GRANT_MALL_CASH</code> para autorizar o envio.</span>
+                      <span>Operação sensível: <code className="font-mono font-bold text-amber-300">confirm:"GRANT_MALL_CASH"</code> será enviado automaticamente junto ao payload.</span>
                     </div>
-                    <Input
-                      value={confirmToken}
-                      onChange={e => setConfirmToken(e.target.value)}
-                      placeholder="Digite GRANT_MALL_CASH"
-                      className={cn(
-                        "h-9 text-xs font-mono border-border/60 bg-card/60",
-                        confirmToken === "GRANT_MALL_CASH" && "border-emerald-500/50 bg-emerald-500/5"
-                      )}
-                    />
-                    {confirmToken && confirmToken !== "GRANT_MALL_CASH" && (
-                      <p className="text-[10px] text-red-400">Token inválido. Digite exatamente: GRANT_MALL_CASH</p>
-                    )}
                   </div>
                 </div>
               )}
@@ -666,18 +649,10 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
                   <span className="text-amber-400 font-semibold">confirmation.token:</span>
                   <span className="font-mono font-bold text-amber-300">"GRANT_MALL_CASH"</span>
                 </div>
-                {!confirmationValid && (
-                  <div className="flex items-start gap-2 text-[10px] text-red-400 mt-2">
-                    <XCircle className="h-3 w-3 mt-0.5 shrink-0" />
-                    <span>Confirmação pendente — volte e digite o token para liberar o envio.</span>
-                  </div>
-                )}
-                {confirmationValid && (
-                  <div className="flex items-start gap-2 text-[10px] text-emerald-400 mt-2">
-                    <CheckCircle2 className="h-3 w-3 mt-0.5 shrink-0" />
-                    <span>Confirmação validada.</span>
-                  </div>
-                )}
+                <div className="flex items-start gap-2 text-[10px] text-emerald-400 mt-2">
+                  <CheckCircle2 className="h-3 w-3 mt-0.5 shrink-0" />
+                  <span>Token será enviado automaticamente no payload.</span>
+                </div>
               </div>
             )}
 
@@ -726,9 +701,8 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
               </Button>
               <Button
                 onClick={handleQueue}
-                disabled={queueLoading || (needsConfirmation && !confirmationValid)}
+                disabled={queueLoading}
                 className="flex-1 gap-2"
-                title={needsConfirmation && !confirmationValid ? "Confirmação obrigatória" : undefined}
               >
                 {queueLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
                 Enfileirar Job ({preview.count} alvos)

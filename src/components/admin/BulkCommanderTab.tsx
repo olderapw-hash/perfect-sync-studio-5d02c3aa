@@ -649,18 +649,10 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
                   <span className="text-amber-400 font-semibold">confirmation.token:</span>
                   <span className="font-mono font-bold text-amber-300">"GRANT_MALL_CASH"</span>
                 </div>
-                {!confirmationValid && (
-                  <div className="flex items-start gap-2 text-[10px] text-red-400 mt-2">
-                    <XCircle className="h-3 w-3 mt-0.5 shrink-0" />
-                    <span>Confirmação pendente — volte e digite o token para liberar o envio.</span>
-                  </div>
-                )}
-                {confirmationValid && (
-                  <div className="flex items-start gap-2 text-[10px] text-emerald-400 mt-2">
-                    <CheckCircle2 className="h-3 w-3 mt-0.5 shrink-0" />
-                    <span>Confirmação validada.</span>
-                  </div>
-                )}
+                <div className="flex items-start gap-2 text-[10px] text-emerald-400 mt-2">
+                  <CheckCircle2 className="h-3 w-3 mt-0.5 shrink-0" />
+                  <span>Token será enviado automaticamente no payload.</span>
+                </div>
               </div>
             )}
 

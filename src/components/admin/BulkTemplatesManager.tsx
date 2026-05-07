@@ -606,7 +606,7 @@ function TemplateFormDialog({
               <Label className="text-[11px]">Seleção (JSON)</Label>
               <Textarea
                 value={selectionJson}
-                onChange={(e) => setSelectionJson(e.target.value)}
+                onChange={(e) => { setSelectionJson(e.target.value); setSelectionDirty(true); }}
                 rows={4}
                 className="border-border/40 bg-card/60 font-mono text-[11px]"
                 placeholder={commandKey === "sendSystemMessage"

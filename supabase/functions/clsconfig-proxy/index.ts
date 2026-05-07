@@ -205,7 +205,7 @@ function jsonError(message: string, status: number): Response {
  * A checagem fina (qual permissão dentro do servidor) acontece adiante
  * via `has_server_permission` para a action específica.
  */
-async function requireAdmin(req: Request): Promise<Response | { userId: string }> {
+async function requireAdmin(req: Request): Promise<Response | { userId: string; isGlobalAdmin: boolean }> {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     return jsonError("Unauthorized: missing bearer token (sessão expirou? faça login novamente)", 401);
@@ -243,7 +243,7 @@ async function requireAdmin(req: Request): Promise<Response | { userId: string }
     return jsonError("Forbidden", 403);
   }
   if (roleRows && roleRows.length > 0) {
-    return { userId };
+    return { userId, isGlobalAdmin: true };
   }
 
   // 2) Senão, aceita se for membro de algum servidor.
@@ -260,7 +260,7 @@ async function requireAdmin(req: Request): Promise<Response | { userId: string }
     return jsonError("Forbidden: você não tem acesso a nenhum servidor", 403);
   }
 
-  return { userId };
+  return { userId, isGlobalAdmin: false };
 }
 
 Deno.serve(async (req: Request) => {
@@ -272,6 +272,7 @@ Deno.serve(async (req: Request) => {
   const authResult = await requireAdmin(req);
   if (authResult instanceof Response) return authResult;
   const callerUserId = authResult.userId;
+  const callerIsGlobalAdmin = authResult.isGlobalAdmin;
 
   const url = new URL(req.url);
   const segments = url.pathname.split("/").filter(Boolean);
@@ -550,18 +551,21 @@ Deno.serve(async (req: Request) => {
       void logAction(action, `permission_denied:${perm}`, false, 403, `Missing permission: ${perm}`);
       return jsonError(`Permissão negada: ${perm}`, 403);
     }
-    // Server-side plan enforcement: ultimate-only actions require pw_admin_ultimate subscription.
-    if (ULTIMATE_ONLY_ACTIONS.has(action)) {
-      const hasUltimate = await callerHasUltimatePlan();
-      if (!hasUltimate) {
-        void logAction(action, `plan_denied:ultimate_required`, false, 403, "Plan upgrade required");
-        return jsonError("Ação disponível apenas no plano Ultimate. Faça upgrade para continuar.", 403);
-      }
-    } else if (PRO_REQUIRED_ACTIONS.has(action)) {
-      const hasPro = await callerHasProPlan();
-      if (!hasPro) {
-        void logAction(action, `plan_denied:pro_required`, false, 403, "Plan upgrade required");
-        return jsonError("Ação disponível apenas nos planos Pro ou Ultimate. Faça upgrade para continuar.", 403);
+    // Global admins (admin/superadmin in user_roles) bypass plan checks entirely.
+    if (!callerIsGlobalAdmin) {
+      // Server-side plan enforcement: ultimate-only actions require pw_admin_ultimate subscription.
+      if (ULTIMATE_ONLY_ACTIONS.has(action)) {
+        const hasUltimate = await callerHasUltimatePlan();
+        if (!hasUltimate) {
+          void logAction(action, `plan_denied:ultimate_required`, false, 403, "Plan upgrade required");
+          return jsonError("Ação disponível apenas no plano Ultimate. Faça upgrade para continuar.", 403);
+        }
+      } else if (PRO_REQUIRED_ACTIONS.has(action)) {
+        const hasPro = await callerHasProPlan();
+        if (!hasPro) {
+          void logAction(action, `plan_denied:pro_required`, false, 403, "Plan upgrade required");
+          return jsonError("Ação disponível apenas nos planos Pro ou Ultimate. Faça upgrade para continuar.", 403);
+        }
       }
     }
     return null;

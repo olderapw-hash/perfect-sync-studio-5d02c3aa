@@ -657,6 +657,30 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
               </div>
             </div>
 
+            {/* Confirmation requirement for grantMallCash */}
+            {needsConfirmation && (
+              <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 space-y-2">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
+                  <span className="text-amber-400 font-semibold">confirmation.required:</span>
+                  <span className="font-mono font-bold text-amber-300">true</span>
+                  <span className="text-amber-400 font-semibold">confirmation.token:</span>
+                  <span className="font-mono font-bold text-amber-300">"GRANT_MALL_CASH"</span>
+                </div>
+                {!confirmationValid && (
+                  <div className="flex items-start gap-2 text-[10px] text-red-400 mt-2">
+                    <XCircle className="h-3 w-3 mt-0.5 shrink-0" />
+                    <span>Confirmação pendente — volte e digite o token para liberar o envio.</span>
+                  </div>
+                )}
+                {confirmationValid && (
+                  <div className="flex items-start gap-2 text-[10px] text-emerald-400 mt-2">
+                    <CheckCircle2 className="h-3 w-3 mt-0.5 shrink-0" />
+                    <span>Confirmação validada.</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Sample targets */}
             {preview.sample_targets.length > 0 && (
               <div>

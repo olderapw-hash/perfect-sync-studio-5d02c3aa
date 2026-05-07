@@ -204,6 +204,7 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
       case "grantMallCash":
         p.amount = parseInt(cashAmount) || 0;
         p.reason = subject || "Bulk grant via GM Commander";
+        if (confirmToken) p.confirm = confirmToken;
         break;
       case "sendSystemMessage":
         p.message = sysMessage;

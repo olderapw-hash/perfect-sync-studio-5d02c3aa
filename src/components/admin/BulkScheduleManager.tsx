@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Clock,
   Loader2,
+  Megaphone,
   Pause,
   Play,
   Plus,
@@ -40,6 +41,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -66,6 +68,7 @@ interface BulkSchedule {
   last_error: string | null;
   created_at: string;
   updated_at: string;
+  every_day?: boolean;
 }
 
 const DAY_NAMES = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
@@ -74,14 +77,26 @@ const COMMAND_LABELS: Record<string, string> = {
   sendMailItem: "Enviar Item",
   sendMailGold: "Enviar Gold",
   grantMallCash: "Creditar Cash",
+  sendSystemMessage: "Broadcast",
 };
 
+/** Commands that don't need audience selection */
+const NO_AUDIENCE_COMMANDS = new Set(["sendSystemMessage"]);
+
 /** Calculate next fire date for a weekly schedule */
-function getNextFire(dayOfWeek: number, timeUtc: string): Date {
+function getNextFire(dayOfWeek: number, timeUtc: string, everyDay?: boolean): Date {
   const now = new Date();
   const [hh, mm] = timeUtc.split(":").map(Number);
+
+  if (everyDay) {
+    // Next fire is today if time hasn't passed, otherwise tomorrow
+    const todayFire = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), hh || 0, mm || 0, 0));
+    if (todayFire > now) return todayFire;
+    todayFire.setUTCDate(todayFire.getUTCDate() + 1);
+    return todayFire;
+  }
+
   const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), hh || 0, mm || 0, 0));
-  // Move to next matching day
   const currentDay = now.getUTCDay();
   let daysAhead = dayOfWeek - currentDay;
   if (daysAhead < 0 || (daysAhead === 0 && next <= now)) daysAhead += 7;
@@ -114,6 +129,13 @@ const PW_CLASSES_SCHEDULE = [
   { id: 10, name: "Lâmina Crepuscular" },
   { id: 11, name: "Conjuradora" },
 ];
+
+/** Detect if schedule has every_day from selection or day_of_week sentinel */
+function isEveryDay(s: BulkSchedule): boolean {
+  if (s.every_day) return true;
+  if (s.selection?.every_day) return true;
+  return false;
+}
 
 /* ─── Main Component ─── */
 
@@ -194,82 +216,92 @@ export function BulkScheduleManager() {
         </div>
       ) : (
         <div className="grid gap-3">
-          {schedules.map(s => (
-            <Card key={s.id} className={cn("border-border/40 bg-card/40 backdrop-blur-sm transition-all", !s.is_active && "opacity-60")}>
-              <CardContent className="py-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-bold text-foreground">{s.name}</span>
-                      <Badge variant="outline" className="text-[10px] border-primary/30 text-primary">
-                        {COMMAND_LABELS[s.command_key] || s.command_key}
-                      </Badge>
-                      <Badge variant="outline" className={cn("text-[10px]", s.is_active ? "border-emerald-500/30 text-emerald-400" : "border-muted-foreground/30 text-muted-foreground")}>
-                        {s.is_active ? "Ativo" : "Pausado"}
-                      </Badge>
-                    </div>
-                    <div className="mt-1.5 flex flex-col gap-1 text-[10px] text-muted-foreground">
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <span>{DAY_NAMES[s.day_of_week]} às {s.time_utc} UTC</span>
-                        {s.is_active && (
-                          <span className="flex items-center gap-1 text-primary/80">
-                            <Clock className="h-3 w-3" />
-                            Próximo: {(() => {
-                              const nf = getNextFire(s.day_of_week, s.time_utc);
-                              return `${nf.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} ${nf.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })} UTC (${formatRelative(nf)})`;
-                            })()}
-                          </span>
+          {schedules.map(s => {
+            const everyDay = isEveryDay(s);
+            return (
+              <Card key={s.id} className={cn("border-border/40 bg-card/40 backdrop-blur-sm transition-all", !s.is_active && "opacity-60")}>
+                <CardContent className="py-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-bold text-foreground">{s.name}</span>
+                        <Badge variant="outline" className="text-[10px] border-primary/30 text-primary">
+                          {COMMAND_LABELS[s.command_key] || s.command_key}
+                        </Badge>
+                        {everyDay && (
+                          <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-400">
+                            Todo dia
+                          </Badge>
                         )}
+                        <Badge variant="outline" className={cn("text-[10px]", s.is_active ? "border-emerald-500/30 text-emerald-400" : "border-muted-foreground/30 text-muted-foreground")}>
+                          {s.is_active ? "Ativo" : "Pausado"}
+                        </Badge>
                       </div>
-                      {s.last_run_at && (
+                      <div className="mt-1.5 flex flex-col gap-1 text-[10px] text-muted-foreground">
                         <div className="flex items-center gap-3 flex-wrap">
-                          <span className="flex items-center gap-1">
-                            {s.last_run_status === "ok" ? (
-                              <CheckCircle2 className="h-3 w-3 text-emerald-400" />
-                            ) : s.last_run_status === "error" ? (
-                              <XCircle className="h-3 w-3 text-red-400" />
-                            ) : (
-                              <Clock className="h-3 w-3" />
-                            )}
-                            Último disparo: {new Date(s.last_run_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+                          <span>
+                            {everyDay ? "Todo dia" : DAY_NAMES[s.day_of_week]} às {s.time_utc} UTC
                           </span>
-                          {s.last_run_job_id && (
-                            <span className="font-mono text-muted-foreground/60" title={`Job ID: ${s.last_run_job_id}`}>
-                              Job: {s.last_run_job_id.length > 12 ? s.last_run_job_id.slice(0, 12) + "…" : s.last_run_job_id}
-                            </span>
-                          )}
-                          {s.last_error && (
-                            <span className="text-red-400 truncate max-w-[200px]" title={s.last_error}>
-                              {s.last_error}
+                          {s.is_active && (
+                            <span className="flex items-center gap-1 text-primary/80">
+                              <Clock className="h-3 w-3" />
+                              Próximo: {(() => {
+                                const nf = getNextFire(s.day_of_week, s.time_utc, everyDay);
+                                return `${nf.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} ${nf.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })} UTC (${formatRelative(nf)})`;
+                              })()}
                             </span>
                           )}
                         </div>
-                      )}
+                        {s.last_run_at && (
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <span className="flex items-center gap-1">
+                              {s.last_run_status === "ok" ? (
+                                <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                              ) : s.last_run_status === "error" ? (
+                                <XCircle className="h-3 w-3 text-red-400" />
+                              ) : (
+                                <Clock className="h-3 w-3" />
+                              )}
+                              Último disparo: {new Date(s.last_run_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+                            </span>
+                            {s.last_run_job_id && (
+                              <span className="font-mono text-muted-foreground/60" title={`Job ID: ${s.last_run_job_id}`}>
+                                Job: {s.last_run_job_id.length > 12 ? s.last_run_job_id.slice(0, 12) + "…" : s.last_run_job_id}
+                              </span>
+                            )}
+                            {s.last_error && (
+                              <span className="text-red-400 truncate max-w-[200px]" title={s.last_error}>
+                                {s.last_error}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8"
+                        onClick={() => toggleActive(s.id, !s.is_active)}
+                        title={s.is_active ? "Pausar" : "Ativar"}
+                      >
+                        {s.is_active ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        onClick={() => deleteSchedule(s.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8"
-                      onClick={() => toggleActive(s.id, !s.is_active)}
-                      title={s.is_active ? "Pausar" : "Ativar"}
-                    >
-                      {s.is_active ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      onClick={() => deleteSchedule(s.id)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
@@ -308,6 +340,7 @@ function ScheduleFormDialog({
   const isEdit = !!schedule;
   const [name, setName] = useState(schedule?.name || "");
   const [commandKey, setCommandKey] = useState<string>(schedule?.command_key || "sendMailItem");
+  const [everyDay, setEveryDay] = useState(schedule ? isEveryDay(schedule) : false);
   const [dayOfWeek, setDayOfWeek] = useState(String(schedule?.day_of_week ?? 1));
   const [timeUtc, setTimeUtc] = useState(schedule?.time_utc || "12:00");
   const [isActive, setIsActive] = useState(schedule?.is_active ?? true);
@@ -329,6 +362,9 @@ function ScheduleFormDialog({
   const [cashAmount, setCashAmount] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  const [message, setMessage] = useState("");
+
+  const needsAudience = !NO_AUDIENCE_COMMANDS.has(commandKey);
 
   // Load from existing schedule
   useEffect(() => {
@@ -343,6 +379,8 @@ function ScheduleFormDialog({
     if (sel.level_min) setLevelMin(String(sel.level_min));
     if (sel.level_max) setLevelMax(String(sel.level_max));
 
+    if (sel.every_day || schedule.every_day) setEveryDay(true);
+
     const cp = schedule.command_payload || {};
     if (cp.item_id) setItemId(String(cp.item_id));
     if (cp.count) setItemCount(String(cp.count));
@@ -351,13 +389,14 @@ function ScheduleFormDialog({
     if (cp.subject) setSubject(cp.subject as string);
     if (cp.body) setBody(cp.body as string);
     if (cp.reason) setSubject(cp.reason as string);
+    if (cp.message) setMessage(cp.message as string);
   }, [schedule]);
 
   const handleSave = async () => {
     if (!name.trim()) { setError("Nome obrigatório"); return; }
 
-    // Duplicate detection: same command + day + time
-    if (!isEdit) {
+    // Duplicate detection: same command + day + time (skip for every_day)
+    if (!isEdit && !everyDay) {
       const dup = existingSchedules.find(
         s => s.command_key === commandKey && s.day_of_week === parseInt(dayOfWeek) && s.time_utc === timeUtc
       );
@@ -371,16 +410,23 @@ function ScheduleFormDialog({
     setError(null);
 
     const selection: Record<string, unknown> = {};
-    switch (selMode) {
-      case "all_online": selection.all_online = true; break;
-      case "names": selection.names = namesInput.split(/[,\n]+/).map(s => s.trim()).filter(Boolean); break;
-      case "guild": selection.guild_id = parseInt(guildId) || 0; break;
-      case "class": selection.class_ids = classIds; break;
+
+    if (needsAudience) {
+      switch (selMode) {
+        case "all_online": selection.all_online = true; break;
+        case "names": selection.names = namesInput.split(/[,\n]+/).map(s => s.trim()).filter(Boolean); break;
+        case "guild": selection.guild_id = parseInt(guildId) || 0; break;
+        case "class": selection.class_ids = classIds; break;
+      }
+      const lMin = parseInt(levelMin);
+      const lMax = parseInt(levelMax);
+      if (!isNaN(lMin) && lMin > 0) selection.level_min = lMin;
+      if (!isNaN(lMax) && lMax > 0) selection.level_max = lMax;
     }
-    const lMin = parseInt(levelMin);
-    const lMax = parseInt(levelMax);
-    if (!isNaN(lMin) && lMin > 0) selection.level_min = lMin;
-    if (!isNaN(lMax) && lMax > 0) selection.level_max = lMax;
+
+    if (everyDay) {
+      selection.every_day = true;
+    }
 
     const command_payload: Record<string, unknown> = {};
     switch (commandKey) {
@@ -400,6 +446,9 @@ function ScheduleFormDialog({
         command_payload.reason = subject || "Agendamento automático";
         command_payload.confirm = "GRANT_MALL_CASH";
         break;
+      case "sendSystemMessage":
+        command_payload.message = message || "";
+        break;
     }
 
     const row = {
@@ -408,7 +457,7 @@ function ScheduleFormDialog({
       command_key: commandKey,
       selection: selection as unknown as Record<string, never>,
       command_payload: command_payload as unknown as Record<string, never>,
-      day_of_week: parseInt(dayOfWeek),
+      day_of_week: everyDay ? 0 : parseInt(dayOfWeek),
       time_utc: timeUtc,
       timezone: "America/Sao_Paulo",
       is_active: isActive,
@@ -461,19 +510,32 @@ function ScheduleFormDialog({
             <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Recompensa semanal TOP guild" className="h-9 text-xs" />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label className="text-[11px]">Dia da Semana</Label>
-              <Select value={dayOfWeek} onValueChange={setDayOfWeek}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {DAY_NAMES.map((d, i) => <SelectItem key={i} value={String(i)}>{d}</SelectItem>)}
-                </SelectContent>
-              </Select>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <Checkbox
+                id="every-day"
+                checked={everyDay}
+                onCheckedChange={(v) => setEveryDay(!!v)}
+              />
+              <Label htmlFor="every-day" className="text-[11px] cursor-pointer">Todo dia (executar diariamente)</Label>
             </div>
-            <div className="space-y-1">
-              <Label className="text-[11px]">Horário (UTC)</Label>
-              <Input value={timeUtc} onChange={e => setTimeUtc(e.target.value)} placeholder="12:00" className="h-9 text-xs" />
+
+            <div className="grid grid-cols-2 gap-3">
+              {!everyDay && (
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Dia da Semana</Label>
+                  <Select value={dayOfWeek} onValueChange={setDayOfWeek}>
+                    <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {DAY_NAMES.map((d, i) => <SelectItem key={i} value={String(i)}>{d}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <div className={cn("space-y-1", everyDay && "col-span-2")}>
+                <Label className="text-[11px]">Horário (UTC)</Label>
+                <Input value={timeUtc} onChange={e => setTimeUtc(e.target.value)} placeholder="12:00" className="h-9 text-xs" />
+              </div>
             </div>
           </div>
 
@@ -485,60 +547,72 @@ function ScheduleFormDialog({
                 <SelectItem value="sendMailItem">Enviar Item</SelectItem>
                 <SelectItem value="sendMailGold">Enviar Gold</SelectItem>
                 <SelectItem value="grantMallCash">Creditar Cash</SelectItem>
+                <SelectItem value="sendSystemMessage">Broadcast (Mensagem Global)</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* Audience */}
-          <div className="space-y-2">
-            <Label className="text-[11px] text-muted-foreground">Seleção de Audiência</Label>
-            <Select value={selMode} onValueChange={setSelMode}>
-              <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all_online">Todos Online</SelectItem>
-                <SelectItem value="names">Por Nomes</SelectItem>
-                <SelectItem value="guild">Por Guild ID</SelectItem>
-                <SelectItem value="class">Por Classe</SelectItem>
-              </SelectContent>
-            </Select>
+          {/* Audience — hidden for sendSystemMessage */}
+          {needsAudience && (
+            <div className="space-y-2">
+              <Label className="text-[11px] text-muted-foreground">Seleção de Audiência</Label>
+              <Select value={selMode} onValueChange={setSelMode}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all_online">Todos Online</SelectItem>
+                  <SelectItem value="names">Por Nomes</SelectItem>
+                  <SelectItem value="guild">Por Guild ID</SelectItem>
+                  <SelectItem value="class">Por Classe</SelectItem>
+                </SelectContent>
+              </Select>
 
-            {selMode === "names" && (
-              <Textarea value={namesInput} onChange={e => setNamesInput(e.target.value)} placeholder="Um nome por linha" className="h-16 text-xs" />
-            )}
-            {selMode === "guild" && (
-              <Input value={guildId} onChange={e => setGuildId(e.target.value)} placeholder="Guild ID" className="h-9 text-xs" />
-            )}
-            {selMode === "class" && (
-              <div className="flex flex-wrap gap-1.5">
-                {PW_CLASSES_SCHEDULE.map(c => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => setClassIds(prev => prev.includes(c.id) ? prev.filter(x => x !== c.id) : [...prev, c.id])}
-                    className={cn(
-                      "rounded-lg border px-2.5 py-1 text-[10px] font-medium transition-all",
-                      classIds.includes(c.id)
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border/40 text-muted-foreground hover:border-primary/30",
-                    )}
-                  >
-                    {c.name}
-                  </button>
-                ))}
-              </div>
-            )}
+              {selMode === "names" && (
+                <Textarea value={namesInput} onChange={e => setNamesInput(e.target.value)} placeholder="Um nome por linha" className="h-16 text-xs" />
+              )}
+              {selMode === "guild" && (
+                <Input value={guildId} onChange={e => setGuildId(e.target.value)} placeholder="Guild ID" className="h-9 text-xs" />
+              )}
+              {selMode === "class" && (
+                <div className="flex flex-wrap gap-1.5">
+                  {PW_CLASSES_SCHEDULE.map(c => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setClassIds(prev => prev.includes(c.id) ? prev.filter(x => x !== c.id) : [...prev, c.id])}
+                      className={cn(
+                        "rounded-lg border px-2.5 py-1 text-[10px] font-medium transition-all",
+                        classIds.includes(c.id)
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border/40 text-muted-foreground hover:border-primary/30",
+                      )}
+                    >
+                      {c.name}
+                    </button>
+                  ))}
+                </div>
+              )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-[10px] text-muted-foreground">Level Mín</Label>
-                <Input value={levelMin} onChange={e => setLevelMin(e.target.value)} className="h-8 text-xs" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-[10px] text-muted-foreground">Level Máx</Label>
-                <Input value={levelMax} onChange={e => setLevelMax(e.target.value)} className="h-8 text-xs" />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">Level Mín</Label>
+                  <Input value={levelMin} onChange={e => setLevelMin(e.target.value)} className="h-8 text-xs" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">Level Máx</Label>
+                  <Input value={levelMax} onChange={e => setLevelMax(e.target.value)} className="h-8 text-xs" />
+                </div>
               </div>
             </div>
-          </div>
+          )}
+
+          {!needsAudience && (
+            <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2">
+              <Megaphone className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+              <span className="text-[10px] text-amber-400/80">
+                Broadcast é enviado globalmente — não requer seleção de audiência.
+              </span>
+            </div>
+          )}
 
           {/* Command payload */}
           {commandKey === "sendMailItem" && (
@@ -569,6 +643,13 @@ function ScheduleFormDialog({
             <div className="space-y-2">
               <Input value={cashAmount} onChange={e => setCashAmount(e.target.value)} placeholder="Cash/Gold (Mall)" className="h-8 text-xs" />
               <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Motivo" className="h-8 text-xs" />
+            </div>
+          )}
+
+          {commandKey === "sendSystemMessage" && (
+            <div className="space-y-2">
+              <Label className="text-[10px]">Mensagem do Broadcast</Label>
+              <Textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Mensagem que será enviada no chat global" className="h-16 text-xs" />
             </div>
           )}
 

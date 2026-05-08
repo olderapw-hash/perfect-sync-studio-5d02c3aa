@@ -2221,6 +2221,37 @@ export interface GetBulkSchedulesResponse {
   error?: string;
 }
 
+/* ─────────── Operator Permissions — tipos ─────────── */
+
+export type OperatorRole = "viewer" | "gm_operator" | "gm_supervisor" | "gm_admin" | "super_admin";
+
+export interface OperatorPermissions {
+  read: boolean;
+  bulk_rewards: boolean;
+  broadcast: boolean;
+  cash_and_gm_permissions: boolean;
+  restore_and_role_edit: boolean;
+}
+
+export interface OperatorPermissionStateResponse {
+  success: boolean;
+  operator: {
+    id: string;
+    email: string;
+    name?: string;
+    role: OperatorRole;
+  };
+  permissions: OperatorPermissions;
+  mode: "audit" | "enforce";
+  error?: string;
+}
+
+export interface OperatorPermissionCatalogResponse {
+  success: boolean;
+  roles: Record<OperatorRole, { label: string; permissions: OperatorPermissions }>;
+  error?: string;
+}
+
 export interface GetBulkScheduleResponse {
   success: boolean;
   schedule: Record<string, unknown>;

@@ -119,6 +119,9 @@ const ALLOWED_ACTIONS = new Set([
   "getBulkSchedules",
   "updateBulkSchedule",
   "deleteBulkSchedule",
+  // Operator Permissions v1 — consulta de permissões do operador na VPS.
+  "getOperatorPermissionCatalog",
+  "getOperatorPermissionState",
 ]);
 
 // Mapa Action → permissão exigida (deve refletir src/lib/serverPermissions.ts).
@@ -216,6 +219,9 @@ const ACTION_PERMISSION: Record<string, string> = {
   getBulkSchedule: "manage_security",
   updateBulkSchedule: "manage_security",
   deleteBulkSchedule: "manage_security",
+  // Operator Permissions v1 — leitura do estado de permissões.
+  getOperatorPermissionCatalog: "view",
+  getOperatorPermissionState: "view",
 };
 
 function jsonError(message: string, status: number): Response {

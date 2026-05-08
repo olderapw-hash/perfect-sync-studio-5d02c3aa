@@ -633,7 +633,7 @@ Deno.serve(async (req: Request) => {
       const target = `${endpoint}?action=getClsconfig`;
       const upstream = await fetch(target, {
         method: "GET",
-        headers: { Accept: "application/json", "x-sync-secret": PW_API_SECRET },
+        headers: { Accept: "application/json", "x-sync-secret": PW_API_SECRET, ...operatorHeaders },
       });
       const out = await relay(upstream, undefined, { softFail: true, context: "getClsconfig" });
       void logAction("getClsconfig", target, out.status === 200, upstream.status);

@@ -488,18 +488,41 @@ function GmCommanderPageInner() {
             <p className="text-xs leading-relaxed text-muted-foreground">
               Compensação, moderação e comunicação operacional. Toda ação
               destrutiva passa por preview (dry_run) antes da execução real.
-            </p>
+           </p>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => void loadCatalog()}
-            disabled={catalogLoading}
-            className="border-border/60 bg-card/60 backdrop-blur-sm transition-all hover:border-primary/40 hover:bg-primary/5"
-          >
-            <RefreshCw className={cn("h-3.5 w-3.5", catalogLoading && "animate-spin")} />
-            Capacidades
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Operator role badge */}
+            {opPerms.operator && (
+              <div className="flex items-center gap-1.5 rounded-full border border-border/40 bg-card/60 px-2.5 py-1 text-[10px] backdrop-blur-sm">
+                <ShieldCheck className="h-3 w-3 text-emerald-400" />
+                <span className="font-semibold text-foreground">{opPerms.operator.email.split("@")[0]}</span>
+                <Badge variant="outline" className="ml-1 border-primary/30 px-1.5 py-0 text-[9px] font-bold uppercase tracking-wider text-primary">
+                  {ROLE_LABELS[opPerms.role ?? "viewer"]}
+                </Badge>
+                {opPerms.mode === "audit" && (
+                  <Badge variant="outline" className="border-amber-500/30 px-1.5 py-0 text-[9px] font-bold uppercase tracking-wider text-amber-400">
+                    audit
+                  </Badge>
+                )}
+              </div>
+            )}
+            {opPerms.loading && (
+              <div className="flex items-center gap-1.5 rounded-full border border-border/40 bg-card/60 px-2.5 py-1 text-[10px] backdrop-blur-sm">
+                <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                <span className="text-muted-foreground">Permissões…</span>
+              </div>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void loadCatalog()}
+              disabled={catalogLoading}
+              className="border-border/60 bg-card/60 backdrop-blur-sm transition-all hover:border-primary/40 hover:bg-primary/5"
+            >
+              <RefreshCw className={cn("h-3.5 w-3.5", catalogLoading && "animate-spin")} />
+              Capacidades
+            </Button>
+          </div>
         </div>
 
         {catalogMissing && (

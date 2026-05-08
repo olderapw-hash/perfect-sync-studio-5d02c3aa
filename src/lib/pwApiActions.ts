@@ -768,6 +768,15 @@ export const pwApi = {
   deleteBulkSchedule(scheduleId: string) {
     return callAction<{ success: boolean; deleted: boolean; schedule_id: string; error?: string }>("deleteBulkSchedule", { method: "POST", body: { schedule_id: scheduleId } });
   },
+  /* ─────────── Operator Permissions ─────────── */
+  /** Catálogo de permissões disponíveis por role de operador. */
+  getOperatorPermissionCatalog() {
+    return callAction<OperatorPermissionCatalogResponse>("getOperatorPermissionCatalog", { method: "GET" });
+  },
+  /** Estado de permissões do operador atual (resolvido via headers x-operator-*). */
+  getOperatorPermissionState() {
+    return callAction<OperatorPermissionStateResponse>("getOperatorPermissionState", { method: "GET" });
+  },
 };
 
 /* ─────────── GM Commander v1 — tipos ─────────── */

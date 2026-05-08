@@ -113,6 +113,7 @@ import { EndpointMissingNotice } from "@/components/admin/EndpointMissingNotice"
 import { BulkCommanderTab } from "@/components/admin/BulkCommanderTab";
 
 import { useAuth } from "@/hooks/useAuth";
+import { OperatorPermissionsProvider, useOperatorPermissions } from "@/hooks/useOperatorPermissions";
 import { useServers } from "@/hooks/useServers";
 import { useServerPermissions } from "@/hooks/useServerPermissions";
 import { logAuditEvent } from "@/lib/auditLog";
@@ -315,7 +316,16 @@ const PW_ICON_NAMES = [
   "bag", "potion", "gold", "sun", "crystal2", "mail", "quill", "heart", "wand",
 ];
 
+const ROLE_LABELS: Record<string, string> = {
+  viewer: "Viewer",
+  gm_operator: "GM Operator",
+  gm_supervisor: "GM Supervisor",
+  gm_admin: "GM Admin",
+  super_admin: "Super Admin",
+};
+
 type TabKey = "compensation" | "moderation" | "communication" | "permissions" | "bulk" | "history";
+
 
 const DEFAULT_TAB_ICONS: Record<TabKey, string> = {
   compensation: "Gift",
@@ -391,7 +401,9 @@ function isCardVisible(cardId: string, visibility: Record<string, boolean>): boo
 export default function GmCommanderPage() {
   return (
     <FeedbackProvider>
-      <GmCommanderPageInner />
+      <OperatorPermissionsProvider>
+        <GmCommanderPageInner />
+      </OperatorPermissionsProvider>
     </FeedbackProvider>
   );
 }
@@ -401,6 +413,7 @@ function GmCommanderPageInner() {
   const { active } = useServers();
   const { isSuperadmin } = useAuth();
   const { can, loading: permLoading } = useServerPermissions();
+  const opPerms = useOperatorPermissions();
   const [catalog, setCatalog] = useState<GmCommandCatalogResponse | null>(null);
   const [catalogMissing, setCatalogMissing] = useState(false);
   const [catalogLoading, setCatalogLoading] = useState(false);
@@ -484,18 +497,41 @@ function GmCommanderPageInner() {
             <p className="text-xs leading-relaxed text-muted-foreground">
               Compensação, moderação e comunicação operacional. Toda ação
               destrutiva passa por preview (dry_run) antes da execução real.
-            </p>
+           </p>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => void loadCatalog()}
-            disabled={catalogLoading}
-            className="border-border/60 bg-card/60 backdrop-blur-sm transition-all hover:border-primary/40 hover:bg-primary/5"
-          >
-            <RefreshCw className={cn("h-3.5 w-3.5", catalogLoading && "animate-spin")} />
-            Capacidades
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Operator role badge */}
+            {opPerms.operator && (
+              <div className="flex items-center gap-1.5 rounded-full border border-border/40 bg-card/60 px-2.5 py-1 text-[10px] backdrop-blur-sm">
+                <ShieldCheck className="h-3 w-3 text-emerald-400" />
+                <span className="font-semibold text-foreground">{opPerms.operator.email.split("@")[0]}</span>
+                <Badge variant="outline" className="ml-1 border-primary/30 px-1.5 py-0 text-[9px] font-bold uppercase tracking-wider text-primary">
+                  {ROLE_LABELS[opPerms.role ?? "viewer"]}
+                </Badge>
+                {opPerms.mode === "audit" && (
+                  <Badge variant="outline" className="border-amber-500/30 px-1.5 py-0 text-[9px] font-bold uppercase tracking-wider text-amber-400">
+                    audit
+                  </Badge>
+                )}
+              </div>
+            )}
+            {opPerms.loading && (
+              <div className="flex items-center gap-1.5 rounded-full border border-border/40 bg-card/60 px-2.5 py-1 text-[10px] backdrop-blur-sm">
+                <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                <span className="text-muted-foreground">Permissões…</span>
+              </div>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void loadCatalog()}
+              disabled={catalogLoading}
+              className="border-border/60 bg-card/60 backdrop-blur-sm transition-all hover:border-primary/40 hover:bg-primary/5"
+            >
+              <RefreshCw className={cn("h-3.5 w-3.5", catalogLoading && "animate-spin")} />
+              Capacidades
+            </Button>
+          </div>
         </div>
 
         {catalogMissing && (
@@ -511,16 +547,18 @@ function GmCommanderPageInner() {
       </header>
 
       <main className="flex-1 overflow-y-auto px-4 py-4">
-        <Tabs defaultValue="compensation" className="space-y-5">
+        <Tabs defaultValue={opPerms.canAction("sendMailItem") ? "compensation" : "history"} className="space-y-5">
           <TabsList className="h-auto flex-wrap gap-1 rounded-xl border border-border/40 bg-card/30 p-1 backdrop-blur-sm">
             {([
-              { key: "compensation" as TabKey, label: "Compensação" },
-              { key: "moderation" as TabKey, label: "Moderação" },
-              { key: "communication" as TabKey, label: "Comunicação" },
-              { key: "permissions" as TabKey, label: "Permissões GM" },
-              { key: "bulk" as TabKey, label: "Bulk Commander" },
-              { key: "history" as TabKey, label: "Histórico" },
-            ] as const).map(({ key, label }) => {
+              { key: "compensation" as TabKey, label: "Compensação", gateAction: "sendMailItem" },
+              { key: "moderation" as TabKey, label: "Moderação", gateAction: "kickRole" },
+              { key: "communication" as TabKey, label: "Comunicação", gateAction: "sendSystemMessage" },
+              { key: "permissions" as TabKey, label: "Permissões GM", gateAction: "grantGmPermission" },
+              { key: "bulk" as TabKey, label: "Bulk Commander", gateAction: "queueBulkCommand" },
+              { key: "history" as TabKey, label: "Histórico", gateAction: "getGmActionHistory" },
+            ] as const)
+              .filter(({ gateAction }) => opPerms.loading || opPerms.canAction(gateAction))
+              .map(({ key, label }) => {
               return (
                 <TabsTrigger key={key} value={key} className="gap-2 rounded-lg px-4 py-2 text-xs data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-[0_0_12px_-3px_hsl(210_85%_60%/0.3)]">
                   <TabIconRenderer name={tabIcons[key]} className="h-3.5 w-3.5" />
@@ -1045,9 +1083,12 @@ function ActionPicker({
 } & VisibilityProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const active = items.find((i) => i.id === activeId) ?? null;
+  const { canAction: opCan, loading: opLoading } = useOperatorPermissions();
 
-  // Filter hidden cards for non-superadmin
-  const visibleItems = isSuperadmin ? items : items.filter((i) => isCardVisible(i.id, cardVisibility));
+  // Filter hidden cards for non-superadmin, then filter by operator permissions.
+  // Items the operator has no permission for are hidden entirely (not just disabled).
+  const visibleItems = (isSuperadmin ? items : items.filter((i) => isCardVisible(i.id, cardVisibility)))
+    .filter((i) => opLoading || opCan(i.action));
 
   return (
     <div>

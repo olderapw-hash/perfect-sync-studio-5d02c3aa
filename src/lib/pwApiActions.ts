@@ -768,6 +768,15 @@ export const pwApi = {
   deleteBulkSchedule(scheduleId: string) {
     return callAction<{ success: boolean; deleted: boolean; schedule_id: string; error?: string }>("deleteBulkSchedule", { method: "POST", body: { schedule_id: scheduleId } });
   },
+  /* ─────────── Operator Permissions ─────────── */
+  /** Catálogo de permissões disponíveis por role de operador. */
+  getOperatorPermissionCatalog() {
+    return callAction<OperatorPermissionCatalogResponse>("getOperatorPermissionCatalog", { method: "GET" });
+  },
+  /** Estado de permissões do operador atual (resolvido via headers x-operator-*). */
+  getOperatorPermissionState() {
+    return callAction<OperatorPermissionStateResponse>("getOperatorPermissionState", { method: "GET" });
+  },
 };
 
 /* ─────────── GM Commander v1 — tipos ─────────── */
@@ -2209,6 +2218,37 @@ export interface GetBulkSchedulesResponse {
   schedules: VpsBulkScheduleSummary[];
   limit: number;
   collected_at: string;
+  error?: string;
+}
+
+/* ─────────── Operator Permissions — tipos ─────────── */
+
+export type OperatorRole = "viewer" | "gm_operator" | "gm_supervisor" | "gm_admin" | "super_admin";
+
+export interface OperatorPermissions {
+  read: boolean;
+  bulk_rewards: boolean;
+  broadcast: boolean;
+  cash_and_gm_permissions: boolean;
+  restore_and_role_edit: boolean;
+}
+
+export interface OperatorPermissionStateResponse {
+  success: boolean;
+  operator: {
+    id: string;
+    email: string;
+    name?: string;
+    role: OperatorRole;
+  };
+  permissions: OperatorPermissions;
+  mode: "audit" | "enforce";
+  error?: string;
+}
+
+export interface OperatorPermissionCatalogResponse {
+  success: boolean;
+  roles: Record<OperatorRole, { label: string; permissions: OperatorPermissions }>;
   error?: string;
 }
 

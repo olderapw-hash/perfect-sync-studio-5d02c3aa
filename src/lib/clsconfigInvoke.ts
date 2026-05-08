@@ -78,6 +78,17 @@ export async function invokeClsconfigProxy<T = unknown>(
   const headers: Record<string, string> = {};
   if (tenantId) headers["x-server-id"] = tenantId;
 
+  // Injeta headers do operador para o sistema de permissões da VPS.
+  // A VPS resolve o operador via registry real (operators.json).
+  const user = sessionData.session.user;
+  if (user) {
+    headers["x-operator-id"] = user.id;
+    headers["x-operator-email"] = user.email ?? "";
+    // Nome vem do metadata do perfil (se disponível).
+    const name = user.user_metadata?.full_name ?? user.user_metadata?.name ?? "";
+    if (name) headers["x-operator-name"] = name;
+  }
+
   // Tenta até 2x quando o runtime do Supabase responde 503
   // (SUPABASE_EDGE_RUNTIME_ERROR — cold start / worker reiniciando).
   let data: unknown = null;

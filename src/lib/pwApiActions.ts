@@ -777,6 +777,26 @@ export const pwApi = {
   getOperatorPermissionState() {
     return callAction<OperatorPermissionStateResponse>("getOperatorPermissionState", { method: "GET" });
   },
+
+  /* ─────────── Operator Registry (CRUD operators.json) ─────────── */
+  /** Lista todos os operadores registrados na VPS. */
+  getOperatorRegistry() {
+    return callAction<OperatorRegistryResponse>("getOperatorRegistry", { method: "GET" });
+  },
+  /** Cria ou atualiza um operador no registry. */
+  saveOperatorRegistryEntry(entry: OperatorRegistryEntry) {
+    return callAction<{ success: boolean; error?: string }>("saveOperatorRegistryEntry", {
+      method: "POST",
+      body: entry,
+    });
+  },
+  /** Remove um operador do registry por id ou email. */
+  deleteOperatorRegistryEntry(identifier: { id?: string; email?: string }) {
+    return callAction<{ success: boolean; error?: string }>("deleteOperatorRegistryEntry", {
+      method: "POST",
+      body: identifier,
+    });
+  },
 };
 
 /* ─────────── GM Commander v1 — tipos ─────────── */

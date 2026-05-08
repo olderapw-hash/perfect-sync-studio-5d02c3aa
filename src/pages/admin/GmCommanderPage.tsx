@@ -404,6 +404,7 @@ function GmCommanderPageInner() {
   const { active } = useServers();
   const { isSuperadmin } = useAuth();
   const { can, loading: permLoading } = useServerPermissions();
+  const opPerms = useOperatorPermissions();
   const [catalog, setCatalog] = useState<GmCommandCatalogResponse | null>(null);
   const [catalogMissing, setCatalogMissing] = useState(false);
   const [catalogLoading, setCatalogLoading] = useState(false);

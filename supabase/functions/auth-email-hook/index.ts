@@ -94,10 +94,12 @@ async function handlePreview(req: Request): Promise<Response> {
   const apiKey = Deno.env.get('LOVABLE_API_KEY')
   const authHeader = req.headers.get('Authorization')
 
-  console.log('Preview request received', { hasApiKey: !!apiKey, hasAuth: !!authHeader, method: req.method })
+  const keyPrefix = apiKey ? apiKey.substring(0, 8) : 'none'
+  const authPrefix = authHeader ? authHeader.substring(0, 20) : 'none'
+  console.log('Preview auth debug', { keyPrefix, authPrefix, keyLen: apiKey?.length, authLen: authHeader?.length })
 
   if (!apiKey || authHeader !== `Bearer ${apiKey}`) {
-    console.error('Preview auth failed', { hasApiKey: !!apiKey, authMatch: authHeader === `Bearer ${apiKey}` })
+    console.error('Preview auth failed - mismatch details', { keyPrefix, authPrefix })
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
       headers: { ...previewCorsHeaders, 'Content-Type': 'application/json' },

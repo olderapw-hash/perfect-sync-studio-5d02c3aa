@@ -119,6 +119,9 @@ const ALLOWED_ACTIONS = new Set([
   "getBulkSchedules",
   "updateBulkSchedule",
   "deleteBulkSchedule",
+  // Operator Permissions v1 — consulta de permissões do operador na VPS.
+  "getOperatorPermissionCatalog",
+  "getOperatorPermissionState",
 ]);
 
 // Mapa Action → permissão exigida (deve refletir src/lib/serverPermissions.ts).

@@ -76,6 +76,14 @@ const EMPTY_ENTRY: OperatorRegistryEntry = {
 };
 
 export default function OperatorManagementPage() {
+  return (
+    <OperatorPermissionsProvider>
+      <OperatorManagementContent />
+    </OperatorPermissionsProvider>
+  );
+}
+
+function OperatorManagementContent() {
   const { permissions, role, loading: permLoading } = useOperatorPermissions();
   const [operators, setOperators] = useState<OperatorRegistryEntry[]>([]);
   const [loading, setLoading] = useState(true);

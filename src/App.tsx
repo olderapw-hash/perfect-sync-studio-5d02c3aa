@@ -151,6 +151,7 @@ const App = () => (
 
                     {/* GM Commander — compensação, moderação e comunicação. */}
                     <Route path="gm" element={<GmCommanderPage />} />
+                    <Route path="operators" element={<OperatorManagementPage />} />
 
                     {/* Segurança v1 — moderação operacional (kick/ban/mute) consolidada em GM Commander. */}
                     <Route path="security" element={<SecurityOverviewPage />}>

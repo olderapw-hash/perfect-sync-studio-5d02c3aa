@@ -316,6 +316,15 @@ Deno.serve(async (req: Request) => {
   // Validamos ownership/membership antes de usar.
   const requestedServerId = req.headers.get("x-server-id");
 
+  // Extrai headers do operador para repassar à VPS (enforce mode).
+  const operatorHeaders: Record<string, string> = {};
+  const opId = req.headers.get("x-operator-id");
+  const opEmail = req.headers.get("x-operator-email");
+  const opName = req.headers.get("x-operator-name");
+  if (opId) operatorHeaders["x-operator-id"] = opId;
+  if (opEmail) operatorHeaders["x-operator-email"] = opEmail;
+  if (opName) operatorHeaders["x-operator-name"] = opName;
+
   // Resolução de credenciais por tenant (multi-servidor):
   // 1. Se x-server-id veio E user é membro → usa esse tenant.
   // 2. Senão lê o tenant ATIVO do user (is_active=true).

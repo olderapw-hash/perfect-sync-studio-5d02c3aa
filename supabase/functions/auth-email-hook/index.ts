@@ -140,6 +140,14 @@ async function handleWebhook(req: Request): Promise<Response> {
     )
   }
 
+  // Debug: log key prefix and incoming headers for signature diagnosis
+  console.log('LOVABLE_API_KEY prefix:', apiKey.substring(0, 8) + '...')
+  console.log('Incoming headers:', {
+    signature: req.headers.get('x-lovable-signature')?.substring(0, 16) + '...',
+    timestamp: req.headers.get('x-lovable-timestamp'),
+    contentType: req.headers.get('content-type'),
+  })
+
   // Verify signature + timestamp, then parse payload.
   let payload: any
   let run_id = ''
@@ -153,6 +161,7 @@ async function handleWebhook(req: Request): Promise<Response> {
     run_id = payload.run_id
   } catch (error) {
     if (error instanceof WebhookError) {
+      console.error('WebhookError details:', { code: error.code, message: error.message })
       switch (error.code) {
         case 'invalid_signature':
         case 'missing_timestamp':

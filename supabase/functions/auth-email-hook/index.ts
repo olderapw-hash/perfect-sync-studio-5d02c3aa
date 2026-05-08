@@ -140,12 +140,8 @@ async function handleWebhook(req: Request): Promise<Response> {
     )
   }
 
-  // Clone request so we can fallback to direct parse if signature fails
-  const clonedReq = req.clone()
-
   let payload: any
   let run_id = ''
-  let signatureOk = false
 
   try {
     const verified = await verifyWebhookRequest({
@@ -155,28 +151,15 @@ async function handleWebhook(req: Request): Promise<Response> {
     })
     payload = verified.payload
     run_id = payload.run_id
-    signatureOk = true
     console.log('Webhook signature verified successfully')
   } catch (verifyError) {
-    console.warn('Signature verification failed, falling back to direct body parse', {
+    console.error('Webhook signature verification failed — rejecting request', {
       error: verifyError instanceof Error ? verifyError.message : String(verifyError),
     })
-
-    // Fallback: parse the cloned request body directly.
-    // This is safe because the Go API proxy is the only caller.
-    try {
-      const rawBody = await clonedReq.json()
-      // parseEmailWebhookPayload expects a specific structure
-      payload = rawBody
-      run_id = rawBody.run_id || ''
-      console.log('Fallback parse succeeded', { run_id, hasData: !!rawBody.data })
-    } catch (parseError) {
-      console.error('Fallback body parse also failed', parseError)
-      return new Response(
-        JSON.stringify({ error: 'Could not parse webhook payload' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
+    return new Response(
+      JSON.stringify({ error: 'Invalid webhook signature' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
   }
 
   if (!run_id) {

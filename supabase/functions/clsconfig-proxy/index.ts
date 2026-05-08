@@ -692,6 +692,7 @@ Deno.serve(async (req: Request) => {
           Accept: "application/json",
           "Content-Type": "application/json",
           "x-sync-secret": PW_API_SECRET,
+          ...operatorHeaders,
         },
         body: JSON.stringify(body),
       });

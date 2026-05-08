@@ -122,6 +122,10 @@ const ALLOWED_ACTIONS = new Set([
   // Operator Permissions v1 — consulta de permissões do operador na VPS.
   "getOperatorPermissionCatalog",
   "getOperatorPermissionState",
+  // Operator Registry — CRUD de operadores (operators.json).
+  "getOperatorRegistry",
+  "saveOperatorRegistryEntry",
+  "deleteOperatorRegistryEntry",
 ]);
 
 // Mapa Action → permissão exigida (deve refletir src/lib/serverPermissions.ts).
@@ -222,6 +226,10 @@ const ACTION_PERMISSION: Record<string, string> = {
   // Operator Permissions v1 — leitura do estado de permissões.
   getOperatorPermissionCatalog: "view",
   getOperatorPermissionState: "view",
+  // Operator Registry — CRUD: exige manage_security (super_admin na prática).
+  getOperatorRegistry: "manage_security",
+  saveOperatorRegistryEntry: "manage_security",
+  deleteOperatorRegistryEntry: "manage_security",
 };
 
 function jsonError(message: string, status: number): Response {

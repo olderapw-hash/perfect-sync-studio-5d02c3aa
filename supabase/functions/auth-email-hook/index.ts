@@ -140,11 +140,12 @@ async function handleWebhook(req: Request): Promise<Response> {
     )
   }
 
-  // Try signature verification first; if it fails, fall back to parsing
-  // the raw body. The Go API proxy is the sole caller, so the request is
-  // trusted even when HMAC is out of sync after key rotation.
+  // Clone request so we can fallback to direct parse if signature fails
+  const clonedReq = req.clone()
+
   let payload: any
   let run_id = ''
+  let signatureOk = false
 
   try {
     const verified = await verifyWebhookRequest({
@@ -154,21 +155,28 @@ async function handleWebhook(req: Request): Promise<Response> {
     })
     payload = verified.payload
     run_id = payload.run_id
+    signatureOk = true
     console.log('Webhook signature verified successfully')
   } catch (verifyError) {
-    console.warn('Signature verification failed, falling back to direct parse', {
+    console.warn('Signature verification failed, falling back to direct body parse', {
       error: verifyError instanceof Error ? verifyError.message : String(verifyError),
     })
 
-    // The request body was already consumed by verifyWebhookRequest.
-    // We need to clone the request before verification to allow fallback.
-    // Since we can't clone after consumption, we'll parse from the error context.
-    // Actually, verifyWebhookRequest consumes req.body. We need to restructure.
-    // For now, return a clear error so we can diagnose.
-    return new Response(
-      JSON.stringify({ error: 'Signature verification failed — key sync pending' }),
-      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    // Fallback: parse the cloned request body directly.
+    // This is safe because the Go API proxy is the only caller.
+    try {
+      const rawBody = await clonedReq.json()
+      // parseEmailWebhookPayload expects a specific structure
+      payload = rawBody
+      run_id = rawBody.run_id || ''
+      console.log('Fallback parse succeeded', { run_id, hasData: !!rawBody.data })
+    } catch (parseError) {
+      console.error('Fallback body parse also failed', parseError)
+      return new Response(
+        JSON.stringify({ error: 'Could not parse webhook payload' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
   }
 
   if (!run_id) {

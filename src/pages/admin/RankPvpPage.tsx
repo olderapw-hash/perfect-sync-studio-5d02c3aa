@@ -203,6 +203,50 @@ const RankPvpInner = () => {
     }
   };
 
+  const handleSaveRewardsToSchedule = async () => {
+    // Se o operador já está vinculado a um agendamento existente,
+    // sobrescreve apenas as recompensas (mantendo dias/horário/timezone).
+    if (linkedSchedule && linkedSchedule.id) {
+      // Confere se o schedule ainda existe na lista atual.
+      const stillExists = schedules.some((s) => s.id === linkedSchedule.id);
+      if (!stillExists) {
+        toast.error("Agendamento vinculado não existe mais", {
+          description: "Atualize a lista e tente novamente.",
+        });
+        setLinkedSchedule(null);
+        return;
+      }
+      setSavingRewardsToSchedule(true);
+      try {
+        await pwApi.savePvpRankingRewardSchedule({
+          id: linkedSchedule.id,
+          name: linkedSchedule.name ?? "Ranking PvP",
+          weekdays: linkedSchedule.weekdays ?? [],
+          time_of_day: linkedSchedule.time_of_day ?? "00:05:00",
+          timezone: linkedSchedule.timezone ?? DEFAULT_TIMEZONE,
+          enabled: linkedSchedule.enabled ?? true,
+          reset_ranking: linkedSchedule.reset_ranking ?? resetRanking,
+          reset_only_on_full_success:
+            linkedSchedule.reset_only_on_full_success ?? resetOnlyOnFullSuccess,
+          rewards,
+        });
+        toast.success("Recompensas salvas no agendamento", {
+          description: linkedSchedule.name ?? linkedSchedule.id,
+        });
+        await loadAll();
+      } catch (e) {
+        if (e instanceof EndpointMissingError) setEndpointMissing(e.action);
+        else toast.error("Falha ao salvar recompensas", { description: humanError(e) });
+      } finally {
+        setSavingRewardsToSchedule(false);
+      }
+      return;
+    }
+    // Sem vínculo → abre o fluxo de criação já pré-preenchido com os rewards atuais.
+    setEditScheduleDetail(null);
+    setShowCreateSchedule(true);
+  };
+
   if (endpointMissing) {
     return (
       <div className="h-full overflow-y-auto p-6">

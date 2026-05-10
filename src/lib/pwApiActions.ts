@@ -982,6 +982,10 @@ export interface PvpScheduleSummary {
   last_run_at?: string | null;
   last_result?: PvpRewardExecutionSummary | null;
   last_error?: string | null;
+  /** estado computado pela VPS: ok | warning | error | paused | pending */
+  derived_state?: string | null;
+  /** severidade visual do estado: ok | warning | error | muted */
+  status_severity?: "ok" | "warning" | "error" | "muted" | string | null;
   [k: string]: unknown;
 }
 

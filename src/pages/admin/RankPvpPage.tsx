@@ -938,7 +938,7 @@ const PvpScheduleFormDialog = ({
   onClose,
   onSaved,
 }: {
-  schedule: PvpScheduleSummary | null;
+  schedule: PvpScheduleDetail | null;
   rewards: PvpRewardConfig[];
   resetRanking: boolean;
   resetOnlyOnFullSuccess: boolean;

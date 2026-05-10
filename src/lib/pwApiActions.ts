@@ -797,7 +797,193 @@ export const pwApi = {
       body: identifier,
     });
   },
+
+  /* ─────────── Rank PvP — eventos > rank pvp ─────────── */
+  getPvpRankingLeaderboard(params: { limit?: number } = {}) {
+    const query: Record<string, string | number> = {};
+    if (params.limit != null) query.limit = params.limit;
+    return callAction<PvpRankingLeaderboardResponse>("getPvpRankingLeaderboard", {
+      method: "GET",
+      query,
+    });
+  },
+  previewPvpRankingRewards(body: PvpRewardExecutionPayload) {
+    return callAction<PvpRewardPreviewResponse>("previewPvpRankingRewards", {
+      method: "POST",
+      body,
+    });
+  },
+  executePvpRankingRewards(body: PvpRewardExecutionPayload) {
+    return callAction<PvpRewardExecutionResponse>("executePvpRankingRewards", {
+      method: "POST",
+      body,
+    });
+  },
+  getPvpRankingRewardHistory(params: { limit?: number } = {}) {
+    const query: Record<string, string | number> = {};
+    if (params.limit != null) query.limit = params.limit;
+    return callAction<PvpRewardHistoryResponse>("getPvpRankingRewardHistory", {
+      method: "GET",
+      query,
+    });
+  },
+  getPvpRankingRewardSchedules(params: { limit?: number } = {}) {
+    const query: Record<string, string | number> = {};
+    if (params.limit != null) query.limit = params.limit;
+    return callAction<PvpRewardSchedulesResponse>("getPvpRankingRewardSchedules", {
+      method: "GET",
+      query,
+    });
+  },
+  savePvpRankingRewardSchedule(body: PvpScheduleSavePayload) {
+    return callAction<PvpScheduleSaveResponse>("savePvpRankingRewardSchedule", {
+      method: "POST",
+      body,
+    });
+  },
+  deletePvpRankingRewardSchedule(body: { id?: string; name?: string }) {
+    return callAction<{ success: boolean; error?: string }>(
+      "deletePvpRankingRewardSchedule",
+      { method: "POST", body },
+    );
+  },
 };
+
+/* ─────────── Rank PvP — tipos ─────────── */
+
+export interface PvpRankingEntry {
+  position: number;
+  roleid: number;
+  role_name?: string;
+  class_id?: number;
+  class_name?: string;
+  kills?: number;
+  deaths?: number;
+  points?: number;
+  last_kill_at?: string | number | null;
+  [k: string]: unknown;
+}
+
+export interface PvpRankingLeaderboardResponse {
+  success: boolean;
+  entries?: PvpRankingEntry[];
+  leaderboard?: PvpRankingEntry[];
+  count?: number;
+  error?: string;
+}
+
+export interface PvpRewardConfig {
+  position: number;
+  item_id?: number;
+  count?: number;
+  money?: number;
+  title?: string;
+  message?: string;
+}
+
+export interface PvpRewardExecutionPayload {
+  rewards: PvpRewardConfig[];
+  reset_ranking?: boolean;
+  reset_only_on_full_success?: boolean;
+}
+
+export interface PvpRewardPositionResult {
+  position: number;
+  status: string;
+  delivery?: string;
+  roleid?: number;
+  role_name?: string;
+  reward?: PvpRewardConfig;
+  error?: string;
+  [k: string]: unknown;
+}
+
+export interface PvpRewardPreviewResponse {
+  success: boolean;
+  leaderboard?: PvpRankingEntry[];
+  results?: PvpRewardPositionResult[];
+  missing_positions?: number[];
+  error?: string;
+}
+
+export interface PvpRewardExecutionResponse {
+  success: boolean;
+  status?: string;
+  completed_count?: number;
+  failed_count?: number;
+  skipped_count?: number;
+  reset_performed?: boolean;
+  reset_result?: Record<string, unknown> | null;
+  results?: PvpRewardPositionResult[];
+  leaderboard?: PvpRankingEntry[];
+  error?: string;
+}
+
+export interface PvpRewardHistoryEntry {
+  id?: string;
+  executed_at?: string | number;
+  source?: "manual" | "schedule" | string;
+  status?: string;
+  operator?: { id?: string; email?: string; name?: string } | string;
+  completed_count?: number;
+  skipped_count?: number;
+  failed_count?: number;
+  reset_performed?: boolean;
+  leaderboard?: PvpRankingEntry[];
+  results?: PvpRewardPositionResult[];
+  reset_result?: Record<string, unknown> | null;
+  [k: string]: unknown;
+}
+
+export interface PvpRewardHistoryResponse {
+  success: boolean;
+  entries?: PvpRewardHistoryEntry[];
+  history?: PvpRewardHistoryEntry[];
+  count?: number;
+  error?: string;
+}
+
+export interface PvpScheduleSummary {
+  id?: string;
+  name?: string;
+  weekdays?: number[];
+  time_of_day?: string;
+  timezone?: string;
+  enabled?: boolean;
+  reset_ranking?: boolean;
+  reset_only_on_full_success?: boolean;
+  rewards?: PvpRewardConfig[];
+  next_run_at?: string | null;
+  last_run_at?: string | null;
+  last_status?: string | null;
+  last_error?: string | null;
+  [k: string]: unknown;
+}
+
+export interface PvpScheduleSavePayload {
+  id?: string;
+  name: string;
+  weekdays: number[];
+  time_of_day: string;
+  timezone?: string;
+  enabled?: boolean;
+  reset_ranking?: boolean;
+  reset_only_on_full_success?: boolean;
+  rewards: PvpRewardConfig[];
+}
+
+export interface PvpScheduleSaveResponse {
+  success: boolean;
+  schedule?: PvpScheduleSummary;
+  error?: string;
+}
+
+export interface PvpRewardSchedulesResponse {
+  success: boolean;
+  schedules?: PvpScheduleSummary[];
+  count?: number;
+  error?: string;
+}
 
 /* ─────────── GM Commander v1 — tipos ─────────── */
 

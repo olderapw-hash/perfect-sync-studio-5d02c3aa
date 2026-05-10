@@ -253,6 +253,15 @@ const RankPvpInner = () => {
           title="Configuração de recompensas"
           icon={<Pencil className="h-4 w-4 text-primary" />}
         >
+          <div className="mb-4 rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-200/90">
+            <strong className="font-semibold text-amber-300">Importante:</strong>{" "}
+            estas recompensas <u>não são salvas como configuração persistente</u>.
+            Elas só são aplicadas quando você clica em{" "}
+            <em>"Executar premiação agora"</em> ou ao{" "}
+            <em>criar/editar um agendamento</em> abaixo (os valores atuais do formulário
+            são gravados junto com o schedule).
+          </div>
+
           <div className="grid gap-4 lg:grid-cols-3">
             {POSITIONS.map((pos) => {
               const r = rewards.find((x) => x.position === pos)!;

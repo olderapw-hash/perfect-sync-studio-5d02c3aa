@@ -873,11 +873,15 @@ const ScheduleManager = ({
                       size="icon"
                       variant="ghost"
                       className="h-8 w-8"
-                      onClick={() => setEditSchedule(s)}
-                      disabled={!canSchedule}
+                      onClick={() => startEdit(s)}
+                      disabled={!canSchedule || busyId === s.id}
                       title="Editar"
                     >
-                      <Pencil className="h-3.5 w-3.5" />
+                      {busyId === s.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Pencil className="h-3.5 w-3.5" />
+                      )}
                     </Button>
                     <Button
                       size="icon"

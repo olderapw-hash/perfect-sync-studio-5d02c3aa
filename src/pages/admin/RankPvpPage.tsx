@@ -788,6 +788,17 @@ const ScheduleManager = ({
                       >
                         {s.enabled ? "Ativo" : "Pausado"}
                       </span>
+                      {s.derived_state && (
+                        <span
+                          className={cn(
+                            "rounded-md border px-1.5 py-0.5 text-[10px] font-medium",
+                            severityClass(s.status_severity),
+                          )}
+                          title={s.last_error ?? undefined}
+                        >
+                          {s.derived_state}
+                        </span>
+                      )}
                     </div>
 
                     <div className="mt-1.5 flex flex-col gap-1 text-[10px] text-muted-foreground">

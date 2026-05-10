@@ -1,7 +1,7 @@
 // /admin/events/rank-pvp — Subsessão "Rank PvP" do hub Eventos.
 // Toda a operação roteia pelo proxy clsconfig-proxy → api_cls.php
 // (ver docs em LOVABLE_RANK_PVP_PROMPT.md). Sem SQL/regras no client.
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   AlertTriangle,
   ChevronDown,
@@ -41,9 +41,11 @@ import {
   pwApi,
   type PvpRankingEntry,
   type PvpRewardConfig,
+  
   type PvpRewardExecutionResponse,
   type PvpRewardHistoryEntry,
   type PvpRewardPreviewResponse,
+  type PvpScheduleDetail,
   type PvpScheduleSummary,
 } from "@/lib/pwApiActions";
 import { cn } from "@/lib/utils";
@@ -87,6 +89,7 @@ const RankPvpPage = () => (
 const RankPvpInner = () => {
   const { canAction, loading: opLoading } = useOperatorPermissions();
   const canExecute = canAction("executePvpRankingRewards");
+  const canPreview = canAction("previewPvpRankingRewards");
   const canSchedule = canAction("savePvpRankingRewardSchedule");
 
   const [rewards, setRewards] = useState<PvpRewardConfig[]>(DEFAULT_REWARDS);
@@ -116,8 +119,7 @@ const RankPvpInner = () => {
       ]);
 
       if (lb.status === "fulfilled") {
-        const entries = lb.value.entries ?? lb.value.leaderboard ?? [];
-        setLeaderboard(entries);
+        setLeaderboard(lb.value.entries ?? []);
       } else if (lb.reason instanceof EndpointMissingError) {
         setEndpointMissing(lb.reason.action);
       } else {
@@ -127,7 +129,7 @@ const RankPvpInner = () => {
       }
 
       if (hist.status === "fulfilled") {
-        setHistory(hist.value.entries ?? hist.value.history ?? []);
+        setHistory(hist.value.entries ?? []);
       }
       if (sch.status === "fulfilled") {
         setSchedules(sch.value.schedules ?? []);
@@ -277,7 +279,12 @@ const RankPvpInner = () => {
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button onClick={handlePreview} disabled={previewLoading || opLoading} variant="outline">
+            <Button
+              onClick={handlePreview}
+              disabled={previewLoading || opLoading || !canPreview}
+              variant="outline"
+              title={!canPreview ? "Sem permissão para gerar preview" : undefined}
+            >
               {previewLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
@@ -394,9 +401,9 @@ const LeaderboardTable = ({
           {entries.map((e) => (
             <tr key={`${e.position}-${e.roleid}`} className="border-b border-border/50">
               <td className="px-3 py-2 font-mono font-bold text-primary">#{e.position}</td>
-              <td className="px-3 py-2 font-semibold">{e.role_name ?? `roleid ${e.roleid}`}</td>
+              <td className="px-3 py-2 font-semibold">{e.name ?? `roleid ${e.roleid}`}</td>
               <td className="px-3 py-2 text-muted-foreground">
-                {e.class_name ?? (e.class_id != null ? `cls ${e.class_id}` : "—")}
+                {e.class_name ?? (e.cls != null ? `cls ${e.cls}` : "—")}
               </td>
               <td className="px-3 py-2 text-right">{e.kills ?? 0}</td>
               <td className="px-3 py-2 text-right">{e.deaths ?? 0}</td>
@@ -483,8 +490,7 @@ const Field = ({ label, children }: { label: string; children: React.ReactNode }
 );
 
 const PreviewBlock = ({ preview }: { preview: PvpRewardPreviewResponse }) => {
-  const lb = preview.leaderboard ?? [];
-  const results = preview.results ?? [];
+  const entries = preview.entries ?? [];
   const missing = preview.missing_positions ?? [];
   return (
     <div className="space-y-3 text-sm">
@@ -495,20 +501,19 @@ const PreviewBlock = ({ preview }: { preview: PvpRewardPreviewResponse }) => {
       )}
       <div className="grid gap-3 lg:grid-cols-3">
         {POSITIONS.map((pos) => {
-          const player = lb.find((e) => e.position === pos);
-          const r = results.find((x) => x.position === pos);
+          const entry = entries.find((e) => e.position === pos);
           return (
             <div key={pos} className="rounded-lg border border-border bg-background/40 p-3">
               <div className="mb-1 text-xs font-bold uppercase text-primary">#{pos}</div>
               <div className="text-sm font-semibold">
-                {player?.role_name ?? "(vazio)"}
+                {entry?.player?.name ?? (entry?.has_target ? "(sem nome)" : "(vazio)")}
               </div>
               <div className="mt-1 text-xs text-muted-foreground">
-                {r?.delivery && <>Entrega: {r.delivery} · </>}
-                Status: <span className="font-mono">{r?.status ?? "—"}</span>
+                {entry?.delivery_method && <>Entrega: {entry.delivery_method} · </>}
+                Status: <span className="font-mono">{entry?.status ?? "—"}</span>
               </div>
-              {r?.error && (
-                <div className="mt-1 text-xs text-destructive">{r.error}</div>
+              {entry?.error && (
+                <div className="mt-1 text-xs text-destructive">{entry.error}</div>
               )}
             </div>
           );
@@ -531,11 +536,11 @@ const ExecutionResultBlock = ({ result }: { result: PvpRewardExecutionResponse }
         tone={result.reset_performed ? "ok" : "muted"}
       />
     </div>
-    {result.results && result.results.length > 0 && (
+    {result.entries && result.entries.length > 0 && (
       <details className="rounded-md border border-border bg-background/40 p-3 text-xs">
         <summary className="cursor-pointer font-semibold">Detalhe por posição</summary>
         <pre className="mt-2 overflow-x-auto text-[11px]">
-          {JSON.stringify(result.results, null, 2)}
+          {JSON.stringify(result.entries, null, 2)}
         </pre>
       </details>
     )}
@@ -616,8 +621,9 @@ const ScheduleManager = ({
   onChanged: () => void;
 }) => {
   const [showCreate, setShowCreate] = useState(false);
-  const [editSchedule, setEditSchedule] = useState<PvpScheduleSummary | null>(null);
+  const [editSchedule, setEditSchedule] = useState<PvpScheduleDetail | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -628,23 +634,50 @@ const ScheduleManager = ({
     }
   };
 
-  const toggleActive = async (s: PvpScheduleSummary) => {
+  const fetchFullSchedule = async (s: PvpScheduleSummary): Promise<PvpScheduleDetail | null> => {
+    if (!s.id) return null;
     try {
+      const res = await pwApi.getPvpRankingRewardSchedule({ schedule_id: s.id });
+      return res.schedule ?? null;
+    } catch (e) {
+      toast.error("Falha ao carregar agendamento", { description: humanError(e) });
+      return null;
+    }
+  };
+
+  const startEdit = async (s: PvpScheduleSummary) => {
+    setBusyId(s.id ?? null);
+    try {
+      const full = await fetchFullSchedule(s);
+      if (full) setEditSchedule(full);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const toggleActive = async (s: PvpScheduleSummary) => {
+    if (!s.id) return;
+    setBusyId(s.id);
+    try {
+      const full = await fetchFullSchedule(s);
+      if (!full) return;
       await pwApi.savePvpRankingRewardSchedule({
-        id: s.id,
-        name: s.name ?? "Ranking PvP",
-        weekdays: s.weekdays ?? [],
-        time_of_day: s.time_of_day ?? "00:05:00",
-        timezone: s.timezone ?? DEFAULT_TIMEZONE,
+        id: full.id,
+        name: full.name ?? "Ranking PvP",
+        weekdays: full.weekdays ?? [],
+        time_of_day: full.time_of_day ?? "00:05:00",
+        timezone: full.timezone ?? DEFAULT_TIMEZONE,
         enabled: !s.enabled,
-        reset_ranking: s.reset_ranking ?? true,
-        reset_only_on_full_success: s.reset_only_on_full_success ?? true,
-        rewards: s.rewards ?? rewards,
+        reset_ranking: full.reset_ranking ?? true,
+        reset_only_on_full_success: full.reset_only_on_full_success ?? true,
+        rewards: full.rewards ?? rewards,
       });
       toast.success(s.enabled ? "Agendamento pausado" : "Agendamento ativado");
       onChanged();
     } catch (e) {
       toast.error("Falha ao alternar status", { description: humanError(e) });
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -714,7 +747,8 @@ const ScheduleManager = ({
           {schedules.map((s, idx) => {
             const everyDay = pvpIsEveryDay(s);
             const tz = s.timezone || DEFAULT_TIMEZONE;
-            const positions = (s.rewards ?? []).map((r) => r.position).filter(Boolean);
+            const positions = s.reward_positions ?? [];
+            const lastResult = s.last_result ?? null;
 
             return (
               <div
@@ -797,8 +831,15 @@ const ScheduleManager = ({
                           <span>
                             Último disparo: {formatTime(s.last_run_at) || "—"}
                           </span>
-                          {s.last_status && (
-                            <span className="font-mono">status: {s.last_status}</span>
+                          {lastResult?.status && (
+                            <span className="font-mono">status: {lastResult.status}</span>
+                          )}
+                          {lastResult && (
+                            <span>
+                              {lastResult.completed_count ?? 0} ok ·{" "}
+                              {lastResult.failed_count ?? 0} falhas ·{" "}
+                              {lastResult.skipped_count ?? 0} skipped
+                            </span>
                           )}
                           {s.last_error && (
                             <span
@@ -832,11 +873,15 @@ const ScheduleManager = ({
                       size="icon"
                       variant="ghost"
                       className="h-8 w-8"
-                      onClick={() => setEditSchedule(s)}
-                      disabled={!canSchedule}
+                      onClick={() => startEdit(s)}
+                      disabled={!canSchedule || busyId === s.id}
                       title="Editar"
                     >
-                      <Pencil className="h-3.5 w-3.5" />
+                      {busyId === s.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Pencil className="h-3.5 w-3.5" />
+                      )}
                     </Button>
                     <Button
                       size="icon"
@@ -893,7 +938,7 @@ const PvpScheduleFormDialog = ({
   onClose,
   onSaved,
 }: {
-  schedule: PvpScheduleSummary | null;
+  schedule: PvpScheduleDetail | null;
   rewards: PvpRewardConfig[];
   resetRanking: boolean;
   resetOnlyOnFullSuccess: boolean;
@@ -1104,12 +1149,13 @@ const HistoryList = ({ entries }: { entries: PvpRewardHistoryEntry[] }) => {
   return (
     <div className="space-y-2">
       {entries.map((h, idx) => {
-        const id = h.id ?? `${h.executed_at ?? idx}`;
+        const id = h.id ?? `${h.created_at ?? idx}`;
         const isOpen = open === id;
-        const operatorName =
-          typeof h.operator === "string"
-            ? h.operator
-            : h.operator?.name ?? h.operator?.email ?? "—";
+        const actorName =
+          typeof h.actor === "string"
+            ? h.actor
+            : h.actor?.name ?? h.actor?.email ?? "—";
+        const summary = h.summary ?? {};
         return (
           <div key={id} className="rounded-lg border border-border bg-background/40">
             <button
@@ -1118,12 +1164,13 @@ const HistoryList = ({ entries }: { entries: PvpRewardHistoryEntry[] }) => {
               className="flex w-full items-center justify-between gap-3 p-3 text-left text-sm"
             >
               <div className="min-w-0 flex-1">
-                <div className="font-semibold">{formatTime(h.executed_at) || "—"}</div>
+                <div className="font-semibold">{formatTime(h.created_at) || "—"}</div>
                 <div className="text-xs text-muted-foreground">
                   origem: {h.source ?? "—"} · status:{" "}
                   <span className="font-mono">{h.status ?? "—"}</span> · operador:{" "}
-                  {operatorName} · entregues: {h.completed_count ?? 0} · skipped:{" "}
-                  {h.skipped_count ?? 0} · reset:{" "}
+                  {actorName} · entregues: {summary.completed_count ?? 0} · falhas:{" "}
+                  {summary.failed_count ?? 0} · skipped:{" "}
+                  {summary.skipped_count ?? 0} · reset:{" "}
                   {h.reset_performed ? "sim" : "não"}
                 </div>
               </div>

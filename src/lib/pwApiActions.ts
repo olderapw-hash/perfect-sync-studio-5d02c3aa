@@ -835,6 +835,12 @@ export const pwApi = {
       query,
     });
   },
+  getPvpRankingRewardSchedule(params: { schedule_id: string }) {
+    return callAction<PvpScheduleDetailResponse>("getPvpRankingRewardSchedule", {
+      method: "GET",
+      query: { schedule_id: params.schedule_id },
+    });
+  },
   savePvpRankingRewardSchedule(body: PvpScheduleSavePayload) {
     return callAction<PvpScheduleSaveResponse>("savePvpRankingRewardSchedule", {
       method: "POST",
@@ -854,8 +860,10 @@ export const pwApi = {
 export interface PvpRankingEntry {
   position: number;
   roleid: number;
-  role_name?: string;
-  class_id?: number;
+  /** nome do personagem (campo oficial do contrato). */
+  name?: string;
+  /** id da classe (campo oficial do contrato). */
+  cls?: number;
   class_name?: string;
   kills?: number;
   deaths?: number;
@@ -867,7 +875,6 @@ export interface PvpRankingEntry {
 export interface PvpRankingLeaderboardResponse {
   success: boolean;
   entries?: PvpRankingEntry[];
-  leaderboard?: PvpRankingEntry[];
   count?: number;
   error?: string;
 }
@@ -887,23 +894,41 @@ export interface PvpRewardExecutionPayload {
   reset_only_on_full_success?: boolean;
 }
 
-export interface PvpRewardPositionResult {
-  position: number;
-  status: string;
-  delivery?: string;
+/** Player resumido dentro de uma entry de preview/result. */
+export interface PvpRewardPlayer {
   roleid?: number;
-  role_name?: string;
+  name?: string;
+  cls?: number;
+  class_name?: string;
+  [k: string]: unknown;
+}
+
+/** Entry do preview / execução (contrato oficial). */
+export interface PvpRewardEntry {
+  position: number;
+  player?: PvpRewardPlayer | null;
   reward?: PvpRewardConfig;
+  delivery_method?: string;
+  status?: string;
   error?: string;
+  has_target?: boolean;
   [k: string]: unknown;
 }
 
 export interface PvpRewardPreviewResponse {
   success: boolean;
-  leaderboard?: PvpRankingEntry[];
-  results?: PvpRewardPositionResult[];
+  entries?: PvpRewardEntry[];
   missing_positions?: number[];
   error?: string;
+}
+
+export interface PvpRewardExecutionSummary {
+  completed_count?: number;
+  failed_count?: number;
+  skipped_count?: number;
+  status?: string;
+  reset_performed?: boolean;
+  [k: string]: unknown;
 }
 
 export interface PvpRewardExecutionResponse {
@@ -914,23 +939,21 @@ export interface PvpRewardExecutionResponse {
   skipped_count?: number;
   reset_performed?: boolean;
   reset_result?: Record<string, unknown> | null;
-  results?: PvpRewardPositionResult[];
+  entries?: PvpRewardEntry[];
   leaderboard?: PvpRankingEntry[];
   error?: string;
 }
 
 export interface PvpRewardHistoryEntry {
   id?: string;
-  executed_at?: string | number;
+  created_at?: string | number;
   source?: "manual" | "schedule" | string;
   status?: string;
-  operator?: { id?: string; email?: string; name?: string } | string;
-  completed_count?: number;
-  skipped_count?: number;
-  failed_count?: number;
+  actor?: { id?: string; email?: string; name?: string } | string | null;
+  summary?: PvpRewardExecutionSummary;
   reset_performed?: boolean;
   leaderboard?: PvpRankingEntry[];
-  results?: PvpRewardPositionResult[];
+  results?: PvpRewardEntry[];
   reset_result?: Record<string, unknown> | null;
   [k: string]: unknown;
 }
@@ -938,11 +961,11 @@ export interface PvpRewardHistoryEntry {
 export interface PvpRewardHistoryResponse {
   success: boolean;
   entries?: PvpRewardHistoryEntry[];
-  history?: PvpRewardHistoryEntry[];
   count?: number;
   error?: string;
 }
 
+/** Resumo de schedule retornado pela listagem. NÃO contém `rewards`. */
 export interface PvpScheduleSummary {
   id?: string;
   name?: string;
@@ -952,12 +975,24 @@ export interface PvpScheduleSummary {
   enabled?: boolean;
   reset_ranking?: boolean;
   reset_only_on_full_success?: boolean;
-  rewards?: PvpRewardConfig[];
+  reward_positions?: number[];
+  preview?: PvpRewardEntry[];
   next_run_at?: string | null;
   last_run_at?: string | null;
-  last_status?: string | null;
+  last_result?: PvpRewardExecutionSummary | null;
   last_error?: string | null;
   [k: string]: unknown;
+}
+
+/** Schedule completo (retornado por getPvpRankingRewardSchedule). */
+export interface PvpScheduleDetail extends PvpScheduleSummary {
+  rewards?: PvpRewardConfig[];
+}
+
+export interface PvpScheduleDetailResponse {
+  success: boolean;
+  schedule?: PvpScheduleDetail;
+  error?: string;
 }
 
 export interface PvpScheduleSavePayload {
@@ -974,7 +1009,7 @@ export interface PvpScheduleSavePayload {
 
 export interface PvpScheduleSaveResponse {
   success: boolean;
-  schedule?: PvpScheduleSummary;
+  schedule?: PvpScheduleDetail;
   error?: string;
 }
 

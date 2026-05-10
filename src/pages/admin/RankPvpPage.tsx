@@ -41,9 +41,11 @@ import {
   pwApi,
   type PvpRankingEntry,
   type PvpRewardConfig,
+  type PvpRewardEntry,
   type PvpRewardExecutionResponse,
   type PvpRewardHistoryEntry,
   type PvpRewardPreviewResponse,
+  type PvpScheduleDetail,
   type PvpScheduleSummary,
 } from "@/lib/pwApiActions";
 import { cn } from "@/lib/utils";

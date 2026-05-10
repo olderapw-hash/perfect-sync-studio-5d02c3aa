@@ -940,7 +940,7 @@ export interface PvpRewardExecutionResponse {
   skipped_count?: number;
   reset_performed?: boolean;
   reset_result?: Record<string, unknown> | null;
-  entries?: PvpRewardEntry[];
+  results?: PvpRewardEntry[];
   leaderboard?: PvpRankingEntry[];
   error?: string;
 }
@@ -980,7 +980,7 @@ export interface PvpScheduleSummary {
   preview?: PvpRewardEntry[];
   next_run_at?: string | null;
   last_run_at?: string | null;
-  last_result?: PvpRewardExecutionSummary | null;
+  last_result?: string | null;
   last_error?: string | null;
   /** estado computado pela VPS: ok | warning | error | paused | pending */
   derived_state?: string | null;

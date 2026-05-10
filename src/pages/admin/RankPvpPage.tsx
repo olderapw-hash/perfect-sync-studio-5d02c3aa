@@ -536,11 +536,11 @@ const ExecutionResultBlock = ({ result }: { result: PvpRewardExecutionResponse }
         tone={result.reset_performed ? "ok" : "muted"}
       />
     </div>
-    {result.entries && result.entries.length > 0 && (
+    {result.results && result.results.length > 0 && (
       <details className="rounded-md border border-border bg-background/40 p-3 text-xs">
         <summary className="cursor-pointer font-semibold">Detalhe por posição</summary>
         <pre className="mt-2 overflow-x-auto text-[11px]">
-          {JSON.stringify(result.entries, null, 2)}
+          {JSON.stringify(result.results, null, 2)}
         </pre>
       </details>
     )}
@@ -843,15 +843,8 @@ const ScheduleManager = ({
                           <span>
                             Último disparo: {formatTime(s.last_run_at) || "—"}
                           </span>
-                          {lastResult?.status && (
-                            <span className="font-mono">status: {lastResult.status}</span>
-                          )}
-                          {lastResult && (
-                            <span>
-                              {lastResult.completed_count ?? 0} ok ·{" "}
-                              {lastResult.failed_count ?? 0} falhas ·{" "}
-                              {lastResult.skipped_count ?? 0} skipped
-                            </span>
+                      {lastResult && (
+                            <span className="font-mono">status: {lastResult}</span>
                           )}
                           {s.last_error && (
                             <span
@@ -995,7 +988,7 @@ const PvpScheduleFormDialog = ({
         enabled,
         reset_ranking: resetFlag,
         reset_only_on_full_success: resetOnlyOk,
-        rewards: schedule?.rewards ?? rewards,
+        rewards,
       });
       toast.success(isEdit ? "Agendamento atualizado" : "Agendamento criado");
       onSaved();

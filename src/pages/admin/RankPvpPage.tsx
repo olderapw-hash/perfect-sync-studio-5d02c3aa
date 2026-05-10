@@ -721,6 +721,11 @@ const ScheduleManager = ({
   resetRanking,
   resetOnlyOnFullSuccess,
   canSchedule,
+  showCreate,
+  setShowCreate,
+  editSchedule,
+  setEditSchedule,
+  onLinkSchedule,
   onChanged,
 }: {
   schedules: PvpScheduleSummary[];
@@ -728,10 +733,13 @@ const ScheduleManager = ({
   resetRanking: boolean;
   resetOnlyOnFullSuccess: boolean;
   canSchedule: boolean;
+  showCreate: boolean;
+  setShowCreate: (v: boolean) => void;
+  editSchedule: PvpScheduleDetail | null;
+  setEditSchedule: (s: PvpScheduleDetail | null) => void;
+  onLinkSchedule: (s: PvpScheduleDetail | null) => void;
   onChanged: () => void;
 }) => {
-  const [showCreate, setShowCreate] = useState(false);
-  const [editSchedule, setEditSchedule] = useState<PvpScheduleDetail | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -759,7 +767,10 @@ const ScheduleManager = ({
     setBusyId(s.id ?? null);
     try {
       const full = await fetchFullSchedule(s);
-      if (full) setEditSchedule(full);
+      if (full) {
+        setEditSchedule(full);
+        onLinkSchedule(full);
+      }
     } finally {
       setBusyId(null);
     }
@@ -771,6 +782,14 @@ const ScheduleManager = ({
     try {
       const full = await fetchFullSchedule(s);
       if (!full) return;
+      // Sem fallback silencioso: o backend deve devolver os rewards do schedule.
+      if (!full.rewards || full.rewards.length === 0) {
+        toast.error("Não foi possível alternar status", {
+          description:
+            "O agendamento não retornou recompensas. Edite o schedule e salve novamente antes de pausar/ativar.",
+        });
+        return;
+      }
       await pwApi.savePvpRankingRewardSchedule({
         id: full.id,
         name: full.name ?? "Ranking PvP",
@@ -780,7 +799,7 @@ const ScheduleManager = ({
         enabled: !s.enabled,
         reset_ranking: full.reset_ranking ?? true,
         reset_only_on_full_success: full.reset_only_on_full_success ?? true,
-        rewards: full.rewards ?? rewards,
+        rewards: full.rewards,
       });
       toast.success(s.enabled ? "Agendamento pausado" : "Agendamento ativado");
       onChanged();
@@ -790,8 +809,6 @@ const ScheduleManager = ({
       setBusyId(null);
     }
   };
-
-  const remove = async (s: PvpScheduleSummary) => {
     if (!s.id) return;
     if (!confirm(`Excluir agendamento "${s.name ?? s.id}"?`)) return;
     try {

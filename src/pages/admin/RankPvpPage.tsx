@@ -831,8 +831,15 @@ const ScheduleManager = ({
                           <span>
                             Último disparo: {formatTime(s.last_run_at) || "—"}
                           </span>
-                          {s.last_status && (
-                            <span className="font-mono">status: {s.last_status}</span>
+                          {lastResult?.status && (
+                            <span className="font-mono">status: {lastResult.status}</span>
+                          )}
+                          {lastResult && (
+                            <span>
+                              {lastResult.completed_count ?? 0} ok ·{" "}
+                              {lastResult.failed_count ?? 0} falhas ·{" "}
+                              {lastResult.skipped_count ?? 0} skipped
+                            </span>
                           )}
                           {s.last_error && (
                             <span

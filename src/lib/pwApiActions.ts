@@ -926,6 +926,7 @@ export interface PvpRewardExecutionSummary {
   completed_count?: number;
   failed_count?: number;
   skipped_count?: number;
+  deliverable_count?: number;
   status?: string;
   reset_performed?: boolean;
   [k: string]: unknown;

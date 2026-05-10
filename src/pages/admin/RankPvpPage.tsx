@@ -89,6 +89,7 @@ const RankPvpPage = () => (
 const RankPvpInner = () => {
   const { canAction, loading: opLoading } = useOperatorPermissions();
   const canExecute = canAction("executePvpRankingRewards");
+  const canPreview = canAction("previewPvpRankingRewards");
   const canSchedule = canAction("savePvpRankingRewardSchedule");
 
   const [rewards, setRewards] = useState<PvpRewardConfig[]>(DEFAULT_REWARDS);

@@ -41,7 +41,7 @@ import {
   pwApi,
   type PvpRankingEntry,
   type PvpRewardConfig,
-  type PvpRewardEntry,
+  
   type PvpRewardExecutionResponse,
   type PvpRewardHistoryEntry,
   type PvpRewardPreviewResponse,

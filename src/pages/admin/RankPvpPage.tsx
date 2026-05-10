@@ -386,6 +386,29 @@ const RankPvpInner = () => {
               )}
               <span className="ml-2">Executar premiação agora</span>
             </Button>
+            <Button
+              onClick={handleSaveRewardsToSchedule}
+              disabled={savingRewardsToSchedule || opLoading || !canSchedule}
+              variant="secondary"
+              title={
+                !canSchedule
+                  ? "Requer nível gm_admin"
+                  : linkedSchedule
+                    ? `Salvar nestes recompensas em "${linkedSchedule.name ?? linkedSchedule.id}"`
+                    : "Abrir criação de agendamento com estas recompensas"
+              }
+            >
+              {savingRewardsToSchedule ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              <span className="ml-2">
+                {linkedSchedule
+                  ? "Salvar recompensas no agendamento"
+                  : "Salvar configuração atual no agendamento"}
+              </span>
+            </Button>
           </div>
         </Section>
 
@@ -411,6 +434,11 @@ const RankPvpInner = () => {
             resetRanking={resetRanking}
             resetOnlyOnFullSuccess={resetOnlyOnFullSuccess}
             canSchedule={canSchedule}
+            showCreate={showCreateSchedule}
+            setShowCreate={setShowCreateSchedule}
+            editSchedule={editScheduleDetail}
+            setEditSchedule={setEditScheduleDetail}
+            onLinkSchedule={setLinkedSchedule}
             onChanged={() => loadAll()}
           />
         </Section>

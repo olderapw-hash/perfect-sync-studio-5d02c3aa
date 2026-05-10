@@ -809,6 +809,8 @@ const ScheduleManager = ({
       setBusyId(null);
     }
   };
+
+  const remove = async (s: PvpScheduleSummary) => {
     if (!s.id) return;
     if (!confirm(`Excluir agendamento "${s.name ?? s.id}"?`)) return;
     try {

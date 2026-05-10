@@ -134,8 +134,9 @@ const App = () => (
                     <Route path="mail/templates" element={<MailTemplatesPage />} />
                     <Route path="mail/history" element={<MailHistoryPage />} />
 
-                    {/* Eventos */}
+                    {/* Eventos — hub com subnavegação. Subsessão inicial: Rank PvP. */}
                     <Route path="events" element={<EventsPage />} />
+                    <Route path="events/rank-pvp" element={<RankPvpPage />} />
                     <Route path="events/ingame" element={<IngameEventsPage />} />
 
                     {/* Central de Controle (NOC) — dashboard premium do snapshot. */}

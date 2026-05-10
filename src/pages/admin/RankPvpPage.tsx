@@ -490,8 +490,7 @@ const Field = ({ label, children }: { label: string; children: React.ReactNode }
 );
 
 const PreviewBlock = ({ preview }: { preview: PvpRewardPreviewResponse }) => {
-  const lb = preview.leaderboard ?? [];
-  const results = preview.results ?? [];
+  const entries = preview.entries ?? [];
   const missing = preview.missing_positions ?? [];
   return (
     <div className="space-y-3 text-sm">
@@ -502,20 +501,19 @@ const PreviewBlock = ({ preview }: { preview: PvpRewardPreviewResponse }) => {
       )}
       <div className="grid gap-3 lg:grid-cols-3">
         {POSITIONS.map((pos) => {
-          const player = lb.find((e) => e.position === pos);
-          const r = results.find((x) => x.position === pos);
+          const entry = entries.find((e) => e.position === pos);
           return (
             <div key={pos} className="rounded-lg border border-border bg-background/40 p-3">
               <div className="mb-1 text-xs font-bold uppercase text-primary">#{pos}</div>
               <div className="text-sm font-semibold">
-                {player?.role_name ?? "(vazio)"}
+                {entry?.player?.name ?? (entry?.has_target ? "(sem nome)" : "(vazio)")}
               </div>
               <div className="mt-1 text-xs text-muted-foreground">
-                {r?.delivery && <>Entrega: {r.delivery} · </>}
-                Status: <span className="font-mono">{r?.status ?? "—"}</span>
+                {entry?.delivery_method && <>Entrega: {entry.delivery_method} · </>}
+                Status: <span className="font-mono">{entry?.status ?? "—"}</span>
               </div>
-              {r?.error && (
-                <div className="mt-1 text-xs text-destructive">{r.error}</div>
+              {entry?.error && (
+                <div className="mt-1 text-xs text-destructive">{entry.error}</div>
               )}
             </div>
           );

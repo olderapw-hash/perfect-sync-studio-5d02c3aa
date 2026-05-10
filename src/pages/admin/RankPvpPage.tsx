@@ -621,8 +621,9 @@ const ScheduleManager = ({
   onChanged: () => void;
 }) => {
   const [showCreate, setShowCreate] = useState(false);
-  const [editSchedule, setEditSchedule] = useState<PvpScheduleSummary | null>(null);
+  const [editSchedule, setEditSchedule] = useState<PvpScheduleDetail | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -633,23 +634,50 @@ const ScheduleManager = ({
     }
   };
 
-  const toggleActive = async (s: PvpScheduleSummary) => {
+  const fetchFullSchedule = async (s: PvpScheduleSummary): Promise<PvpScheduleDetail | null> => {
+    if (!s.id) return null;
     try {
+      const res = await pwApi.getPvpRankingRewardSchedule({ schedule_id: s.id });
+      return res.schedule ?? null;
+    } catch (e) {
+      toast.error("Falha ao carregar agendamento", { description: humanError(e) });
+      return null;
+    }
+  };
+
+  const startEdit = async (s: PvpScheduleSummary) => {
+    setBusyId(s.id ?? null);
+    try {
+      const full = await fetchFullSchedule(s);
+      if (full) setEditSchedule(full);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const toggleActive = async (s: PvpScheduleSummary) => {
+    if (!s.id) return;
+    setBusyId(s.id);
+    try {
+      const full = await fetchFullSchedule(s);
+      if (!full) return;
       await pwApi.savePvpRankingRewardSchedule({
-        id: s.id,
-        name: s.name ?? "Ranking PvP",
-        weekdays: s.weekdays ?? [],
-        time_of_day: s.time_of_day ?? "00:05:00",
-        timezone: s.timezone ?? DEFAULT_TIMEZONE,
+        id: full.id,
+        name: full.name ?? "Ranking PvP",
+        weekdays: full.weekdays ?? [],
+        time_of_day: full.time_of_day ?? "00:05:00",
+        timezone: full.timezone ?? DEFAULT_TIMEZONE,
         enabled: !s.enabled,
-        reset_ranking: s.reset_ranking ?? true,
-        reset_only_on_full_success: s.reset_only_on_full_success ?? true,
-        rewards: s.rewards ?? rewards,
+        reset_ranking: full.reset_ranking ?? true,
+        reset_only_on_full_success: full.reset_only_on_full_success ?? true,
+        rewards: full.rewards ?? rewards,
       });
       toast.success(s.enabled ? "Agendamento pausado" : "Agendamento ativado");
       onChanged();
     } catch (e) {
       toast.error("Falha ao alternar status", { description: humanError(e) });
+    } finally {
+      setBusyId(null);
     }
   };
 

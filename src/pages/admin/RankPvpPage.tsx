@@ -1,7 +1,7 @@
 // /admin/events/rank-pvp — Subsessão "Rank PvP" do hub Eventos.
 // Toda a operação roteia pelo proxy clsconfig-proxy → api_cls.php
 // (ver docs em LOVABLE_RANK_PVP_PROMPT.md). Sem SQL/regras no client.
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   AlertTriangle,
   ChevronDown,

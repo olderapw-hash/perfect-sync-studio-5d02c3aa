@@ -682,9 +682,10 @@ const ScheduleManager = ({
   };
 
   const remove = async (s: PvpScheduleSummary) => {
+    if (!s.id) return;
     if (!confirm(`Excluir agendamento "${s.name ?? s.id}"?`)) return;
     try {
-      await pwApi.deletePvpRankingRewardSchedule({ id: s.id, name: s.name });
+      await pwApi.deletePvpRankingRewardSchedule({ schedule_id: s.id });
       toast.success("Agendamento excluído");
       onChanged();
     } catch (e) {

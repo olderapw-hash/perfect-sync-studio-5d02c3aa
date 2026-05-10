@@ -401,9 +401,9 @@ const LeaderboardTable = ({
           {entries.map((e) => (
             <tr key={`${e.position}-${e.roleid}`} className="border-b border-border/50">
               <td className="px-3 py-2 font-mono font-bold text-primary">#{e.position}</td>
-              <td className="px-3 py-2 font-semibold">{e.role_name ?? `roleid ${e.roleid}`}</td>
+              <td className="px-3 py-2 font-semibold">{e.name ?? `roleid ${e.roleid}`}</td>
               <td className="px-3 py-2 text-muted-foreground">
-                {e.class_name ?? (e.class_id != null ? `cls ${e.class_id}` : "—")}
+                {e.class_name ?? (e.cls != null ? `cls ${e.cls}` : "—")}
               </td>
               <td className="px-3 py-2 text-right">{e.kills ?? 0}</td>
               <td className="px-3 py-2 text-right">{e.deaths ?? 0}</td>

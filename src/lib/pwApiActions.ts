@@ -835,6 +835,12 @@ export const pwApi = {
       query,
     });
   },
+  getPvpRankingRewardSchedule(params: { schedule_id: string }) {
+    return callAction<PvpScheduleDetailResponse>("getPvpRankingRewardSchedule", {
+      method: "GET",
+      query: { schedule_id: params.schedule_id },
+    });
+  },
   savePvpRankingRewardSchedule(body: PvpScheduleSavePayload) {
     return callAction<PvpScheduleSaveResponse>("savePvpRankingRewardSchedule", {
       method: "POST",

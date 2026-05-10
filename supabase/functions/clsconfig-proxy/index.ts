@@ -126,6 +126,14 @@ const ALLOWED_ACTIONS = new Set([
   "getOperatorRegistry",
   "saveOperatorRegistryEntry",
   "deleteOperatorRegistryEntry",
+  // Eventos · Rank PvP — leaderboard, preview, execução, histórico e schedules.
+  "getPvpRankingLeaderboard",
+  "previewPvpRankingRewards",
+  "executePvpRankingRewards",
+  "getPvpRankingRewardHistory",
+  "getPvpRankingRewardSchedules",
+  "savePvpRankingRewardSchedule",
+  "deletePvpRankingRewardSchedule",
 ]);
 
 // Mapa Action → permissão exigida (deve refletir src/lib/serverPermissions.ts).
@@ -230,6 +238,15 @@ const ACTION_PERMISSION: Record<string, string> = {
   getOperatorRegistry: "manage_security",
   saveOperatorRegistryEntry: "manage_security",
   deleteOperatorRegistryEntry: "manage_security",
+  // Eventos · Rank PvP — leitura "view"; execução/agendamento exigem manage_security
+  // (gating gm_admin é validado também na VPS via headers x-operator-*).
+  getPvpRankingLeaderboard: "view",
+  getPvpRankingRewardHistory: "view_audit",
+  getPvpRankingRewardSchedules: "view",
+  previewPvpRankingRewards: "view",
+  executePvpRankingRewards: "manage_security",
+  savePvpRankingRewardSchedule: "manage_security",
+  deletePvpRankingRewardSchedule: "manage_security",
 };
 
 function jsonError(message: string, status: number): Response {

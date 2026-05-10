@@ -553,7 +553,40 @@ const Stat = ({
   </div>
 );
 
-/* ─── Schedules ─── */
+/* ─── Schedules (estilo BulkScheduleManager) ─── */
+
+const DEFAULT_TIMEZONE = "America/Sao_Paulo";
+
+/** PvP usa 1=Dom .. 7=Sab (mantém compatibilidade com o backend atual) */
+const PVP_DAY_LABELS: Record<number, string> = {
+  1: "Domingo", 2: "Segunda", 3: "Terça", 4: "Quarta",
+  5: "Quinta", 6: "Sexta", 7: "Sábado",
+};
+
+const PVP_DAY_BUTTONS: [number, string][] = [
+  [2, "Seg"], [3, "Ter"], [4, "Qua"], [5, "Qui"],
+  [6, "Sex"], [7, "Sáb"], [1, "Dom"],
+];
+
+function pvpIsEveryDay(s: PvpScheduleSummary): boolean {
+  return (s.weekdays?.length ?? 0) === 7;
+}
+
+function pvpWeekdaysLabel(weekdays: number[] = []): string {
+  if (weekdays.length === 7) return "Todos os dias";
+  return weekdays.map((d) => PVP_DAY_LABELS[d] || `Dia ${d}`).join(", ");
+}
+
+function pvpFormatRelative(date: Date): string {
+  const now = new Date();
+  const diffMs = date.getTime() - now.getTime();
+  const diffH = Math.floor(diffMs / 3600000);
+  const diffD = Math.floor(diffH / 24);
+  if (diffD > 0) return `em ${diffD}d ${diffH % 24}h`;
+  if (diffH > 0) return `em ${diffH}h`;
+  const diffM = Math.floor(diffMs / 60000);
+  return diffM > 0 ? `em ${diffM}min` : "agora";
+}
 
 const ScheduleManager = ({
   schedules,
@@ -570,38 +603,36 @@ const ScheduleManager = ({
   canSchedule: boolean;
   onChanged: () => void;
 }) => {
-  const [name, setName] = useState("Ranking PvP semanal");
-  const [weekdays, setWeekdays] = useState<number[]>([7]);
-  const [time, setTime] = useState("00:05:00");
-  const [timezone, setTimezone] = useState("America/Sao_Paulo");
-  const [enabled, setEnabled] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [editSchedule, setEditSchedule] = useState<PvpScheduleSummary | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const toggleDay = (d: number) => {
-    setWeekdays((prev) =>
-      prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort(),
-    );
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await onChanged();
+    } finally {
+      setRefreshing(false);
+    }
   };
 
-  const save = async () => {
-    setSaving(true);
+  const toggleActive = async (s: PvpScheduleSummary) => {
     try {
       await pwApi.savePvpRankingRewardSchedule({
-        name,
-        weekdays,
-        time_of_day: time,
-        timezone,
-        enabled,
-        reset_ranking: resetRanking,
-        reset_only_on_full_success: resetOnlyOnFullSuccess,
-        rewards,
+        id: s.id,
+        name: s.name ?? "Ranking PvP",
+        weekdays: s.weekdays ?? [],
+        time_of_day: s.time_of_day ?? "00:05:00",
+        timezone: s.timezone ?? DEFAULT_TIMEZONE,
+        enabled: !s.enabled,
+        reset_ranking: s.reset_ranking ?? true,
+        reset_only_on_full_success: s.reset_only_on_full_success ?? true,
+        rewards: s.rewards ?? rewards,
       });
-      toast.success("Agendamento salvo");
+      toast.success(s.enabled ? "Agendamento pausado" : "Agendamento ativado");
       onChanged();
     } catch (e) {
-      toast.error("Falha ao salvar agendamento", { description: humanError(e) });
-    } finally {
-      setSaving(false);
+      toast.error("Falha ao alternar status", { description: humanError(e) });
     }
   };
 
@@ -618,103 +649,432 @@ const ScheduleManager = ({
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 rounded-lg border border-border bg-background/40 p-4 sm:grid-cols-2">
-        <Field label="Nome">
-          <Input value={name} onChange={(e) => setName(e.target.value)} />
-        </Field>
-        <Field label="Horário (HH:MM:SS)">
-          <Input value={time} onChange={(e) => setTime(e.target.value)} />
-        </Field>
-        <Field label="Timezone">
-          <Input value={timezone} onChange={(e) => setTimezone(e.target.value)} />
-        </Field>
-        <div className="flex items-center gap-3">
-          <Switch checked={enabled} onCheckedChange={setEnabled} />
-          <span className="text-sm">Ativado</span>
+      <div className="flex items-center justify-between">
+        <div>
+          <h4 className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-foreground">
+            <PvpCalendarIcon />
+            Agendamentos Semanais
+          </h4>
+          <p className="mt-0.5 text-[10px] text-muted-foreground">
+            Premiação automática executada pelo scheduler da VPS. Horários em {DEFAULT_TIMEZONE}.
+          </p>
         </div>
-        <div className="sm:col-span-2">
-          <Label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            Dias da semana
-          </Label>
-          <div className="flex flex-wrap gap-2">
-            {WEEKDAY_LABELS.map((label, idx) => {
-              const day = idx + 1; // 1=Dom … 7=Sab
-              const active = weekdays.includes(day);
-              return (
-                <button
-                  key={day}
-                  type="button"
-                  onClick={() => toggleDay(day)}
-                  className={cn(
-                    "rounded-md border px-3 py-1 text-xs font-bold transition",
-                    active
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-background text-muted-foreground hover:border-primary/40",
-                  )}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="border-border/60 bg-card/60"
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => setShowCreate(true)}
+            disabled={!canSchedule}
+            title={!canSchedule ? "Requer nível gm_admin" : undefined}
+            className="gap-1.5"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Novo
+          </Button>
         </div>
-      </div>
-      <div className="flex gap-2">
-        <Button
-          onClick={save}
-          disabled={saving || !canSchedule}
-          title={!canSchedule ? "Requer nível gm_admin" : undefined}
-        >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          <span className="ml-2">Salvar agendamento</span>
-        </Button>
       </div>
 
       {schedules.length === 0 ? (
-        <p className="rounded-md border border-dashed border-border bg-muted/20 p-3 text-center text-sm text-muted-foreground">
-          Nenhum agendamento configurado.
-        </p>
+        <div className="rounded-xl border border-dashed border-border/60 bg-card/20 py-10 text-center">
+          <PvpCalendarIcon className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
+          <p className="text-xs text-muted-foreground">Nenhum agendamento criado</p>
+          <Button
+            size="sm"
+            variant="outline"
+            className="mt-3"
+            disabled={!canSchedule}
+            onClick={() => setShowCreate(true)}
+          >
+            <Plus className="mr-1 h-3.5 w-3.5" />
+            Criar primeiro agendamento
+          </Button>
+        </div>
       ) : (
-        <div className="space-y-2">
-          {schedules.map((s, idx) => (
-            <div
-              key={s.id ?? `${s.name ?? "schedule"}-${idx}`}
-              className="rounded-lg border border-border bg-background/40 p-3 text-sm"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <div className="font-bold">{s.name ?? "(sem nome)"}</div>
-                  <div className="text-xs text-muted-foreground">
-                    Próxima: {formatTime(s.next_run_at) || "—"} · Última:{" "}
-                    {formatTime(s.last_run_at) || "—"} ·{" "}
-                    {s.enabled ? "ativo" : "desativado"}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {(s.weekdays ?? []).map((d) => WEEKDAY_LABELS[d - 1]).join(", ") || "—"} ·{" "}
-                    {s.time_of_day} {s.timezone} · reset:{" "}
-                    {s.reset_ranking ? "sim" : "não"} · posições:{" "}
-                    {(s.rewards ?? []).map((r) => r.position).join(",") || "—"}
-                  </div>
-                  {s.last_error && (
-                    <div className="mt-1 text-xs text-destructive">
-                      Último erro: {s.last_error}
+        <div className="grid gap-3">
+          {schedules.map((s, idx) => {
+            const everyDay = pvpIsEveryDay(s);
+            const tz = s.timezone || DEFAULT_TIMEZONE;
+            const positions = (s.rewards ?? []).map((r) => r.position).filter(Boolean);
+
+            return (
+              <div
+                key={s.id ?? `${s.name ?? "schedule"}-${idx}`}
+                className={cn(
+                  "rounded-xl border border-border/40 bg-card/40 p-4 backdrop-blur-sm transition-all",
+                  !s.enabled && "opacity-60",
+                )}
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-bold text-foreground">
+                        {s.name ?? "(sem nome)"}
+                      </span>
+                      <span className="rounded-md border border-primary/30 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                        Rank PvP
+                      </span>
+                      <span
+                        className={cn(
+                          "rounded-md border px-1.5 py-0.5 text-[10px] font-medium",
+                          everyDay
+                            ? "border-amber-500/30 text-amber-400"
+                            : "border-blue-500/30 text-blue-400",
+                        )}
+                      >
+                        {everyDay ? "Diário" : "Semanal"}
+                      </span>
+                      <span
+                        className={cn(
+                          "rounded-md border px-1.5 py-0.5 text-[10px] font-medium",
+                          s.enabled
+                            ? "border-emerald-500/30 text-emerald-400"
+                            : "border-muted-foreground/30 text-muted-foreground",
+                        )}
+                      >
+                        {s.enabled ? "Ativo" : "Pausado"}
+                      </span>
                     </div>
-                  )}
+
+                    <div className="mt-1.5 flex flex-col gap-1 text-[10px] text-muted-foreground">
+                      <div className="flex items-center gap-1 text-foreground/80 font-medium">
+                        <PvpClockIcon />
+                        <span>
+                          {everyDay
+                            ? `Todos os dias às ${s.time_of_day}`
+                            : `${pvpWeekdaysLabel(s.weekdays)} às ${s.time_of_day}`}
+                        </span>
+                        <span className="font-normal text-muted-foreground">({tz})</span>
+                      </div>
+
+                      {s.enabled && s.next_run_at && (
+                        <div className="ml-4 flex items-center gap-1">
+                          <span className="text-primary/80">
+                            Próximo:{" "}
+                            {new Date(s.next_run_at).toLocaleString("pt-BR", {
+                              day: "2-digit",
+                              month: "2-digit",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              timeZone: tz,
+                            })}{" "}
+                            ({pvpFormatRelative(new Date(s.next_run_at))})
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="ml-4 flex flex-wrap items-center gap-3">
+                        <span>
+                          Reset: {s.reset_ranking ? "sim" : "não"}
+                          {s.reset_ranking && s.reset_only_on_full_success
+                            ? " (só se 100% ok)"
+                            : ""}
+                        </span>
+                        <span>Posições: {positions.length ? positions.join(",") : "—"}</span>
+                      </div>
+
+                      {s.last_run_at ? (
+                        <div className="ml-4 flex flex-wrap items-center gap-3">
+                          <span>
+                            Último disparo: {formatTime(s.last_run_at) || "—"}
+                          </span>
+                          {s.last_status && (
+                            <span className="font-mono">status: {s.last_status}</span>
+                          )}
+                          {s.last_error && (
+                            <span
+                              className="max-w-[240px] truncate text-destructive"
+                              title={s.last_error}
+                            >
+                              {s.last_error}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="ml-4 italic text-muted-foreground/50">
+                          Ainda não executado
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => toggleActive(s)}
+                      disabled={!canSchedule}
+                      title={s.enabled ? "Pausar" : "Ativar"}
+                    >
+                      {s.enabled ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => setEditSchedule(s)}
+                      disabled={!canSchedule}
+                      title="Editar"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      onClick={() => remove(s)}
+                      disabled={!canSchedule}
+                      title="Excluir"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => remove(s)}
-                  disabled={!canSchedule}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
+
+      {(showCreate || editSchedule) && (
+        <PvpScheduleFormDialog
+          schedule={editSchedule}
+          rewards={rewards}
+          resetRanking={resetRanking}
+          resetOnlyOnFullSuccess={resetOnlyOnFullSuccess}
+          onClose={() => {
+            setShowCreate(false);
+            setEditSchedule(null);
+          }}
+          onSaved={() => {
+            setShowCreate(false);
+            setEditSchedule(null);
+            onChanged();
+          }}
+        />
+      )}
     </div>
+  );
+};
+
+/* ─── ícones inline (evitam novos imports) ─── */
+const PvpCalendarIcon = ({ className }: { className?: string }) => (
+  <Trophy className={cn("h-3.5 w-3.5 text-primary", className)} />
+);
+const PvpClockIcon = () => <RefreshCw className="h-3 w-3 text-primary/60" />;
+
+/* ─── Dialog (espelha BulkScheduleManager) ─── */
+
+const PvpScheduleFormDialog = ({
+  schedule,
+  rewards,
+  resetRanking,
+  resetOnlyOnFullSuccess,
+  onClose,
+  onSaved,
+}: {
+  schedule: PvpScheduleSummary | null;
+  rewards: PvpRewardConfig[];
+  resetRanking: boolean;
+  resetOnlyOnFullSuccess: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+}) => {
+  const isEdit = !!schedule;
+  const [name, setName] = useState(schedule?.name || "Ranking PvP semanal");
+  const [everyDay, setEveryDay] = useState(schedule ? pvpIsEveryDay(schedule) : false);
+  const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>(
+    schedule?.weekdays?.length ? schedule.weekdays : [1],
+  );
+  const [time, setTime] = useState((schedule?.time_of_day || "00:05:00").slice(0, 5));
+  const [timezone, setTimezone] = useState(schedule?.timezone || DEFAULT_TIMEZONE);
+  const [enabled, setEnabled] = useState(schedule?.enabled ?? true);
+  const [resetFlag, setResetFlag] = useState(schedule?.reset_ranking ?? resetRanking);
+  const [resetOnlyOk, setResetOnlyOk] = useState(
+    schedule?.reset_only_on_full_success ?? resetOnlyOnFullSuccess,
+  );
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    if (!name.trim()) {
+      setError("Nome obrigatório");
+      return;
+    }
+    const weekdays = everyDay ? [1, 2, 3, 4, 5, 6, 7] : selectedWeekdays;
+    if (weekdays.length === 0) {
+      setError("Selecione pelo menos um dia da semana");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      await pwApi.savePvpRankingRewardSchedule({
+        id: schedule?.id,
+        name: name.trim(),
+        weekdays,
+        time_of_day: time.length === 5 ? `${time}:00` : time,
+        timezone,
+        enabled,
+        reset_ranking: resetFlag,
+        reset_only_on_full_success: resetOnlyOk,
+        rewards: schedule?.rewards ?? rewards,
+      });
+      toast.success(isEdit ? "Agendamento atualizado" : "Agendamento criado");
+      onSaved();
+    } catch (e) {
+      setError(humanError(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={() => onClose()}>
+      <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto border-border/40 bg-card/95 backdrop-blur-xl">
+        <DialogHeader>
+          <DialogTitle className="text-sm font-extrabold">
+            {isEdit ? "Editar Agendamento" : "Novo Agendamento"}
+          </DialogTitle>
+          <DialogDescription className="text-[11px]">
+            Premiação semanal do Rank PvP. Usa as recompensas configuradas atualmente.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {error && (
+            <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-[10px] text-destructive">
+              <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+              {error}
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <Label className="text-[11px]">Nome do Agendamento</Label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ex: Ranking PvP semanal"
+              className="h-9 text-xs"
+            />
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <Checkbox
+                id="pvp-every-day"
+                checked={everyDay}
+                onCheckedChange={(v) => setEveryDay(!!v)}
+              />
+              <Label htmlFor="pvp-every-day" className="cursor-pointer text-[11px]">
+                Todos os dias (executar diariamente)
+              </Label>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {!everyDay && (
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Dias da Semana</Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {PVP_DAY_BUTTONS.map(([d, label]) => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() =>
+                          setSelectedWeekdays((prev) =>
+                            prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort(),
+                          )
+                        }
+                        className={cn(
+                          "rounded-lg border px-2 py-1 text-[10px] font-medium transition-all",
+                          selectedWeekdays.includes(d)
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border/40 text-muted-foreground hover:border-primary/30",
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className={cn("space-y-1", everyDay && "col-span-2")}>
+                <Label className="text-[11px]">Horário ({timezone})</Label>
+                <Input
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  className="h-9 text-xs"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-[11px]">Timezone</Label>
+            <Input
+              value={timezone}
+              onChange={(e) => setTimezone(e.target.value)}
+              className="h-9 text-xs"
+            />
+          </div>
+
+          <div className="space-y-2 rounded-lg border border-border/40 bg-background/30 p-3">
+            <div className="flex items-center gap-3">
+              <Switch checked={resetFlag} onCheckedChange={setResetFlag} id="pvp-reset" />
+              <Label htmlFor="pvp-reset" className="text-[11px]">
+                Resetar ranking após premiação
+              </Label>
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={resetOnlyOk}
+                onCheckedChange={setResetOnlyOk}
+                disabled={!resetFlag}
+                id="pvp-reset-ok"
+              />
+              <Label htmlFor="pvp-reset-ok" className="text-[11px]">
+                Resetar apenas se tudo der certo
+              </Label>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Switch checked={enabled} onCheckedChange={setEnabled} id="pvp-active" />
+            <Label htmlFor="pvp-active" className="text-xs">
+              Ativo
+            </Label>
+          </div>
+
+          <p className="rounded-md border border-border/40 bg-muted/20 p-2 text-[10px] text-muted-foreground">
+            As recompensas usadas serão as configuradas no topo da página
+            ({rewards.length} posições).
+          </p>
+        </div>
+
+        <DialogFooter className="gap-2">
+          <Button variant="outline" size="sm" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1.5">
+            {saving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Save className="h-3.5 w-3.5" />
+            )}
+            {isEdit ? "Salvar" : "Criar Agendamento"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

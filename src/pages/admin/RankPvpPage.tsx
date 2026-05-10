@@ -305,13 +305,34 @@ const RankPvpInner = () => {
           title="Configuração de recompensas"
           icon={<Pencil className="h-4 w-4 text-primary" />}
         >
-          <div className="mb-4 rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-200/90">
-            <strong className="font-semibold text-amber-300">Importante:</strong>{" "}
-            estas recompensas <u>não são salvas como configuração persistente</u>.
-            Elas só são aplicadas quando você clica em{" "}
-            <em>"Executar premiação agora"</em> ou ao{" "}
-            <em>criar/editar um agendamento</em> abaixo (os valores atuais do formulário
-            são gravados junto com o schedule).
+          <div className="mb-4 space-y-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-200/90">
+            <p>
+              <strong className="font-semibold text-amber-300">Importante:</strong>{" "}
+              estas recompensas <u>não são salvas como configuração persistente</u>.
+              O backend não expõe um template global — elas só ficam gravadas{" "}
+              <em>dentro de um agendamento</em>.
+            </p>
+            <ul className="ml-4 list-disc space-y-0.5 text-[11px] text-amber-200/80">
+              <li><strong>Editar</strong> os campos abaixo só altera o estado local da página.</li>
+              <li><strong>Executar premiação agora</strong> usa esses valores em uma rodada manual única.</li>
+              <li>
+                <strong>Salvar configuração atual no agendamento</strong> grava os
+                valores atuais dentro de um schedule (existente ou novo).
+              </li>
+            </ul>
+            {linkedSchedule && (
+              <p className="rounded border border-primary/30 bg-primary/10 px-2 py-1 text-[11px] text-primary">
+                Vinculado ao agendamento:{" "}
+                <strong>{linkedSchedule.name ?? linkedSchedule.id}</strong>{" "}
+                <button
+                  type="button"
+                  className="ml-2 underline hover:text-primary/80"
+                  onClick={() => setLinkedSchedule(null)}
+                >
+                  desvincular
+                </button>
+              </p>
+            )}
           </div>
 
           <div className="grid gap-4 lg:grid-cols-3">

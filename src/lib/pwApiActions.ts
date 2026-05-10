@@ -940,7 +940,7 @@ export interface PvpRewardExecutionResponse {
   skipped_count?: number;
   reset_performed?: boolean;
   reset_result?: Record<string, unknown> | null;
-  entries?: PvpRewardEntry[];
+  results?: PvpRewardEntry[];
   leaderboard?: PvpRankingEntry[];
   error?: string;
 }

@@ -107,6 +107,14 @@ const RankPvpInner = () => {
   const [executing, setExecuting] = useState(false);
   const [lastExecution, setLastExecution] = useState<PvpRewardExecutionResponse | null>(null);
 
+  // Estado elevado do ScheduleManager para permitir abrir o dialog de criação
+  // a partir do botão "Salvar configuração atual no agendamento".
+  const [showCreateSchedule, setShowCreateSchedule] = useState(false);
+  const [editScheduleDetail, setEditScheduleDetail] = useState<PvpScheduleDetail | null>(null);
+  // Schedule "vinculado" ao formulário do topo (último que o operador abriu para editar).
+  const [linkedSchedule, setLinkedSchedule] = useState<PvpScheduleDetail | null>(null);
+  const [savingRewardsToSchedule, setSavingRewardsToSchedule] = useState(false);
+
   /* ─── carga inicial / refresh ─── */
   const loadAll = useCallback(async () => {
     setEndpointMissing(null);

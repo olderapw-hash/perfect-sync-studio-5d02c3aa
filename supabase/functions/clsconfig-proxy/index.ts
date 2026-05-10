@@ -126,6 +126,14 @@ const ALLOWED_ACTIONS = new Set([
   "getOperatorRegistry",
   "saveOperatorRegistryEntry",
   "deleteOperatorRegistryEntry",
+  // Eventos · Rank PvP — leaderboard, preview, execução, histórico e schedules.
+  "getPvpRankingLeaderboard",
+  "previewPvpRankingRewards",
+  "executePvpRankingRewards",
+  "getPvpRankingRewardHistory",
+  "getPvpRankingRewardSchedules",
+  "savePvpRankingRewardSchedule",
+  "deletePvpRankingRewardSchedule",
 ]);
 
 // Mapa Action → permissão exigida (deve refletir src/lib/serverPermissions.ts).

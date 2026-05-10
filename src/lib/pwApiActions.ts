@@ -847,7 +847,7 @@ export const pwApi = {
       body,
     });
   },
-  deletePvpRankingRewardSchedule(body: { id?: string; name?: string }) {
+  deletePvpRankingRewardSchedule(body: { schedule_id: string }) {
     return callAction<{ success: boolean; error?: string }>(
       "deletePvpRankingRewardSchedule",
       { method: "POST", body },

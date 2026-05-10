@@ -1217,6 +1217,19 @@ const HistoryList = ({ entries }: { entries: PvpRewardHistoryEntry[] }) => {
 
 /* ─────────── helpers ─────────── */
 
+function severityClass(sev: unknown): string {
+  switch (sev) {
+    case "ok":
+      return "border-emerald-500/30 text-emerald-400";
+    case "warning":
+      return "border-amber-500/30 text-amber-400";
+    case "error":
+      return "border-destructive/40 text-destructive";
+    default:
+      return "border-muted-foreground/30 text-muted-foreground";
+  }
+}
+
 function humanError(e: unknown): string {
   if (e instanceof Error) return e.message;
   if (typeof e === "string") return e;

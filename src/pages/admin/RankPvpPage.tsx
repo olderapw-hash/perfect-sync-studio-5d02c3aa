@@ -536,11 +536,11 @@ const ExecutionResultBlock = ({ result }: { result: PvpRewardExecutionResponse }
         tone={result.reset_performed ? "ok" : "muted"}
       />
     </div>
-    {result.results && result.results.length > 0 && (
+    {result.entries && result.entries.length > 0 && (
       <details className="rounded-md border border-border bg-background/40 p-3 text-xs">
         <summary className="cursor-pointer font-semibold">Detalhe por posição</summary>
         <pre className="mt-2 overflow-x-auto text-[11px]">
-          {JSON.stringify(result.results, null, 2)}
+          {JSON.stringify(result.entries, null, 2)}
         </pre>
       </details>
     )}

@@ -279,7 +279,12 @@ const RankPvpInner = () => {
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button onClick={handlePreview} disabled={previewLoading || opLoading} variant="outline">
+            <Button
+              onClick={handlePreview}
+              disabled={previewLoading || opLoading || !canPreview}
+              variant="outline"
+              title={!canPreview ? "Sem permissão para gerar preview" : undefined}
+            >
               {previewLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (

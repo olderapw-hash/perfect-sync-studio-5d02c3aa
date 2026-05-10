@@ -3,10 +3,13 @@
 // (ver docs em LOVABLE_RANK_PVP_PROMPT.md). Sem SQL/regras no client.
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  AlertTriangle,
   ChevronDown,
   Loader2,
+  Pause,
   Pencil,
   Play,
+  Plus,
   RefreshCw,
   Save,
   Swords,
@@ -15,6 +18,15 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";

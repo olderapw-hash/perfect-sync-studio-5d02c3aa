@@ -132,6 +132,7 @@ const ALLOWED_ACTIONS = new Set([
   "executePvpRankingRewards",
   "getPvpRankingRewardHistory",
   "getPvpRankingRewardSchedules",
+  "getPvpRankingRewardSchedule",
   "savePvpRankingRewardSchedule",
   "deletePvpRankingRewardSchedule",
 ]);
@@ -243,6 +244,7 @@ const ACTION_PERMISSION: Record<string, string> = {
   getPvpRankingLeaderboard: "view",
   getPvpRankingRewardHistory: "view_audit",
   getPvpRankingRewardSchedules: "view",
+  getPvpRankingRewardSchedule: "view",
   previewPvpRankingRewards: "view",
   executePvpRankingRewards: "manage_security",
   savePvpRankingRewardSchedule: "manage_security",

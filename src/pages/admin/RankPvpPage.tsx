@@ -747,7 +747,8 @@ const ScheduleManager = ({
           {schedules.map((s, idx) => {
             const everyDay = pvpIsEveryDay(s);
             const tz = s.timezone || DEFAULT_TIMEZONE;
-            const positions = (s.rewards ?? []).map((r) => r.position).filter(Boolean);
+            const positions = s.reward_positions ?? [];
+            const lastResult = s.last_result ?? null;
 
             return (
               <div

@@ -107,6 +107,14 @@ const RankPvpInner = () => {
   const [executing, setExecuting] = useState(false);
   const [lastExecution, setLastExecution] = useState<PvpRewardExecutionResponse | null>(null);
 
+  // Estado elevado do ScheduleManager para permitir abrir o dialog de criação
+  // a partir do botão "Salvar configuração atual no agendamento".
+  const [showCreateSchedule, setShowCreateSchedule] = useState(false);
+  const [editScheduleDetail, setEditScheduleDetail] = useState<PvpScheduleDetail | null>(null);
+  // Schedule "vinculado" ao formulário do topo (último que o operador abriu para editar).
+  const [linkedSchedule, setLinkedSchedule] = useState<PvpScheduleDetail | null>(null);
+  const [savingRewardsToSchedule, setSavingRewardsToSchedule] = useState(false);
+
   /* ─── carga inicial / refresh ─── */
   const loadAll = useCallback(async () => {
     setEndpointMissing(null);
@@ -195,6 +203,50 @@ const RankPvpInner = () => {
     }
   };
 
+  const handleSaveRewardsToSchedule = async () => {
+    // Se o operador já está vinculado a um agendamento existente,
+    // sobrescreve apenas as recompensas (mantendo dias/horário/timezone).
+    if (linkedSchedule && linkedSchedule.id) {
+      // Confere se o schedule ainda existe na lista atual.
+      const stillExists = schedules.some((s) => s.id === linkedSchedule.id);
+      if (!stillExists) {
+        toast.error("Agendamento vinculado não existe mais", {
+          description: "Atualize a lista e tente novamente.",
+        });
+        setLinkedSchedule(null);
+        return;
+      }
+      setSavingRewardsToSchedule(true);
+      try {
+        await pwApi.savePvpRankingRewardSchedule({
+          id: linkedSchedule.id,
+          name: linkedSchedule.name ?? "Ranking PvP",
+          weekdays: linkedSchedule.weekdays ?? [],
+          time_of_day: linkedSchedule.time_of_day ?? "00:05:00",
+          timezone: linkedSchedule.timezone ?? DEFAULT_TIMEZONE,
+          enabled: linkedSchedule.enabled ?? true,
+          reset_ranking: linkedSchedule.reset_ranking ?? resetRanking,
+          reset_only_on_full_success:
+            linkedSchedule.reset_only_on_full_success ?? resetOnlyOnFullSuccess,
+          rewards,
+        });
+        toast.success("Recompensas salvas no agendamento", {
+          description: linkedSchedule.name ?? linkedSchedule.id,
+        });
+        await loadAll();
+      } catch (e) {
+        if (e instanceof EndpointMissingError) setEndpointMissing(e.action);
+        else toast.error("Falha ao salvar recompensas", { description: humanError(e) });
+      } finally {
+        setSavingRewardsToSchedule(false);
+      }
+      return;
+    }
+    // Sem vínculo → abre o fluxo de criação já pré-preenchido com os rewards atuais.
+    setEditScheduleDetail(null);
+    setShowCreateSchedule(true);
+  };
+
   if (endpointMissing) {
     return (
       <div className="h-full overflow-y-auto p-6">
@@ -253,13 +305,34 @@ const RankPvpInner = () => {
           title="Configuração de recompensas"
           icon={<Pencil className="h-4 w-4 text-primary" />}
         >
-          <div className="mb-4 rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-200/90">
-            <strong className="font-semibold text-amber-300">Importante:</strong>{" "}
-            estas recompensas <u>não são salvas como configuração persistente</u>.
-            Elas só são aplicadas quando você clica em{" "}
-            <em>"Executar premiação agora"</em> ou ao{" "}
-            <em>criar/editar um agendamento</em> abaixo (os valores atuais do formulário
-            são gravados junto com o schedule).
+          <div className="mb-4 space-y-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-200/90">
+            <p>
+              <strong className="font-semibold text-amber-300">Importante:</strong>{" "}
+              estas recompensas <u>não são salvas como configuração persistente</u>.
+              O backend não expõe um template global — elas só ficam gravadas{" "}
+              <em>dentro de um agendamento</em>.
+            </p>
+            <ul className="ml-4 list-disc space-y-0.5 text-[11px] text-amber-200/80">
+              <li><strong>Editar</strong> os campos abaixo só altera o estado local da página.</li>
+              <li><strong>Executar premiação agora</strong> usa esses valores em uma rodada manual única.</li>
+              <li>
+                <strong>Salvar configuração atual no agendamento</strong> grava os
+                valores atuais dentro de um schedule (existente ou novo).
+              </li>
+            </ul>
+            {linkedSchedule && (
+              <p className="rounded border border-primary/30 bg-primary/10 px-2 py-1 text-[11px] text-primary">
+                Vinculado ao agendamento:{" "}
+                <strong>{linkedSchedule.name ?? linkedSchedule.id}</strong>{" "}
+                <button
+                  type="button"
+                  className="ml-2 underline hover:text-primary/80"
+                  onClick={() => setLinkedSchedule(null)}
+                >
+                  desvincular
+                </button>
+              </p>
+            )}
           </div>
 
           <div className="grid gap-4 lg:grid-cols-3">
@@ -313,6 +386,29 @@ const RankPvpInner = () => {
               )}
               <span className="ml-2">Executar premiação agora</span>
             </Button>
+            <Button
+              onClick={handleSaveRewardsToSchedule}
+              disabled={savingRewardsToSchedule || opLoading || !canSchedule}
+              variant="secondary"
+              title={
+                !canSchedule
+                  ? "Requer nível gm_admin"
+                  : linkedSchedule
+                    ? `Salvar nestes recompensas em "${linkedSchedule.name ?? linkedSchedule.id}"`
+                    : "Abrir criação de agendamento com estas recompensas"
+              }
+            >
+              {savingRewardsToSchedule ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              <span className="ml-2">
+                {linkedSchedule
+                  ? "Salvar recompensas no agendamento"
+                  : "Salvar configuração atual no agendamento"}
+              </span>
+            </Button>
           </div>
         </Section>
 
@@ -338,6 +434,11 @@ const RankPvpInner = () => {
             resetRanking={resetRanking}
             resetOnlyOnFullSuccess={resetOnlyOnFullSuccess}
             canSchedule={canSchedule}
+            showCreate={showCreateSchedule}
+            setShowCreate={setShowCreateSchedule}
+            editSchedule={editScheduleDetail}
+            setEditSchedule={setEditScheduleDetail}
+            onLinkSchedule={setLinkedSchedule}
             onChanged={() => loadAll()}
           />
         </Section>
@@ -620,6 +721,11 @@ const ScheduleManager = ({
   resetRanking,
   resetOnlyOnFullSuccess,
   canSchedule,
+  showCreate,
+  setShowCreate,
+  editSchedule,
+  setEditSchedule,
+  onLinkSchedule,
   onChanged,
 }: {
   schedules: PvpScheduleSummary[];
@@ -627,10 +733,13 @@ const ScheduleManager = ({
   resetRanking: boolean;
   resetOnlyOnFullSuccess: boolean;
   canSchedule: boolean;
+  showCreate: boolean;
+  setShowCreate: (v: boolean) => void;
+  editSchedule: PvpScheduleDetail | null;
+  setEditSchedule: (s: PvpScheduleDetail | null) => void;
+  onLinkSchedule: (s: PvpScheduleDetail | null) => void;
   onChanged: () => void;
 }) => {
-  const [showCreate, setShowCreate] = useState(false);
-  const [editSchedule, setEditSchedule] = useState<PvpScheduleDetail | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -658,7 +767,10 @@ const ScheduleManager = ({
     setBusyId(s.id ?? null);
     try {
       const full = await fetchFullSchedule(s);
-      if (full) setEditSchedule(full);
+      if (full) {
+        setEditSchedule(full);
+        onLinkSchedule(full);
+      }
     } finally {
       setBusyId(null);
     }
@@ -670,6 +782,14 @@ const ScheduleManager = ({
     try {
       const full = await fetchFullSchedule(s);
       if (!full) return;
+      // Sem fallback silencioso: o backend deve devolver os rewards do schedule.
+      if (!full.rewards || full.rewards.length === 0) {
+        toast.error("Não foi possível alternar status", {
+          description:
+            "O agendamento não retornou recompensas. Edite o schedule e salve novamente antes de pausar/ativar.",
+        });
+        return;
+      }
       await pwApi.savePvpRankingRewardSchedule({
         id: full.id,
         name: full.name ?? "Ranking PvP",
@@ -679,7 +799,7 @@ const ScheduleManager = ({
         enabled: !s.enabled,
         reset_ranking: full.reset_ranking ?? true,
         reset_only_on_full_success: full.reset_only_on_full_success ?? true,
-        rewards: full.rewards ?? rewards,
+        rewards: full.rewards,
       });
       toast.success(s.enabled ? "Agendamento pausado" : "Agendamento ativado");
       onChanged();

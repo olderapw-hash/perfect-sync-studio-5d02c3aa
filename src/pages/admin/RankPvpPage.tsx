@@ -682,9 +682,10 @@ const ScheduleManager = ({
   };
 
   const remove = async (s: PvpScheduleSummary) => {
+    if (!s.id) return;
     if (!confirm(`Excluir agendamento "${s.name ?? s.id}"?`)) return;
     try {
-      await pwApi.deletePvpRankingRewardSchedule({ id: s.id, name: s.name });
+      await pwApi.deletePvpRankingRewardSchedule({ schedule_id: s.id });
       toast.success("Agendamento excluído");
       onChanged();
     } catch (e) {
@@ -787,6 +788,17 @@ const ScheduleManager = ({
                       >
                         {s.enabled ? "Ativo" : "Pausado"}
                       </span>
+                      {s.derived_state && (
+                        <span
+                          className={cn(
+                            "rounded-md border px-1.5 py-0.5 text-[10px] font-medium",
+                            severityClass(s.status_severity),
+                          )}
+                          title={s.last_error ?? undefined}
+                        >
+                          {s.derived_state}
+                        </span>
+                      )}
                     </div>
 
                     <div className="mt-1.5 flex flex-col gap-1 text-[10px] text-muted-foreground">
@@ -1168,7 +1180,8 @@ const HistoryList = ({ entries }: { entries: PvpRewardHistoryEntry[] }) => {
                 <div className="text-xs text-muted-foreground">
                   origem: {h.source ?? "—"} · status:{" "}
                   <span className="font-mono">{h.status ?? "—"}</span> · operador:{" "}
-                  {actorName} · entregues: {summary.completed_count ?? 0} · falhas:{" "}
+                  {actorName} · entregáveis: {summary.deliverable_count ?? 0} ·
+                  entregues: {summary.completed_count ?? 0} · falhas:{" "}
                   {summary.failed_count ?? 0} · skipped:{" "}
                   {summary.skipped_count ?? 0} · reset:{" "}
                   {h.reset_performed ? "sim" : "não"}
@@ -1204,6 +1217,19 @@ const HistoryList = ({ entries }: { entries: PvpRewardHistoryEntry[] }) => {
 };
 
 /* ─────────── helpers ─────────── */
+
+function severityClass(sev: unknown): string {
+  switch (sev) {
+    case "ok":
+      return "border-emerald-500/30 text-emerald-400";
+    case "warning":
+      return "border-amber-500/30 text-amber-400";
+    case "error":
+      return "border-destructive/40 text-destructive";
+    default:
+      return "border-muted-foreground/30 text-muted-foreground";
+  }
+}
 
 function humanError(e: unknown): string {
   if (e instanceof Error) return e.message;

@@ -119,8 +119,7 @@ const RankPvpInner = () => {
       ]);
 
       if (lb.status === "fulfilled") {
-        const entries = lb.value.entries ?? lb.value.leaderboard ?? [];
-        setLeaderboard(entries);
+        setLeaderboard(lb.value.entries ?? []);
       } else if (lb.reason instanceof EndpointMissingError) {
         setEndpointMissing(lb.reason.action);
       } else {
@@ -130,7 +129,7 @@ const RankPvpInner = () => {
       }
 
       if (hist.status === "fulfilled") {
-        setHistory(hist.value.entries ?? hist.value.history ?? []);
+        setHistory(hist.value.entries ?? []);
       }
       if (sch.status === "fulfilled") {
         setSchedules(sch.value.schedules ?? []);

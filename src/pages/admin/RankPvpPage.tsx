@@ -1180,7 +1180,8 @@ const HistoryList = ({ entries }: { entries: PvpRewardHistoryEntry[] }) => {
                 <div className="text-xs text-muted-foreground">
                   origem: {h.source ?? "—"} · status:{" "}
                   <span className="font-mono">{h.status ?? "—"}</span> · operador:{" "}
-                  {actorName} · entregues: {summary.completed_count ?? 0} · falhas:{" "}
+                  {actorName} · entregáveis: {summary.deliverable_count ?? 0} ·
+                  entregues: {summary.completed_count ?? 0} · falhas:{" "}
                   {summary.failed_count ?? 0} · skipped:{" "}
                   {summary.skipped_count ?? 0} · reset:{" "}
                   {h.reset_performed ? "sim" : "não"}

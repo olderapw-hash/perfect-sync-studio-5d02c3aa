@@ -60,6 +60,14 @@ const ACTION_PERMISSION_MAP: Record<string, keyof OperatorPermissions> = {
   restoreBackup: "restore_and_role_edit",
   saveRoleEditable: "restore_and_role_edit",
   saveClsconfigTemplate: "restore_and_role_edit",
+  // Rank PvP — leitura para todos, execução/agendamento gm_admin+.
+  getPvpRankingLeaderboard: "read",
+  getPvpRankingRewardHistory: "read",
+  getPvpRankingRewardSchedules: "read",
+  previewPvpRankingRewards: "read",
+  executePvpRankingRewards: "cash_and_gm_permissions",
+  savePvpRankingRewardSchedule: "cash_and_gm_permissions",
+  deletePvpRankingRewardSchedule: "cash_and_gm_permissions",
 };
 
 interface OperatorState {

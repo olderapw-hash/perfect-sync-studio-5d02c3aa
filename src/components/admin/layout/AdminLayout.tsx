@@ -139,7 +139,7 @@ const SECTIONS: NavSection[] = [
     basePath: "/admin/events",
     proInTrial: true,
     children: [
-      { to: "/admin/events", label: "Visão geral", end: true },
+      { to: "/admin/events/rank-pvp", label: "Rank PvP" },
       { to: "/admin/events/ingame", label: "Eventos ingame" },
     ],
   },

@@ -41,6 +41,7 @@ import MailTemplatesPage from "./pages/admin/MailTemplatesPage.tsx";
 import MailHistoryPage from "./pages/admin/MailHistoryPage.tsx";
 import EventsPage from "./pages/admin/EventsPage.tsx";
 import IngameEventsPage from "./pages/admin/IngameEventsPage.tsx";
+import RankPvpPage from "./pages/admin/RankPvpPage.tsx";
 import ServerOpsPage from "./pages/admin/ServerOpsPage.tsx";
 import ControlCenterPage from "./pages/admin/ControlCenterPage.tsx";
 import ServerLogsPage from "./pages/admin/ServerLogsPage.tsx";
@@ -133,8 +134,9 @@ const App = () => (
                     <Route path="mail/templates" element={<MailTemplatesPage />} />
                     <Route path="mail/history" element={<MailHistoryPage />} />
 
-                    {/* Eventos */}
+                    {/* Eventos — hub com subnavegação. Subsessão inicial: Rank PvP. */}
                     <Route path="events" element={<EventsPage />} />
+                    <Route path="events/rank-pvp" element={<RankPvpPage />} />
                     <Route path="events/ingame" element={<IngameEventsPage />} />
 
                     {/* Central de Controle (NOC) — dashboard premium do snapshot. */}

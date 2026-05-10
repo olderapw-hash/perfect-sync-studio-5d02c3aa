@@ -980,7 +980,7 @@ export interface PvpScheduleSummary {
   preview?: PvpRewardEntry[];
   next_run_at?: string | null;
   last_run_at?: string | null;
-  last_result?: PvpRewardExecutionSummary | null;
+  last_result?: string | null;
   last_error?: string | null;
   /** estado computado pela VPS: ok | warning | error | paused | pending */
   derived_state?: string | null;

@@ -1149,12 +1149,13 @@ const HistoryList = ({ entries }: { entries: PvpRewardHistoryEntry[] }) => {
   return (
     <div className="space-y-2">
       {entries.map((h, idx) => {
-        const id = h.id ?? `${h.executed_at ?? idx}`;
+        const id = h.id ?? `${h.created_at ?? idx}`;
         const isOpen = open === id;
-        const operatorName =
-          typeof h.operator === "string"
-            ? h.operator
-            : h.operator?.name ?? h.operator?.email ?? "—";
+        const actorName =
+          typeof h.actor === "string"
+            ? h.actor
+            : h.actor?.name ?? h.actor?.email ?? "—";
+        const summary = h.summary ?? {};
         return (
           <div key={id} className="rounded-lg border border-border bg-background/40">
             <button
@@ -1163,12 +1164,13 @@ const HistoryList = ({ entries }: { entries: PvpRewardHistoryEntry[] }) => {
               className="flex w-full items-center justify-between gap-3 p-3 text-left text-sm"
             >
               <div className="min-w-0 flex-1">
-                <div className="font-semibold">{formatTime(h.executed_at) || "—"}</div>
+                <div className="font-semibold">{formatTime(h.created_at) || "—"}</div>
                 <div className="text-xs text-muted-foreground">
                   origem: {h.source ?? "—"} · status:{" "}
                   <span className="font-mono">{h.status ?? "—"}</span> · operador:{" "}
-                  {operatorName} · entregues: {h.completed_count ?? 0} · skipped:{" "}
-                  {h.skipped_count ?? 0} · reset:{" "}
+                  {actorName} · entregues: {summary.completed_count ?? 0} · falhas:{" "}
+                  {summary.failed_count ?? 0} · skipped:{" "}
+                  {summary.skipped_count ?? 0} · reset:{" "}
                   {h.reset_performed ? "sim" : "não"}
                 </div>
               </div>

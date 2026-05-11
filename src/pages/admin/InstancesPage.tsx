@@ -58,6 +58,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { useServers } from "@/hooks/useServers";
 import { useServerPermissions } from "@/hooks/useServerPermissions";
 import {
+  OperatorPermissionsProvider,
+  useOperatorPermissions,
+} from "@/hooks/useOperatorPermissions";
+import {
   EndpointMissingError,
   PwApiActionError,
   pwApi,
@@ -91,9 +95,18 @@ function formatCollectedAt(v: string | number): string {
 }
 
 export default function InstancesPage() {
+  return (
+    <OperatorPermissionsProvider>
+      <InstancesPageInner />
+    </OperatorPermissionsProvider>
+  );
+}
+
+function InstancesPageInner() {
   const { active } = useServers();
   const { isSuperadmin } = useAuth();
   const { can } = useServerPermissions();
+  const { canAction } = useOperatorPermissions();
 
   const [instances, setInstances] = useState<ManageableInstance[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -112,7 +125,8 @@ export default function InstancesPage() {
   const [startDialogOpen, setStartDialogOpen] = useState(false);
   const [startSelected, setStartSelected] = useState<Set<string>>(new Set());
 
-  const canManage = isSuperadmin || can("manage_servers");
+  const canManage =
+    (isSuperadmin || can("manage_servers")) && canAction("startInstance");
   const allowed = isSuperadmin || can("view");
 
   const load = async () => {

@@ -75,6 +75,31 @@ const ACTION_PERMISSION_MAP: Record<string, keyof OperatorPermissions> = {
   restartServer: "cash_and_gm_permissions",
   setMaintenanceMode: "cash_and_gm_permissions",
   exportClsconfig: "cash_and_gm_permissions",
+  // Control Center / Instances — leitura viewer+, controle gm_admin+.
+  getControlCenterSnapshot: "read",
+  getManageableInstances: "read",
+  startInstance: "cash_and_gm_permissions",
+  startInstances: "cash_and_gm_permissions",
+  stopInstance: "cash_and_gm_permissions",
+  stopInstances: "cash_and_gm_permissions",
+  restartInstance: "cash_and_gm_permissions",
+  restartInstances: "cash_and_gm_permissions",
+  setInstanceAutoStart: "cash_and_gm_permissions",
+  // Watchdog — leitura viewer+, controle gm_admin+.
+  getWatchdogStatus: "read",
+  getWatchdogHistory: "read",
+  saveWatchdogConfig: "cash_and_gm_permissions",
+  enableWatchdog: "cash_and_gm_permissions",
+  disableWatchdog: "cash_and_gm_permissions",
+  runWatchdogCheckNow: "cash_and_gm_permissions",
+  // Backups & Restore — leitura viewer+, escrita gm_admin+, restore super_admin.
+  backupNow: "cash_and_gm_permissions",
+  backupGamedbd: "cash_and_gm_permissions",
+  listPanelBackups: "read",
+  listBackups: "read",
+  getRestorePlan: "read",
+  getRestoreHistory: "read",
+  // restoreNow / restoreBackup já mapeados acima como restore_and_role_edit.
   // Operator Registry (super_admin only)
   getOperatorRegistry: "restore_and_role_edit",
   saveOperatorRegistryEntry: "restore_and_role_edit",
@@ -178,7 +203,15 @@ export function OperatorPermissionsProvider({ children }: { children: ReactNode 
       if (!permissions) return false;
       // Mapeia action → chave de permissão.
       const permKey = ACTION_PERMISSION_MAP[action];
-      if (!permKey) return permissions.read; // actions desconhecidas: no mínimo read.
+      if (!permKey) {
+        // Action não mapeada → bloqueia por segurança (em vez de cair
+        // silenciosamente em `read`). Adicione a action ao
+        // ACTION_PERMISSION_MAP antes de chamá-la via canAction.
+        if (typeof console !== "undefined") {
+          console.warn(`[useOperatorPermissions] action sem mapping: ${action}`);
+        }
+        return false;
+      }
       return permissions[permKey];
     },
     [loading, endpointMissing, permissions],

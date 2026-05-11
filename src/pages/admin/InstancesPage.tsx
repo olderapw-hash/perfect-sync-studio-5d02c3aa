@@ -125,7 +125,8 @@ function InstancesPageInner() {
   const [startDialogOpen, setStartDialogOpen] = useState(false);
   const [startSelected, setStartSelected] = useState<Set<string>>(new Set());
 
-  const canManage = isSuperadmin || can("manage_servers");
+  const canManage =
+    (isSuperadmin || can("manage_servers")) && canAction("startInstance");
   const allowed = isSuperadmin || can("view");
 
   const load = async () => {

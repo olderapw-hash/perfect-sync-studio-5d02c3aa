@@ -123,14 +123,25 @@ const BACKUP_TYPES: PanelBackupKind[] = [
 /* -------------------------------------------------------------------------- */
 
 export default function ControlCenterPage() {
+  return (
+    <OperatorPermissionsProvider>
+      <ControlCenterPageInner />
+    </OperatorPermissionsProvider>
+  );
+}
+
+function ControlCenterPageInner() {
   const { active } = useServers();
   const { isSuperadmin } = useAuth();
   const { can, loading: permLoading } = useServerPermissions();
+  const { canAction, loading: opLoading } = useOperatorPermissions();
   const [tab, setTab] = useState<"dashboard" | "logs" | "backups" | "watchdog">("dashboard");
 
   if (!active) return <NoActiveServerState />;
-  const allowed = isSuperadmin || can("view");
-  if (!permLoading && !allowed) {
+  // Leitura: precisa de view (Supabase) E permissão de ler snapshot na VPS.
+  const allowed =
+    (isSuperadmin || can("view")) && (opLoading || canAction("getControlCenterSnapshot"));
+  if (!permLoading && !opLoading && !allowed) {
     return (
       <div className="flex h-full items-center justify-center p-6">
         <div className="max-w-md rounded-2xl border border-destructive/40 bg-destructive/10 p-8 text-center">

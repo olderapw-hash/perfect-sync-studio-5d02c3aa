@@ -95,9 +95,18 @@ function formatCollectedAt(v: string | number): string {
 }
 
 export default function InstancesPage() {
+  return (
+    <OperatorPermissionsProvider>
+      <InstancesPageInner />
+    </OperatorPermissionsProvider>
+  );
+}
+
+function InstancesPageInner() {
   const { active } = useServers();
   const { isSuperadmin } = useAuth();
   const { can } = useServerPermissions();
+  const { canAction } = useOperatorPermissions();
 
   const [instances, setInstances] = useState<ManageableInstance[] | null>(null);
   const [loading, setLoading] = useState(false);

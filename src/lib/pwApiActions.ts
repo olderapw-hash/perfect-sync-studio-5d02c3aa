@@ -2509,9 +2509,30 @@ export interface OperatorRegistryEntry {
   allowed_ips?: string[];
 }
 
+export interface OperatorRoleMeta {
+  label: string;
+  rank: number;
+  description?: string;
+}
+
+export interface OperatorRegistryInvalidEntry {
+  raw: unknown;
+  error: string;
+}
+
 export interface OperatorRegistryResponse {
   success: boolean;
   operators: OperatorRegistryEntry[];
+  /** Lista de roles conhecidas pela VPS (ordem por rank). */
+  roles?: OperatorRole[];
+  /** Metadados por role (label, rank, descrição). */
+  role_meta?: Partial<Record<OperatorRole, OperatorRoleMeta>>;
+  /** Entradas inválidas detectadas no operators.json. */
+  invalid_entries?: OperatorRegistryInvalidEntry[];
+  /** Caminho absoluto do operators.json carregado. */
+  registry_file?: string;
+  /** Última modificação detectada (ISO). */
+  updated_at?: string;
   error?: string;
 }
 

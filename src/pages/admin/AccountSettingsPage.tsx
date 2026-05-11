@@ -259,6 +259,30 @@ const SubscriptionCard = () => {
                   />
                 )}
               </div>
+
+              {/* Trocar de plano via Pix */}
+              {isActive && !isTrial && (
+                <ChangePlanSection
+                  currentPlan={plan}
+                  formatBRL={formatBRL}
+                  loading={pixLoading}
+                  onSelect={async (targetPlan) => {
+                    const cfg = PLAN_PRICES[targetPlan];
+                    if (!cfg) return;
+                    try {
+                      await createPixPayment({
+                        priceId: cfg.priceId,
+                        productId: cfg.productId,
+                        amountCents: cfg.monthly,
+                        environment: getPaymentEnvironment(),
+                      });
+                      setPixModalOpen(true);
+                    } catch {
+                      // tratado no hook
+                    }
+                  }}
+                />
+              )}
             </div>
           )}
         </CardContent>
@@ -281,7 +305,72 @@ const SubscriptionCard = () => {
   );
 };
 
-/* ---------- Cancel Subscription ---------- */
+/* ---------- Trocar de plano ---------- */
+const PLAN_ORDER: Array<keyof typeof PLAN_PRICES> = ["iniciante", "pro", "ultimate"];
+const PLAN_LABELS: Record<string, string> = {
+  iniciante: "Iniciante",
+  pro: "Pro",
+  ultimate: "Ultimate",
+};
+
+const ChangePlanSection = ({
+  currentPlan,
+  formatBRL,
+  loading,
+  onSelect,
+}: {
+  currentPlan: string;
+  formatBRL: (cents: number) => string;
+  loading: boolean;
+  onSelect: (plan: string) => void;
+}) => {
+  return (
+    <div className="mt-2 rounded-md border border-border/40 bg-background/30 p-3">
+      <div className="mb-2 flex items-center gap-2">
+        <ArrowUpRight className="h-3.5 w-3.5 text-primary" />
+        <p className="text-xs font-bold uppercase tracking-wider text-foreground">
+          Trocar de plano
+        </p>
+      </div>
+      <p className="mb-3 text-[11px] text-muted-foreground">
+        Pague via Pix o novo plano. A mudança vale após confirmação do pagamento.
+      </p>
+      <div className="grid gap-2 sm:grid-cols-3">
+        {PLAN_ORDER.map((p) => {
+          const cfg = PLAN_PRICES[p];
+          const isCurrent = p === currentPlan;
+          return (
+            <button
+              key={p}
+              type="button"
+              disabled={isCurrent || loading}
+              onClick={() => onSelect(p)}
+              className={`flex flex-col items-center rounded-md border px-3 py-2 text-center transition-smooth ${
+                isCurrent
+                  ? "border-primary/60 bg-primary/10 cursor-default"
+                  : "border-border/60 bg-background/40 hover:border-primary/40 hover:bg-primary/5"
+              }`}
+            >
+              <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                {PLAN_LABELS[p]}
+              </span>
+              <span className="mt-1 text-sm font-bold text-foreground">
+                {formatBRL(cfg.monthly)}
+                <span className="text-[10px] font-normal text-muted-foreground">/mês</span>
+              </span>
+              {isCurrent && (
+                <span className="mt-1 text-[10px] font-semibold uppercase text-primary">
+                  Atual
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 const CancelSubscriptionButton = ({
   paddleSubscriptionId,
   environment,

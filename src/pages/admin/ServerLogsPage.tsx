@@ -34,10 +34,11 @@ const SOURCES: { value: ServerLogSource; label: string }[] = [
 export default function ServerLogsPage() {
   const { active } = useServers();
   const { isSuperadmin } = useAuth();
-  const { can } = useServerPermissions();
-  const { canAction } = useOperatorPermissions();
+  const { can, loading: permLoading } = useServerPermissions();
+  const { canAction, loading: opLoading } = useOperatorPermissions();
   const allowed =
-    (isSuperadmin || can("view") || can("view_audit")) && canAction("getServerLogs");
+    (isSuperadmin || can("view") || can("view_audit")) &&
+    (opLoading || canAction("getServerLogs"));
 
   const [source, setSource] = useState<ServerLogSource>("gamedbd");
   const [query, setQuery] = useState("");
@@ -92,7 +93,7 @@ export default function ServerLogsPage() {
     return all.filter((e) => e.line.toLowerCase().includes(q));
   }, [data, query]);
 
-  if (!allowed) {
+  if (!permLoading && !opLoading && !allowed) {
     return (
       <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-6 text-center text-sm text-muted-foreground">
         Você não tem permissão para ler os logs do servidor nesta VPS

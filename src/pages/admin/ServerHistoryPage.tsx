@@ -119,8 +119,8 @@ function formatTs(v: string | number | null | undefined): string {
 export default function ServerHistoryPage() {
   const { active } = useServers();
   const { isSuperadmin } = useAuth();
-  const { can } = useServerPermissions();
-  const { canAction } = useOperatorPermissions();
+  const { can, loading: permLoading } = useServerPermissions();
+  const { canAction, loading: opLoading } = useOperatorPermissions();
 
   const [type, setType] = useState<string>("all");
   const [stateFilter, setStateFilter] = useState<string>("all");
@@ -151,7 +151,7 @@ export default function ServerHistoryPage() {
 
   const allowed =
     (isSuperadmin || can("view_audit") || can("view")) &&
-    canAction("getServerOperationsHistory");
+    (opLoading || canAction("getServerOperationsHistory"));
 
   const load = async () => {
     setLoading(true);
@@ -203,7 +203,7 @@ export default function ServerHistoryPage() {
     return { ok, fail, running };
   }, [list]);
 
-  if (!allowed) {
+  if (!permLoading && !opLoading && !allowed) {
     return (
       <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-6 text-center text-sm text-muted-foreground">
         Você precisa da permissão <strong>view_audit</strong> para acessar o

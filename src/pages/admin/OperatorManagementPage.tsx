@@ -162,14 +162,59 @@ function OperatorManagementContent() {
   const openCreate = () => {
     setEditing(null);
     setForm({ ...EMPTY_ENTRY });
+    setEmailLookup({ status: "idle" });
     setDialogOpen(true);
   };
 
   const openEdit = (op: OperatorRegistryEntry) => {
     setEditing(op);
     setForm({ ...op, allowed_ips: op.allowed_ips ?? [] });
+    setEmailLookup({ status: "idle" });
     setDialogOpen(true);
   };
+
+  // Auto-resolve user UUID by email when creating a new operator
+  useEffect(() => {
+    if (!dialogOpen || editing) return;
+    const email = form.email.trim().toLowerCase();
+    const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (!isValid) {
+      setEmailLookup({ status: "idle" });
+      return;
+    }
+    let cancelled = false;
+    setEmailLookup({ status: "loading" });
+    const timer = window.setTimeout(async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("lookup-user-by-email", {
+          body: { email },
+        });
+        if (cancelled) return;
+        if (error) {
+          setEmailLookup({ status: "error", message: error.message });
+          return;
+        }
+        if (data?.found && data.id) {
+          setForm((f) => (f.email.trim().toLowerCase() === email ? { ...f, id: data.id } : f));
+          setEmailLookup({ status: "found" });
+        } else {
+          setEmailLookup({ status: "not_found" });
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setEmailLookup({
+            status: "error",
+            message: e instanceof Error ? e.message : String(e),
+          });
+        }
+      }
+    }, 500);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [form.email, dialogOpen, editing]);
+
 
   const handleSave = async () => {
     if (!form.id.trim() || !form.email.trim()) {

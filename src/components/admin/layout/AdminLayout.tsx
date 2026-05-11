@@ -154,6 +154,14 @@ const SECTIONS: NavSection[] = [
     ],
   },
   {
+    id: "operators",
+    label: "Gestão de Operadores",
+    icon: UserCog,
+    basePath: "/admin/operators",
+    requirePermission: "manage_servers",
+    children: [{ to: "/admin/operators", label: "Gerenciar operadores", end: true }],
+  },
+  {
     id: "security",
     label: "Segurança",
     icon: Shield,

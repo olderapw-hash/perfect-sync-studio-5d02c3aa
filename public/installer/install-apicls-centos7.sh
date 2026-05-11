@@ -16,6 +16,7 @@ INSTALL_DIR="/var/www/html/apicls"
 API_SRC=""
 API_URL=""
 SECRET="${PW_API_SECRET:-}"
+ACTIVATION_TOKEN="${PW_ACTIVATION_TOKEN:-}"
 WEB_USER=""
 OPEN_FIREWALL=1
 INSTALL_PACKAGES=1
@@ -43,7 +44,8 @@ usage() {
 Instalador PW Admin API CLS para CentOS 7
 
 Opcoes:
-  --secret VALOR       Secret da VPS gerado no painel. Se omitir, gera um novo.
+  --secret VALOR             Secret da VPS gerado no painel. Se omitir, gera um novo.
+  --activation-token TOKEN   Token de ativacao da licenca (opcional).
   --api-src CAMINHO    Caminho local do api_cls.php. Default: ./api_cls.php.
   --api-url URL        Baixa api_cls.php desta URL.
   --web-user USUARIO   Usuario do Apache/PHP. Default: auto-detecta apache.
@@ -63,6 +65,10 @@ while [ "$#" -gt 0 ]; do
   case "$1" in
     --secret)
       SECRET="${2:-}"
+      shift 2
+      ;;
+    --activation-token)
+      ACTIVATION_TOKEN="${2:-}"
       shift 2
       ;;
     --api-src)
@@ -267,6 +273,13 @@ mkdir -p "$INSTALL_DIR/backups/gm-commander-v2/schedules/logs"
 mkdir -p "$INSTALL_DIR/backups/gm-commander-v2/audit"
 
 cp -f "$TMP_API" "$INSTALL_DIR/api_cls.php"
+
+if [ -n "$ACTIVATION_TOKEN" ]; then
+  printf '%s\n' "$ACTIVATION_TOKEN" > "$INSTALL_DIR/.activation_token"
+  chmod 640 "$INSTALL_DIR/.activation_token" 2>/dev/null || true
+  chown "$WEB_USER":"$WEB_USER" "$INSTALL_DIR/.activation_token" 2>/dev/null || true
+  log "Activation token salvo em $INSTALL_DIR/.activation_token"
+fi
 
 cat > "$INSTALL_DIR/gm-queue-worker.php" <<'EOF'
 <?php

@@ -98,11 +98,12 @@ export default function ServerActionsPage() {
     <div className="space-y-6">
       <div>
         <h2 className="text-sm font-extrabold uppercase tracking-wider text-foreground">
-          Export & Reload
+          Export do clsconfig
         </h2>
         <p className="text-xs text-muted-foreground">
-          Reescreve <code className="font-mono">clsconfig.data</code> e dispara
-          reloads do servidor — todas as ações são auditadas.
+          Reescreve <code className="font-mono">clsconfig.data</code> a partir
+          do snapshot atual do <code className="font-mono">gamedbd</code> — toda
+          execução é auditada.
         </p>
       </div>
 

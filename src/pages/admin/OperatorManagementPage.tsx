@@ -46,6 +46,9 @@ import {
   EndpointMissingError,
   PwApiActionError,
   type OperatorRegistryEntry,
+  type OperatorRegistryInvalidEntry,
+  type OperatorRegistryResponse,
+  type OperatorRoleMeta,
   type OperatorRole,
 } from "@/lib/pwApiActions";
 import { EndpointMissingNotice } from "@/components/admin/EndpointMissingNotice";

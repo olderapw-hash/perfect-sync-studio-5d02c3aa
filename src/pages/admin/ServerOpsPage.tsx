@@ -65,6 +65,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useServers } from "@/hooks/useServers";
 import { useServerPermissions } from "@/hooks/useServerPermissions";
+import { OperatorPermissionsProvider, useOperatorPermissions } from "@/hooks/useOperatorPermissions";
 import { NoActiveServerState } from "@/components/admin/NoActiveServerState";
 import { cn } from "@/lib/utils";
 
@@ -218,6 +219,7 @@ interface PendingConfirm {
 function ServerStatusTab() {
   const { active } = useServers();
   const { can } = useServerPermissions();
+  const { canAction } = useOperatorPermissions();
   const { isSuperadmin } = useAuth();
 
   const [services, setServices] = useState<ManageableService[] | null>(null);
@@ -231,11 +233,10 @@ function ServerStatusTab() {
   const [acting, setActing] = useState(false);
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
   const [confirmReason, setConfirmReason] = useState("");
-  // Operação async em andamento (start/stop/restart). Quando preenchido,
-  // abre o drawer de progresso e dispara polling de getServerOperationStatus.
   const [trackedOp, setTrackedOp] = useState<{ id: string | null; type?: string } | null>(null);
 
-  const canManage = isSuperadmin || can("manage_servers");
+  // Permite manage só se o servidor (Supabase) AND o operador (VPS) liberarem.
+  const canManage = (isSuperadmin || can("manage_servers")) && canAction("startServer");
 
   const load = async () => {
     setLoading(true);

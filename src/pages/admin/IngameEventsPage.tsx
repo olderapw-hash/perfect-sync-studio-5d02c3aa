@@ -158,7 +158,9 @@ const IngameEventsPage = () => {
           <div>
             <p className="text-xs text-muted-foreground">
               Eventos onde o player participa <strong className="text-foreground">dentro do jogo</strong>{" "}
-              (NPC) e o admin gerencia/premia pelo painel.
+              (NPC). O admin acompanha participantes pelo painel e executa a
+              entrega de prêmios manualmente — ainda não há disparo automático
+              via VPS para esta tela.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -286,8 +288,11 @@ const Header = ({ onBack }: { onBack: () => void }) => (
           Eventos com participação ingame
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Configure aqui. Os players se inscrevem pelo NPC do servidor; o painel acompanha
-          participantes, sorteia vencedores e dispara a premiação por correio.
+          Configure aqui. Os players se inscrevem pelo NPC do servidor e o
+          painel registra participantes e vencedores localmente. A entrega de
+          prêmios <strong>ainda não é automática</strong> — execute manualmente
+          via <code className="font-mono">Mail</code> ou{" "}
+          <code className="font-mono">GM Commander → Bulk</code>.
         </p>
       </div>
       <Button variant="ghost" size="sm" onClick={onBack}>

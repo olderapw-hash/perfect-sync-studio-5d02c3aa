@@ -13,6 +13,7 @@ import {
   Loader2,
   Megaphone,
   Pause,
+  Pencil,
   Play,
   Plus,
   RefreshCw,
@@ -116,7 +117,12 @@ export function BulkScheduleManager() {
   const [schedules, setSchedules] = useState<VpsBulkScheduleSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
-  const [editSchedule, setEditSchedule] = useState<VpsBulkScheduleSummary | null>(null);
+  const [editSchedule, setEditSchedule] = useState<{
+    summary: VpsBulkScheduleSummary;
+    detail: Record<string, unknown>;
+  } | null>(null);
+  const [editLoading, setEditLoading] = useState<string | null>(null);
+  const [toggleLoading, setToggleLoading] = useState<string | null>(null);
   const [endpointMissing, setEndpointMissing] = useState(false);
 
   const loadSchedules = useCallback(async () => {
@@ -138,17 +144,63 @@ export function BulkScheduleManager() {
     void loadSchedules();
   }, [loadSchedules]);
 
-  const toggleActive = useCallback(async (s: VpsBulkScheduleSummary) => {
+  /** Carrega o schedule completo via getBulkSchedule e abre o dialog em modo edição. */
+  const openEdit = useCallback(async (s: VpsBulkScheduleSummary) => {
+    setEditLoading(s.id);
     try {
-      await pwApi.updateBulkSchedule(s.id, {
-        command_key: s.command_key,
-        weekdays: s.weekdays,
-        time_of_day: s.time_of_day,
+      const full = await pwApi.getBulkSchedule(s.id);
+      const detail = (full?.schedule ?? {}) as Record<string, unknown>;
+      const cmd = (detail.command_payload ?? {}) as Record<string, unknown>;
+      if (!cmd || Object.keys(cmd).length === 0) {
+        console.error("[BulkSchedule] schedule sem command_payload — editor abortado", s.id);
+        alert(
+          "Não foi possível carregar o command_payload deste agendamento na VPS. " +
+            "Edição abortada para não sobrescrever item/valor/mensagem com valores vazios.",
+        );
+        return;
+      }
+      setEditSchedule({ summary: full?.summary ?? s, detail });
+    } catch (err) {
+      console.error("openEdit error:", err);
+      alert("Falha ao carregar agendamento completo da VPS.");
+    } finally {
+      setEditLoading(null);
+    }
+  }, []);
+
+  /** Toggle ativo/pausado — sempre busca o schedule completo antes para
+   *  preservar command_payload, selection e timezone reais. */
+  const toggleActive = useCallback(async (s: VpsBulkScheduleSummary) => {
+    setToggleLoading(s.id);
+    try {
+      const full = await pwApi.getBulkSchedule(s.id);
+      const detail = (full?.schedule ?? {}) as Record<string, unknown>;
+      const cmd = (detail.command_payload ?? {}) as Record<string, unknown>;
+      if (!cmd || Object.keys(cmd).length === 0) {
+        console.error("[BulkSchedule] toggle abortado — sem command_payload", s.id);
+        alert(
+          "Toggle abortado: a VPS não retornou o command_payload deste agendamento. " +
+            "Edite e salve novamente o schedule antes de pausar/ativar.",
+        );
+        return;
+      }
+      const summary = full?.summary ?? s;
+      const payload: Record<string, unknown> = {
+        ...cmd,
+        name: summary.name,
+        command_key: summary.command_key,
+        weekdays: summary.weekdays,
+        time_of_day: summary.time_of_day,
+        timezone: summary.timezone,
+        selection: summary.selection ?? detail.selection ?? {},
         enabled: !s.enabled,
-      });
+      };
+      await pwApi.updateBulkSchedule(s.id, payload as never);
       await loadSchedules();
     } catch (err) {
       console.error("toggleActive error:", err);
+    } finally {
+      setToggleLoading(null);
     }
   }, [loadSchedules]);
 
@@ -294,10 +346,27 @@ export function BulkScheduleManager() {
                         size="icon"
                         variant="ghost"
                         className="h-8 w-8"
+                        onClick={() => openEdit(s)}
+                        disabled={editLoading === s.id}
+                        title="Editar"
+                      >
+                        {editLoading === s.id
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          : <Pencil className="h-3.5 w-3.5" />}
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8"
                         onClick={() => toggleActive(s)}
+                        disabled={toggleLoading === s.id}
                         title={s.enabled ? "Pausar" : "Ativar"}
                       >
-                        {s.enabled ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                        {toggleLoading === s.id
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          : s.enabled
+                            ? <Pause className="h-3.5 w-3.5" />
+                            : <Play className="h-3.5 w-3.5" />}
                       </Button>
                       <Button
                         size="icon"
@@ -319,7 +388,8 @@ export function BulkScheduleManager() {
       {/* Create/Edit Dialog */}
       {(showCreate || editSchedule) && (
         <ScheduleFormDialog
-          schedule={editSchedule}
+          schedule={editSchedule?.summary ?? null}
+          scheduleDetail={editSchedule?.detail ?? null}
           existingSchedules={schedules}
           onClose={() => { setShowCreate(false); setEditSchedule(null); }}
           onSaved={async () => { await loadSchedules(); setShowCreate(false); setEditSchedule(null); }}
@@ -333,11 +403,13 @@ export function BulkScheduleManager() {
 
 function ScheduleFormDialog({
   schedule,
+  scheduleDetail,
   existingSchedules,
   onClose,
   onSaved,
 }: {
   schedule: VpsBulkScheduleSummary | null;
+  scheduleDetail: Record<string, unknown> | null;
   existingSchedules: VpsBulkScheduleSummary[];
   onClose: () => void;
   onSaved: () => void | Promise<void>;
@@ -346,7 +418,6 @@ function ScheduleFormDialog({
   const [name, setName] = useState(schedule?.name || "");
   const [commandKey, setCommandKey] = useState<string>(schedule?.command_key || "sendMailItem");
   const [everyDay, setEveryDay] = useState(schedule ? isEveryDay(schedule) : false);
-  // VPS uses 1-7 (Mon=1..Sun=7)
   const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>(
     schedule?.weekdays?.length ? schedule.weekdays : [1]
   );
@@ -355,7 +426,6 @@ function ScheduleFormDialog({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Selection fields
   const [selMode, setSelMode] = useState("all_online");
   const [namesInput, setNamesInput] = useState("");
   const [guildId, setGuildId] = useState("");
@@ -363,7 +433,6 @@ function ScheduleFormDialog({
   const [levelMin, setLevelMin] = useState("");
   const [levelMax, setLevelMax] = useState("");
 
-  // Command payload fields
   const [itemId, setItemId] = useState("");
   const [itemCount, setItemCount] = useState("1");
   const [goldAmount, setGoldAmount] = useState("");
@@ -374,10 +443,12 @@ function ScheduleFormDialog({
 
   const needsAudience = !NO_AUDIENCE_COMMANDS.has(commandKey);
 
-  // Load from existing schedule
+  // Hidrata seleção e command_payload a partir do schedule completo da VPS
   useEffect(() => {
     if (!schedule) return;
-    const sel = schedule.selection || {};
+    const sel = (scheduleDetail?.selection as Record<string, unknown> | undefined)
+      ?? schedule.selection
+      ?? {};
     if (sel.all_online) setSelMode("all_online");
     else if (sel.names) { setSelMode("names"); setNamesInput(Array.isArray(sel.names) ? (sel.names as string[]).join("\n") : ""); }
     else if (sel.guild_id) { setSelMode("guild"); setGuildId(String(sel.guild_id)); }
@@ -387,12 +458,24 @@ function ScheduleFormDialog({
     if (sel.level_min) setLevelMin(String(sel.level_min));
     if (sel.level_max) setLevelMax(String(sel.level_max));
 
-    // Load command payload from detail if needed — for now use selection fields
-    // The VPS getBulkSchedule returns full command_payload in the schedule object
-  }, [schedule]);
+    // command_payload real vindo do getBulkSchedule
+    const cmd = (scheduleDetail?.command_payload as Record<string, unknown> | undefined) ?? {};
+    if (cmd.item_id != null) setItemId(String(cmd.item_id));
+    if (cmd.count != null) setItemCount(String(cmd.count));
+    if (cmd.money != null) setGoldAmount(String(cmd.money));
+    if (cmd.amount != null) setCashAmount(String(cmd.amount));
+    if (typeof cmd.subject === "string") setSubject(cmd.subject);
+    else if (typeof cmd.reason === "string") setSubject(cmd.reason);
+    if (typeof cmd.body === "string") setBody(cmd.body);
+    if (typeof cmd.message === "string") setMessage(cmd.message);
+  }, [schedule, scheduleDetail]);
 
   const handleSave = async () => {
     if (!name.trim()) { setError("Nome obrigatório"); return; }
+    if (isEdit && !scheduleDetail) {
+      setError("Detalhe do agendamento não carregado — não é seguro salvar.");
+      return;
+    }
 
     setSaving(true);
     setError(null);

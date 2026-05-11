@@ -1,6 +1,7 @@
-// /admin/server/actions — Export clsconfig + reloads disponíveis.
+// /admin/server/actions — Export clsconfig.
 //
-// Sem ações destrutivas (start/stop/kill ficam pra próxima fase).
+// Reload de daemons foi removido da UI enquanto o endpoint correspondente
+// (`reloadService`) não estiver disponível na VPS homologada.
 // Botões exigem confirmação forte e são gated por permissão.
 import { useState } from "react";
 import {
@@ -9,7 +10,6 @@ import {
   Database,
   Loader2,
   PlayCircle,
-  RefreshCw,
   ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -98,11 +98,12 @@ export default function ServerActionsPage() {
     <div className="space-y-6">
       <div>
         <h2 className="text-sm font-extrabold uppercase tracking-wider text-foreground">
-          Export & Reload
+          Export do clsconfig
         </h2>
         <p className="text-xs text-muted-foreground">
-          Reescreve <code className="font-mono">clsconfig.data</code> e dispara
-          reloads do servidor — todas as ações são auditadas.
+          Reescreve <code className="font-mono">clsconfig.data</code> a partir
+          do snapshot atual do <code className="font-mono">gamedbd</code> — toda
+          execução é auditada.
         </p>
       </div>
 
@@ -210,26 +211,7 @@ export default function ServerActionsPage() {
         </div>
       </section>
 
-      {/* Reloads conhecidos — placeholder Fase 2 */}
-      <section className="rounded-xl border border-border bg-card/40 p-5 backdrop-blur-md">
-        <div className="flex items-start gap-4">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-background/40 text-muted-foreground">
-            <RefreshCw className="h-5 w-5" />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-base font-bold text-foreground">
-              Reload de daemons
-            </h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Reload soft (SIGHUP) de configurações específicas. Será habilitado
-              quando o endpoint correspondente estiver disponível na VPS.
-            </p>
-            <div className="mt-3">
-              <EndpointMissingNotice action="reloadService" />
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Reload de daemons removido — endpoint reloadService ainda não está homologado na VPS. */}
     </div>
   );
 }

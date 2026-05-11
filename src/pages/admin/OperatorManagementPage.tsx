@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { Shield, Plus, Pencil, Trash2, RefreshCw, UserCog } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Shield, Plus, Pencil, Trash2, RefreshCw, UserCog, FileWarning } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +46,9 @@ import {
   EndpointMissingError,
   PwApiActionError,
   type OperatorRegistryEntry,
+  type OperatorRegistryInvalidEntry,
+  type OperatorRegistryResponse,
+  type OperatorRoleMeta,
   type OperatorRole,
 } from "@/lib/pwApiActions";
 import { EndpointMissingNotice } from "@/components/admin/EndpointMissingNotice";
@@ -86,6 +89,13 @@ export default function OperatorManagementPage() {
 function OperatorManagementContent() {
   const { permissions, role, loading: permLoading } = useOperatorPermissions();
   const [operators, setOperators] = useState<OperatorRegistryEntry[]>([]);
+  const [registryMeta, setRegistryMeta] = useState<{
+    roles: OperatorRole[] | null;
+    roleMeta: Partial<Record<OperatorRole, OperatorRoleMeta>>;
+    invalidEntries: OperatorRegistryInvalidEntry[];
+    registryFile: string | null;
+    updatedAt: string | null;
+  }>({ roles: null, roleMeta: {}, invalidEntries: [], registryFile: null, updatedAt: null });
   const [loading, setLoading] = useState(true);
   const [endpointMissing, setEndpointMissing] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -100,8 +110,15 @@ function OperatorManagementContent() {
   const fetchOperators = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await pwApi.getOperatorRegistry();
+      const res: OperatorRegistryResponse = await pwApi.getOperatorRegistry();
       setOperators(res.operators ?? []);
+      setRegistryMeta({
+        roles: res.roles ?? null,
+        roleMeta: res.role_meta ?? {},
+        invalidEntries: res.invalid_entries ?? [],
+        registryFile: res.registry_file ?? null,
+        updatedAt: res.updated_at ?? null,
+      });
       setEndpointMissing(false);
     } catch (e) {
       if (e instanceof EndpointMissingError) {
@@ -115,6 +132,21 @@ function OperatorManagementContent() {
       setLoading(false);
     }
   }, []);
+
+  const rolesForSelect = useMemo<{ value: OperatorRole; label: string }[]>(() => {
+    if (registryMeta.roles && registryMeta.roles.length) {
+      return registryMeta.roles.map((r) => ({
+        value: r,
+        label: registryMeta.roleMeta[r]?.label ?? r,
+      }));
+    }
+    return ROLES;
+  }, [registryMeta.roles, registryMeta.roleMeta]);
+
+  const labelForRole = useCallback(
+    (r: OperatorRole) => registryMeta.roleMeta[r]?.label ?? ROLES.find((x) => x.value === r)?.label ?? r,
+    [registryMeta.roleMeta],
+  );
 
   useEffect(() => {
     if (!permLoading && canAccess) {
@@ -227,6 +259,15 @@ function OperatorManagementContent() {
             <p className="text-sm text-muted-foreground">
               Gerencie os operadores registrados na VPS (operators.json)
             </p>
+            {(registryMeta.registryFile || registryMeta.updatedAt) && (
+              <p className="mt-0.5 font-mono text-[10px] text-muted-foreground/80">
+                {registryMeta.registryFile && <>Arquivo: {registryMeta.registryFile}</>}
+                {registryMeta.registryFile && registryMeta.updatedAt && " · "}
+                {registryMeta.updatedAt && (
+                  <>Atualizado: {new Date(registryMeta.updatedAt).toLocaleString()}</>
+                )}
+              </p>
+            )}
           </div>
         </div>
         <div className="flex gap-2">
@@ -238,6 +279,33 @@ function OperatorManagementContent() {
           </Button>
         </div>
       </div>
+
+      {/* Invalid entries from operators.json */}
+      {registryMeta.invalidEntries.length > 0 && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4">
+          <div className="mb-2 flex items-center gap-2 text-sm font-bold text-destructive">
+            <FileWarning className="h-4 w-4" />
+            {registryMeta.invalidEntries.length} entrada(s) inválida(s) em operators.json
+          </div>
+          <p className="mb-3 text-xs text-destructive/80">
+            A VPS rejeitou estas entradas durante o parse. Corrija o arquivo manualmente ou
+            recadastre via formulário abaixo.
+          </p>
+          <div className="space-y-1.5">
+            {registryMeta.invalidEntries.map((inv, i) => (
+              <div
+                key={i}
+                className="rounded bg-background/40 p-2 font-mono text-[10px] text-foreground/80"
+              >
+                <div className="text-destructive">{inv.error}</div>
+                <pre className="mt-1 max-h-24 overflow-auto whitespace-pre-wrap break-all text-foreground/60">
+                  {JSON.stringify(inv.raw, null, 2)}
+                </pre>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Table */}
       <div className="rounded-lg border border-border bg-card/60">
@@ -276,7 +344,7 @@ function OperatorManagementContent() {
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className={ROLE_COLORS[op.role] ?? ""}>
-                      {op.role}
+                      {labelForRole(op.role)}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -361,7 +429,7 @@ function OperatorManagementContent() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {ROLES.map((r) => (
+                  {rolesForSelect.map((r) => (
                     <SelectItem key={r.value} value={r.value}>
                       {r.label}
                     </SelectItem>

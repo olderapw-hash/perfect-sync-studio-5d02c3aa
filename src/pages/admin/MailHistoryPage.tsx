@@ -219,11 +219,11 @@ const MailHistoryPage = () => {
           </div>
           <div className="flex-1">
             <h1 className="text-lg font-extrabold tracking-tight text-foreground">
-              Histórico de envios
+              Histórico de envios (local)
             </h1>
             <p className="text-xs text-muted-foreground">
               {isAuditor ? (
-                <>Todos os envios deste servidor</>
+                <>Envios disparados deste painel · todos os usuários do servidor</>
               ) : (
                 <>Apenas seus envios (sem permissão view_audit)</>
               )}{" "}
@@ -239,6 +239,16 @@ const MailHistoryPage = () => {
             CSV
           </button>
         </header>
+
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-[11px] text-amber-500">
+          <strong className="font-bold uppercase tracking-wider">Histórico local:</strong>{" "}
+          esta tela mostra apenas envios disparados deste painel via{" "}
+          <code className="font-mono">mail_send_log</code>. Envios feitos
+          diretamente pela VPS, jobs bulk processados pelo backend ou execuções
+          backend-first do Rank PvP <strong>não aparecem aqui</strong>. Para a
+          trilha operacional completa, consulte o histórico do GM Commander e
+          os logs do scheduler na VPS.
+        </div>
 
         {error && (
           <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">

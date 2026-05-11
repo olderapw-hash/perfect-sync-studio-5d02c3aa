@@ -110,10 +110,11 @@ const SecurityHistoryPage = () => {
         <History className="h-5 w-5 text-primary" />
         <div className="flex-1">
           <h2 className="text-sm font-extrabold uppercase tracking-wider text-foreground">
-            Histórico de moderação
+            Histórico local de moderação
           </h2>
           <p className="text-xs text-muted-foreground">
-            Registro local de cada kick / ban / unban executado deste painel.
+            Registro local do painel (audit_logs). Apenas ações disparadas
+            deste admin aparecem aqui.
           </p>
         </div>
         <Button size="sm" variant="outline" onClick={load} disabled={loading}>
@@ -121,6 +122,13 @@ const SecurityHistoryPage = () => {
           Atualizar
         </Button>
       </header>
+
+      <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-[11px] text-amber-500">
+        <strong className="font-bold uppercase tracking-wider">Trilha local:</strong>{" "}
+        este histórico não é a fonte autoritativa. Para a trilha completa de
+        moderação executada via VPS (incluindo bulk e ações de outros operadores),
+        consulte <code className="font-mono">GM Commander → histórico</code>.
+      </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div>

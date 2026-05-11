@@ -127,7 +127,8 @@ function InstancesPageInner() {
 
   const canManage =
     (isSuperadmin || can("manage_servers")) && canAction("startInstance");
-  const allowed = isSuperadmin || can("view");
+  const allowed =
+    (isSuperadmin || can("view")) && canAction("getManageableInstances");
 
   const load = async () => {
     setLoading(true);

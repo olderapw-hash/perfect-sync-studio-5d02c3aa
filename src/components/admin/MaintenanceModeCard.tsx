@@ -70,7 +70,8 @@ export function MaintenanceModeCard() {
   const { isSuperadmin } = useAuth();
   const { active } = useServers();
   const { can } = useServerPermissions();
-  const canToggle = isSuperadmin || can("manage_servers");
+  const { canAction } = useOperatorPermissions();
+  const canToggle = (isSuperadmin || can("manage_servers")) && canAction("setMaintenanceMode");
 
   const [state, setState] = useState<MaintenanceState>(EMPTY_STATE);
   const [loadingState, setLoadingState] = useState(true);

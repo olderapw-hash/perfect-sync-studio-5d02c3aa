@@ -47,6 +47,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useServers } from "@/hooks/useServers";
 import { useServerPermissions } from "@/hooks/useServerPermissions";
+import { useOperatorPermissions } from "@/hooks/useOperatorPermissions";
 import {
   EndpointMissingError,
   pwApi,

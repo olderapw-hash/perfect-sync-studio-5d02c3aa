@@ -172,6 +172,12 @@ const ServerOpsPageInner = () => {
   );
 };
 
+const ServerOpsPage = () => (
+  <OperatorPermissionsProvider>
+    <ServerOpsPageInner />
+  </OperatorPermissionsProvider>
+);
+
 export default ServerOpsPage;
 
 /* -------------------------------------------------------------------------- */

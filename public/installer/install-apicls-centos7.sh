@@ -274,10 +274,16 @@ mkdir -p "$INSTALL_DIR/backups/gm-commander-v2/schedules/items"
 mkdir -p "$INSTALL_DIR/backups/gm-commander-v2/schedules/logs"
 mkdir -p "$INSTALL_DIR/backups/gm-commander-v2/audit"
 
+if [ -L "$INSTALL_DIR/api_cls.php" ] || [ -e "$INSTALL_DIR/api_cls.php" ]; then
+  rm -f "$INSTALL_DIR/api_cls.php"
+fi
 cp -f "$TMP_API" "$INSTALL_DIR/api_cls.php"
 
 mkdir -p "$LEGACY_APACHE_DIR"
 if [ "$INSTALL_DIR/api_cls.php" != "$LEGACY_APACHE_FILE" ]; then
+  if [ -L "$LEGACY_APACHE_FILE" ] || [ -e "$LEGACY_APACHE_FILE" ]; then
+    rm -f "$LEGACY_APACHE_FILE"
+  fi
   ln -sfn "$INSTALL_DIR/api_cls.php" "$LEGACY_APACHE_FILE"
 else
   chmod 640 "$LEGACY_APACHE_FILE" 2>/dev/null || true

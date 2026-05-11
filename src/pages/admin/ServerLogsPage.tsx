@@ -80,9 +80,10 @@ export default function ServerLogsPage() {
   };
 
   useEffect(() => {
+    if (!allowed) return;
     void load(source);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [source, active?.id]);
+  }, [source, active?.id, allowed]);
 
   const filtered = useMemo<ServerLogEntry[]>(() => {
     const all = data?.entries ?? [];
@@ -90,6 +91,15 @@ export default function ServerLogsPage() {
     if (!q) return all;
     return all.filter((e) => e.line.toLowerCase().includes(q));
   }, [data, query]);
+
+  if (!allowed) {
+    return (
+      <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-6 text-center text-sm text-muted-foreground">
+        Você não tem permissão para ler os logs do servidor nesta VPS
+        (<code className="font-mono">getServerLogs</code>).
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

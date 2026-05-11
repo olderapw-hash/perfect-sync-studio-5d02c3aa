@@ -211,26 +211,7 @@ export default function ServerActionsPage() {
         </div>
       </section>
 
-      {/* Reloads conhecidos — placeholder Fase 2 */}
-      <section className="rounded-xl border border-border bg-card/40 p-5 backdrop-blur-md">
-        <div className="flex items-start gap-4">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-background/40 text-muted-foreground">
-            <RefreshCw className="h-5 w-5" />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-base font-bold text-foreground">
-              Reload de daemons
-            </h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Reload soft (SIGHUP) de configurações específicas. Será habilitado
-              quando o endpoint correspondente estiver disponível na VPS.
-            </p>
-            <div className="mt-3">
-              <EndpointMissingNotice action="reloadService" />
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Reload de daemons removido — endpoint reloadService ainda não está homologado na VPS. */}
     </div>
   );
 }

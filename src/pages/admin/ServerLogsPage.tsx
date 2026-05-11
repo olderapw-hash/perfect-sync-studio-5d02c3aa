@@ -33,6 +33,12 @@ const SOURCES: { value: ServerLogSource; label: string }[] = [
 
 export default function ServerLogsPage() {
   const { active } = useServers();
+  const { isSuperadmin } = useAuth();
+  const { can } = useServerPermissions();
+  const { canAction } = useOperatorPermissions();
+  const allowed =
+    (isSuperadmin || can("view") || can("view_audit")) && canAction("getServerLogs");
+
   const [source, setSource] = useState<ServerLogSource>("gamedbd");
   const [query, setQuery] = useState("");
   const [data, setData] = useState<ServerLogsResponse | null>(null);
@@ -41,6 +47,7 @@ export default function ServerLogsPage() {
   const [endpointMissing, setEndpointMissing] = useState(false);
 
   const load = async (src: ServerLogSource = source) => {
+    if (!allowed) return;
     setLoading(true);
     setError(null);
     setEndpointMissing(false);

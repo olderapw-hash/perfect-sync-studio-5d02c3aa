@@ -238,7 +238,7 @@ const Auth = () => {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth`,
+            emailRedirectTo: "https://orpheacore.com/auth/confirmed",
             data: { display_name: username || undefined },
           },
         });

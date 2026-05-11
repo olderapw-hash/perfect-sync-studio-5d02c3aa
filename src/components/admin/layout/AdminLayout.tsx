@@ -100,7 +100,7 @@ const SECTIONS: NavSection[] = [
       { to: "/admin/server/instances", label: "Instâncias" },
       { to: "/admin/server/logs", label: "Logs" },
       { to: "/admin/server/messages", label: "Mensagens & manutenção" },
-      { to: "/admin/server/actions", label: "Export & reload" },
+      { to: "/admin/server/actions", label: "Export" },
       { to: "/admin/server/history", label: "Histórico" },
     ],
   },

@@ -1669,6 +1669,7 @@ export type Database = {
           logo_url: string
           primary_color: string
           server_name: string
+          whatsapp_vps_link: string
         }[]
       }
       get_tenant_secret: { Args: { _tenant_id: string }; Returns: string }

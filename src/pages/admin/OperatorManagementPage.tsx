@@ -103,6 +103,10 @@ function OperatorManagementContent() {
   const [form, setForm] = useState<OperatorRegistryEntry>({ ...EMPTY_ENTRY });
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<OperatorRegistryEntry | null>(null);
+  const [emailLookup, setEmailLookup] = useState<{
+    status: "idle" | "loading" | "found" | "not_found" | "error";
+    message?: string;
+  }>({ status: "idle" });
   const [deleting, setDeleting] = useState(false);
 
   const canAccess = role === "super_admin" || permissions?.restore_and_role_edit === true;

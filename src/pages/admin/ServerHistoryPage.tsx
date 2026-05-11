@@ -149,7 +149,9 @@ export default function ServerHistoryPage() {
     });
   };
 
-  const allowed = isSuperadmin || can("view_audit") || can("view");
+  const allowed =
+    (isSuperadmin || can("view_audit") || can("view")) &&
+    canAction("getServerOperationsHistory");
 
   const load = async () => {
     setLoading(true);

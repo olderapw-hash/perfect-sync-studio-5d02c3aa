@@ -120,6 +120,7 @@ export default function ServerHistoryPage() {
   const { active } = useServers();
   const { isSuperadmin } = useAuth();
   const { can } = useServerPermissions();
+  const { canAction } = useOperatorPermissions();
 
   const [type, setType] = useState<string>("all");
   const [stateFilter, setStateFilter] = useState<string>("all");

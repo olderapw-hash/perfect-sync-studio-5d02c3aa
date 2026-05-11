@@ -13,6 +13,7 @@ import {
   Loader2,
   Megaphone,
   Pause,
+  Pencil,
   Play,
   Plus,
   RefreshCw,

@@ -34,10 +34,11 @@ const SOURCES: { value: ServerLogSource; label: string }[] = [
 export default function ServerLogsPage() {
   const { active } = useServers();
   const { isSuperadmin } = useAuth();
-  const { can } = useServerPermissions();
-  const { canAction } = useOperatorPermissions();
+  const { can, loading: permLoading } = useServerPermissions();
+  const { canAction, loading: opLoading } = useOperatorPermissions();
   const allowed =
-    (isSuperadmin || can("view") || can("view_audit")) && canAction("getServerLogs");
+    (isSuperadmin || can("view") || can("view_audit")) &&
+    (opLoading || canAction("getServerLogs"));
 
   const [source, setSource] = useState<ServerLogSource>("gamedbd");
   const [query, setQuery] = useState("");

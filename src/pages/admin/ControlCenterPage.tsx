@@ -1364,7 +1364,8 @@ function LogsTab() {
 function BackupsTab() {
   const { isSuperadmin } = useAuth();
   const { can } = useServerPermissions();
-  const canAct = isSuperadmin || can("manage_servers");
+  const { canAction } = useOperatorPermissions();
+  const canAct = (isSuperadmin || can("manage_servers")) && canAction("backupNow");
   const [filter, setFilter] = useState<PanelBackupKind | "all">("all");
   const [items, setItems] = useState<PanelBackupRecord[]>([]);
   const [loading, setLoading] = useState(false);

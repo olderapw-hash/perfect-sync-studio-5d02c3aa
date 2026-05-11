@@ -286,8 +286,11 @@ const Header = ({ onBack }: { onBack: () => void }) => (
           Eventos com participação ingame
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Configure aqui. Os players se inscrevem pelo NPC do servidor; o painel acompanha
-          participantes, sorteia vencedores e dispara a premiação por correio.
+          Configure aqui. Os players se inscrevem pelo NPC do servidor e o
+          painel registra participantes e vencedores localmente. A entrega de
+          prêmios <strong>ainda não é automática</strong> — execute manualmente
+          via <code className="font-mono">Mail</code> ou{" "}
+          <code className="font-mono">GM Commander → Bulk</code>.
         </p>
       </div>
       <Button variant="ghost" size="sm" onClick={onBack}>

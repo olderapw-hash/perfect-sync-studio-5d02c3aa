@@ -1671,7 +1671,9 @@ const BACKUP_CRITICAL = new Set<string>(["gamedbd", "mysql", "full"]);
 function WatchdogTab() {
   const { isSuperadmin } = useAuth();
   const { can } = useServerPermissions();
-  const canAct = isSuperadmin || can("manage_servers");
+  const { canAction } = useOperatorPermissions();
+  const canAct =
+    (isSuperadmin || can("manage_servers")) && canAction("saveWatchdogConfig");
   const [status, setStatus] = useState<WatchdogStatusBlock | undefined>();
   const [config, setConfig] = useState<WatchdogConfig | undefined>();
   const [history, setHistory] = useState<WatchdogHistoryEntry[]>([]);

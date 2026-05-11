@@ -78,7 +78,7 @@ const TABS = [
   { value: "history", label: "Histórico", icon: HistoryIcon, path: "/admin/server/history" },
 ] as const;
 
-const ServerOpsPage = () => {
+const ServerOpsPageInner = () => {
   const { isSuperadmin } = useAuth();
   const { active } = useServers();
   const { can, loading } = useServerPermissions();

@@ -53,6 +53,7 @@ import {
 } from "@/lib/pwApiActions";
 import { EndpointMissingNotice } from "@/components/admin/EndpointMissingNotice";
 import { supabase } from "@/integrations/supabase/client";
+import { useServerPermissions } from "@/hooks/useServerPermissions";
 
 const ROLES: { value: OperatorRole; label: string }[] = [
   { value: "viewer", label: "Viewer" },
@@ -89,6 +90,7 @@ export default function OperatorManagementPage() {
 
 function OperatorManagementContent() {
   const { permissions, role, loading: permLoading } = useOperatorPermissions();
+  const { role: serverRole } = useServerPermissions();
   const [operators, setOperators] = useState<OperatorRegistryEntry[]>([]);
   const [registryMeta, setRegistryMeta] = useState<{
     roles: OperatorRole[] | null;
@@ -110,7 +112,12 @@ function OperatorManagementContent() {
   }>({ status: "idle" });
   const [deleting, setDeleting] = useState(false);
 
-  const canAccess = role === "super_admin" || permissions?.restore_and_role_edit === true;
+  // Owner do servidor (no Supabase) sempre pode acessar — assim ele consegue
+  // bootstrap do operators.json mesmo quando ainda está vazio na VPS.
+  const canAccess =
+    serverRole === "owner" ||
+    role === "super_admin" ||
+    permissions?.restore_and_role_edit === true;
 
   const fetchOperators = useCallback(async () => {
     setLoading(true);

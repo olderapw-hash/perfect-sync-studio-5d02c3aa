@@ -65,6 +65,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { useServers } from "@/hooks/useServers";
 import { useServerPermissions } from "@/hooks/useServerPermissions";
 import {
+  OperatorPermissionsProvider,
+  useOperatorPermissions,
+} from "@/hooks/useOperatorPermissions";
+import {
   EndpointMissingError,
   PwApiActionError,
   pwApi,

@@ -105,8 +105,8 @@ export default function InstancesPage() {
 function InstancesPageInner() {
   const { active } = useServers();
   const { isSuperadmin } = useAuth();
-  const { can } = useServerPermissions();
-  const { canAction } = useOperatorPermissions();
+  const { can, loading: permLoading } = useServerPermissions();
+  const { canAction, loading: opLoading } = useOperatorPermissions();
 
   const [instances, setInstances] = useState<ManageableInstance[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -128,7 +128,7 @@ function InstancesPageInner() {
   const canManage =
     (isSuperadmin || can("manage_servers")) && canAction("startInstance");
   const allowed =
-    (isSuperadmin || can("view")) && canAction("getManageableInstances");
+    (isSuperadmin || can("view")) && (opLoading || canAction("getManageableInstances"));
 
   const load = async () => {
     setLoading(true);
@@ -434,7 +434,7 @@ function InstancesPageInner() {
     [stoppedList],
   );
 
-  if (!allowed) {
+  if (!permLoading && !opLoading && !allowed) {
     return (
       <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-6 text-center text-sm text-muted-foreground">
         Você precisa da permissão <strong>view</strong> para acessar Instance Control.

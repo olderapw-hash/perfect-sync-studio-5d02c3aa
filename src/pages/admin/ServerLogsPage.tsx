@@ -92,7 +92,7 @@ export default function ServerLogsPage() {
     return all.filter((e) => e.line.toLowerCase().includes(q));
   }, [data, query]);
 
-  if (!allowed) {
+  if (!permLoading && !opLoading && !allowed) {
     return (
       <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-6 text-center text-sm text-muted-foreground">
         Você não tem permissão para ler os logs do servidor nesta VPS

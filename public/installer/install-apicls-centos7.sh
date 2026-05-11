@@ -44,7 +44,8 @@ usage() {
 Instalador PW Admin API CLS para CentOS 7
 
 Opcoes:
-  --secret VALOR       Secret da VPS gerado no painel. Se omitir, gera um novo.
+  --secret VALOR             Secret da VPS gerado no painel. Se omitir, gera um novo.
+  --activation-token TOKEN   Token de ativacao da licenca (opcional).
   --api-src CAMINHO    Caminho local do api_cls.php. Default: ./api_cls.php.
   --api-url URL        Baixa api_cls.php desta URL.
   --web-user USUARIO   Usuario do Apache/PHP. Default: auto-detecta apache.

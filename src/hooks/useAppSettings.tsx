@@ -83,6 +83,7 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
           footer_text: row.footer_text ?? DEFAULTS.footer_text,
           footer_link_label: row.footer_link_label ?? DEFAULTS.footer_link_label,
           footer_link_url: row.footer_link_url ?? DEFAULTS.footer_link_url,
+          whatsapp_vps_link: (row as any).whatsapp_vps_link ?? null,
         });
       }
     }

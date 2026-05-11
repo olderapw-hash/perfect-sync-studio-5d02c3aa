@@ -158,7 +158,9 @@ const IngameEventsPage = () => {
           <div>
             <p className="text-xs text-muted-foreground">
               Eventos onde o player participa <strong className="text-foreground">dentro do jogo</strong>{" "}
-              (NPC) e o admin gerencia/premia pelo painel.
+              (NPC). O admin acompanha participantes pelo painel e executa a
+              entrega de prêmios manualmente — ainda não há disparo automático
+              via VPS para esta tela.
             </p>
           </div>
           <div className="flex items-center gap-2">

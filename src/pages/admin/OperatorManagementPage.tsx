@@ -259,6 +259,15 @@ function OperatorManagementContent() {
             <p className="text-sm text-muted-foreground">
               Gerencie os operadores registrados na VPS (operators.json)
             </p>
+            {(registryMeta.registryFile || registryMeta.updatedAt) && (
+              <p className="mt-0.5 font-mono text-[10px] text-muted-foreground/80">
+                {registryMeta.registryFile && <>Arquivo: {registryMeta.registryFile}</>}
+                {registryMeta.registryFile && registryMeta.updatedAt && " · "}
+                {registryMeta.updatedAt && (
+                  <>Atualizado: {new Date(registryMeta.updatedAt).toLocaleString()}</>
+                )}
+              </p>
+            )}
           </div>
         </div>
         <div className="flex gap-2">
@@ -270,6 +279,33 @@ function OperatorManagementContent() {
           </Button>
         </div>
       </div>
+
+      {/* Invalid entries from operators.json */}
+      {registryMeta.invalidEntries.length > 0 && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4">
+          <div className="mb-2 flex items-center gap-2 text-sm font-bold text-destructive">
+            <FileWarning className="h-4 w-4" />
+            {registryMeta.invalidEntries.length} entrada(s) inválida(s) em operators.json
+          </div>
+          <p className="mb-3 text-xs text-destructive/80">
+            A VPS rejeitou estas entradas durante o parse. Corrija o arquivo manualmente ou
+            recadastre via formulário abaixo.
+          </p>
+          <div className="space-y-1.5">
+            {registryMeta.invalidEntries.map((inv, i) => (
+              <div
+                key={i}
+                className="rounded bg-background/40 p-2 font-mono text-[10px] text-foreground/80"
+              >
+                <div className="text-destructive">{inv.error}</div>
+                <pre className="mt-1 max-h-24 overflow-auto whitespace-pre-wrap break-all text-foreground/60">
+                  {JSON.stringify(inv.raw, null, 2)}
+                </pre>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Table */}
       <div className="rounded-lg border border-border bg-card/60">

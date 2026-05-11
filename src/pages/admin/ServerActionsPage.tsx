@@ -1,6 +1,7 @@
-// /admin/server/actions — Export clsconfig + reloads disponíveis.
+// /admin/server/actions — Export clsconfig.
 //
-// Sem ações destrutivas (start/stop/kill ficam pra próxima fase).
+// Reload de daemons foi removido da UI enquanto o endpoint correspondente
+// (`reloadService`) não estiver disponível na VPS homologada.
 // Botões exigem confirmação forte e são gated por permissão.
 import { useState } from "react";
 import {

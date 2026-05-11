@@ -345,10 +345,27 @@ export function BulkScheduleManager() {
                         size="icon"
                         variant="ghost"
                         className="h-8 w-8"
+                        onClick={() => openEdit(s)}
+                        disabled={editLoading === s.id}
+                        title="Editar"
+                      >
+                        {editLoading === s.id
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          : <Pencil className="h-3.5 w-3.5" />}
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8"
                         onClick={() => toggleActive(s)}
+                        disabled={toggleLoading === s.id}
                         title={s.enabled ? "Pausar" : "Ativar"}
                       >
-                        {s.enabled ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                        {toggleLoading === s.id
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          : s.enabled
+                            ? <Pause className="h-3.5 w-3.5" />
+                            : <Play className="h-3.5 w-3.5" />}
                       </Button>
                       <Button
                         size="icon"
@@ -370,7 +387,8 @@ export function BulkScheduleManager() {
       {/* Create/Edit Dialog */}
       {(showCreate || editSchedule) && (
         <ScheduleFormDialog
-          schedule={editSchedule}
+          schedule={editSchedule?.summary ?? null}
+          scheduleDetail={editSchedule?.detail ?? null}
           existingSchedules={schedules}
           onClose={() => { setShowCreate(false); setEditSchedule(null); }}
           onSaved={async () => { await loadSchedules(); setShowCreate(false); setEditSchedule(null); }}

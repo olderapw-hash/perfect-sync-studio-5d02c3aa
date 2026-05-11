@@ -442,15 +442,6 @@ function OperatorManagementContent() {
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="op-id">ID (UUID do usuário)</Label>
-              <Input
-                id="op-id"
-                placeholder="11cfed69-0997-4baa-ae1a-…"
-                value={form.id}
-                onChange={(e) => setForm((f) => ({ ...f, id: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="op-email">Email</Label>
               <Input
                 id="op-email"
@@ -458,6 +449,33 @@ function OperatorManagementContent() {
                 placeholder="operador@dominio.com"
                 value={form.email}
                 onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+              />
+              {!editing && emailLookup.status === "loading" && (
+                <p className="text-xs text-muted-foreground">Buscando usuário…</p>
+              )}
+              {!editing && emailLookup.status === "found" && (
+                <p className="text-xs text-emerald-400">
+                  Usuário encontrado — UUID preenchido automaticamente.
+                </p>
+              )}
+              {!editing && emailLookup.status === "not_found" && (
+                <p className="text-xs text-amber-400">
+                  Email não encontrado nos usuários cadastrados — preencha o UUID manualmente.
+                </p>
+              )}
+              {!editing && emailLookup.status === "error" && (
+                <p className="text-xs text-destructive">
+                  Falha na busca: {emailLookup.message ?? "erro desconhecido"}
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="op-id">ID (UUID do usuário)</Label>
+              <Input
+                id="op-id"
+                placeholder="11cfed69-0997-4baa-ae1a-…"
+                value={form.id}
+                onChange={(e) => setForm((f) => ({ ...f, id: e.target.value }))}
               />
             </div>
             <div className="space-y-2">

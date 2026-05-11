@@ -472,6 +472,10 @@ function ScheduleFormDialog({
 
   const handleSave = async () => {
     if (!name.trim()) { setError("Nome obrigatório"); return; }
+    if (isEdit && !scheduleDetail) {
+      setError("Detalhe do agendamento não carregado — não é seguro salvar.");
+      return;
+    }
 
     setSaving(true);
     setError(null);

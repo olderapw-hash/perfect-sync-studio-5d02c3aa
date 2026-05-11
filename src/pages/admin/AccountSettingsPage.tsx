@@ -259,6 +259,30 @@ const SubscriptionCard = () => {
                   />
                 )}
               </div>
+
+              {/* Trocar de plano via Pix */}
+              {isActive && !isTrial && (
+                <ChangePlanSection
+                  currentPlan={plan}
+                  formatBRL={formatBRL}
+                  loading={pixLoading}
+                  onSelect={async (targetPlan) => {
+                    const cfg = PLAN_PRICES[targetPlan];
+                    if (!cfg) return;
+                    try {
+                      await createPixPayment({
+                        priceId: cfg.priceId,
+                        productId: cfg.productId,
+                        amountCents: cfg.monthly,
+                        environment: getPaymentEnvironment(),
+                      });
+                      setPixModalOpen(true);
+                    } catch {
+                      // tratado no hook
+                    }
+                  }}
+                />
+              )}
             </div>
           )}
         </CardContent>

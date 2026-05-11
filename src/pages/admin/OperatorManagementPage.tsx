@@ -52,6 +52,7 @@ import {
   type OperatorRole,
 } from "@/lib/pwApiActions";
 import { EndpointMissingNotice } from "@/components/admin/EndpointMissingNotice";
+import { supabase } from "@/integrations/supabase/client";
 
 const ROLES: { value: OperatorRole; label: string }[] = [
   { value: "viewer", label: "Viewer" },
@@ -103,6 +104,10 @@ function OperatorManagementContent() {
   const [form, setForm] = useState<OperatorRegistryEntry>({ ...EMPTY_ENTRY });
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<OperatorRegistryEntry | null>(null);
+  const [emailLookup, setEmailLookup] = useState<{
+    status: "idle" | "loading" | "found" | "not_found" | "error";
+    message?: string;
+  }>({ status: "idle" });
   const [deleting, setDeleting] = useState(false);
 
   const canAccess = role === "super_admin" || permissions?.restore_and_role_edit === true;
@@ -157,14 +162,59 @@ function OperatorManagementContent() {
   const openCreate = () => {
     setEditing(null);
     setForm({ ...EMPTY_ENTRY });
+    setEmailLookup({ status: "idle" });
     setDialogOpen(true);
   };
 
   const openEdit = (op: OperatorRegistryEntry) => {
     setEditing(op);
     setForm({ ...op, allowed_ips: op.allowed_ips ?? [] });
+    setEmailLookup({ status: "idle" });
     setDialogOpen(true);
   };
+
+  // Auto-resolve user UUID by email when creating a new operator
+  useEffect(() => {
+    if (!dialogOpen || editing) return;
+    const email = form.email.trim().toLowerCase();
+    const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (!isValid) {
+      setEmailLookup({ status: "idle" });
+      return;
+    }
+    let cancelled = false;
+    setEmailLookup({ status: "loading" });
+    const timer = window.setTimeout(async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("lookup-user-by-email", {
+          body: { email },
+        });
+        if (cancelled) return;
+        if (error) {
+          setEmailLookup({ status: "error", message: error.message });
+          return;
+        }
+        if (data?.found && data.id) {
+          setForm((f) => (f.email.trim().toLowerCase() === email ? { ...f, id: data.id } : f));
+          setEmailLookup({ status: "found" });
+        } else {
+          setEmailLookup({ status: "not_found" });
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setEmailLookup({
+            status: "error",
+            message: e instanceof Error ? e.message : String(e),
+          });
+        }
+      }
+    }, 500);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [form.email, dialogOpen, editing]);
+
 
   const handleSave = async () => {
     if (!form.id.trim() || !form.email.trim()) {
@@ -392,15 +442,6 @@ function OperatorManagementContent() {
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="op-id">ID (UUID do usuário)</Label>
-              <Input
-                id="op-id"
-                placeholder="11cfed69-0997-4baa-ae1a-…"
-                value={form.id}
-                onChange={(e) => setForm((f) => ({ ...f, id: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="op-email">Email</Label>
               <Input
                 id="op-email"
@@ -408,6 +449,33 @@ function OperatorManagementContent() {
                 placeholder="operador@dominio.com"
                 value={form.email}
                 onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+              />
+              {!editing && emailLookup.status === "loading" && (
+                <p className="text-xs text-muted-foreground">Buscando usuário…</p>
+              )}
+              {!editing && emailLookup.status === "found" && (
+                <p className="text-xs text-emerald-400">
+                  Usuário encontrado — UUID preenchido automaticamente.
+                </p>
+              )}
+              {!editing && emailLookup.status === "not_found" && (
+                <p className="text-xs text-amber-400">
+                  Email não encontrado nos usuários cadastrados — preencha o UUID manualmente.
+                </p>
+              )}
+              {!editing && emailLookup.status === "error" && (
+                <p className="text-xs text-destructive">
+                  Falha na busca: {emailLookup.message ?? "erro desconhecido"}
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="op-id">ID (UUID do usuário)</Label>
+              <Input
+                id="op-id"
+                placeholder="11cfed69-0997-4baa-ae1a-…"
+                value={form.id}
+                onChange={(e) => setForm((f) => ({ ...f, id: e.target.value }))}
               />
             </div>
             <div className="space-y-2">

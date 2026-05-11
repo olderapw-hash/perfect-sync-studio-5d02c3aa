@@ -16,6 +16,7 @@ import { TrialLayout } from "@/components/trial/TrialLayout";
 import TrialTemplatesPage from "./pages/trial/TrialTemplatesPage.tsx";
 import AdminUsers from "./pages/AdminUsers.tsx";
 import Auth from "./pages/Auth.tsx";
+import AuthConfirmed from "./pages/AuthConfirmed.tsx";
 import Landing from "./pages/Landing.tsx";
 import Pricing from "./pages/Pricing.tsx";
 import CheckoutSuccess from "./pages/CheckoutSuccess.tsx";

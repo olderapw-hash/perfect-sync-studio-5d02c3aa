@@ -552,7 +552,9 @@ function MetricCard({
 function ServerWideOpsPanel({ onChange }: { onChange: () => void }) {
   const { isSuperadmin } = useAuth();
   const { can } = useServerPermissions();
-  const canManage = isSuperadmin || can("manage_servers");
+  const { canAction } = useOperatorPermissions();
+  const canManage =
+    (isSuperadmin || can("manage_servers")) && canAction("startServer");
   const [dryRun, setDryRun] = useState(false);
   const [busy, setBusy] = useState<"start" | "stop" | "restart" | null>(null);
   const [confirm, setConfirm] = useState<"stop" | "restart" | null>(null);

@@ -10,7 +10,6 @@ import {
   Database,
   Loader2,
   PlayCircle,
-  RefreshCw,
   ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";

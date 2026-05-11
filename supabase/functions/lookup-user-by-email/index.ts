@@ -58,18 +58,24 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Query auth.users via admin API (paged search)
-    const { data: list, error: listErr } = await admin.auth.admin.listUsers({
-      page: 1,
-      perPage: 200,
-    });
-    if (listErr) {
-      return new Response(JSON.stringify({ error: listErr.message }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    // Search auth.users by paginating (admin API has no direct email lookup)
+    let match: { id: string; email: string | null } | undefined;
+    const perPage = 1000;
+    for (let page = 1; page <= 20; page++) {
+      const { data: list, error: listErr } = await admin.auth.admin.listUsers({
+        page,
+        perPage,
       });
+      if (listErr) {
+        return new Response(JSON.stringify({ error: listErr.message }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      match = list.users.find((u) => (u.email ?? "").toLowerCase() === email);
+      if (match) break;
+      if (list.users.length < perPage) break;
     }
-    const match = list.users.find((u) => (u.email ?? "").toLowerCase() === email);
 
     return new Response(
       JSON.stringify({

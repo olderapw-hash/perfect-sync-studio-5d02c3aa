@@ -13,6 +13,8 @@
 set -Eeuo pipefail
 
 INSTALL_DIR="/var/www/html/apicls"
+LEGACY_APACHE_DIR="/var/www/html/apicls"
+LEGACY_APACHE_FILE="$LEGACY_APACHE_DIR/api_cls.php"
 API_SRC=""
 API_URL=""
 SECRET="${PW_API_SECRET:-}"
@@ -273,6 +275,13 @@ mkdir -p "$INSTALL_DIR/backups/gm-commander-v2/schedules/logs"
 mkdir -p "$INSTALL_DIR/backups/gm-commander-v2/audit"
 
 cp -f "$TMP_API" "$INSTALL_DIR/api_cls.php"
+
+mkdir -p "$LEGACY_APACHE_DIR"
+if [ "$INSTALL_DIR/api_cls.php" != "$LEGACY_APACHE_FILE" ]; then
+  ln -sfn "$INSTALL_DIR/api_cls.php" "$LEGACY_APACHE_FILE"
+else
+  chmod 640 "$LEGACY_APACHE_FILE" 2>/dev/null || true
+fi
 
 if [ -n "$ACTIVATION_TOKEN" ]; then
   printf '%s\n' "$ACTIVATION_TOKEN" > "$INSTALL_DIR/.activation_token"
@@ -2302,6 +2311,10 @@ chown -R "$WEB_USER:$WEB_USER" "$INSTALL_DIR"
 chmod 750 "$INSTALL_DIR"
 chmod 640 "$INSTALL_DIR/api_cls.php"
 chmod 640 "$INSTALL_DIR/gm-queue-worker.php" "$INSTALL_DIR/gm-schedule-worker.php"
+chown "$WEB_USER:$WEB_USER" "$LEGACY_APACHE_DIR" 2>/dev/null || true
+if [ -e "$LEGACY_APACHE_FILE" ]; then
+  chown -h "$WEB_USER:$WEB_USER" "$LEGACY_APACHE_FILE" 2>/dev/null || chown "$WEB_USER:$WEB_USER" "$LEGACY_APACHE_FILE" 2>/dev/null || true
+fi
 find "$INSTALL_DIR/backups" -type d -exec chmod 750 {} \;
 find "$INSTALL_DIR/backups" -type f -exec chmod 640 {} \; 2>/dev/null || true
 chown root:"$WEB_USER" /usr/local/sbin/pw-watchdog-runner.sh

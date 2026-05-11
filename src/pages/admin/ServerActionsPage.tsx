@@ -48,7 +48,8 @@ export default function ServerActionsPage() {
   const { isSuperadmin } = useAuth();
   const { active } = useServers();
   const { can } = useServerPermissions();
-  const canExport = isSuperadmin || can("save_templates");
+  const { canAction } = useOperatorPermissions();
+  const canExport = (isSuperadmin || can("save_templates")) && canAction("exportClsconfig");
 
   const [state, setState] = useState<ExportState>({
     loading: false,

@@ -116,7 +116,12 @@ export function BulkScheduleManager() {
   const [schedules, setSchedules] = useState<VpsBulkScheduleSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
-  const [editSchedule, setEditSchedule] = useState<VpsBulkScheduleSummary | null>(null);
+  const [editSchedule, setEditSchedule] = useState<{
+    summary: VpsBulkScheduleSummary;
+    detail: Record<string, unknown>;
+  } | null>(null);
+  const [editLoading, setEditLoading] = useState<string | null>(null);
+  const [toggleLoading, setToggleLoading] = useState<string | null>(null);
   const [endpointMissing, setEndpointMissing] = useState(false);
 
   const loadSchedules = useCallback(async () => {
@@ -138,17 +143,63 @@ export function BulkScheduleManager() {
     void loadSchedules();
   }, [loadSchedules]);
 
-  const toggleActive = useCallback(async (s: VpsBulkScheduleSummary) => {
+  /** Carrega o schedule completo via getBulkSchedule e abre o dialog em modo edição. */
+  const openEdit = useCallback(async (s: VpsBulkScheduleSummary) => {
+    setEditLoading(s.id);
     try {
-      await pwApi.updateBulkSchedule(s.id, {
-        command_key: s.command_key,
-        weekdays: s.weekdays,
-        time_of_day: s.time_of_day,
+      const full = await pwApi.getBulkSchedule(s.id);
+      const detail = (full?.schedule ?? {}) as Record<string, unknown>;
+      const cmd = (detail.command_payload ?? {}) as Record<string, unknown>;
+      if (!cmd || Object.keys(cmd).length === 0) {
+        console.error("[BulkSchedule] schedule sem command_payload — editor abortado", s.id);
+        alert(
+          "Não foi possível carregar o command_payload deste agendamento na VPS. " +
+            "Edição abortada para não sobrescrever item/valor/mensagem com valores vazios.",
+        );
+        return;
+      }
+      setEditSchedule({ summary: full?.summary ?? s, detail });
+    } catch (err) {
+      console.error("openEdit error:", err);
+      alert("Falha ao carregar agendamento completo da VPS.");
+    } finally {
+      setEditLoading(null);
+    }
+  }, []);
+
+  /** Toggle ativo/pausado — sempre busca o schedule completo antes para
+   *  preservar command_payload, selection e timezone reais. */
+  const toggleActive = useCallback(async (s: VpsBulkScheduleSummary) => {
+    setToggleLoading(s.id);
+    try {
+      const full = await pwApi.getBulkSchedule(s.id);
+      const detail = (full?.schedule ?? {}) as Record<string, unknown>;
+      const cmd = (detail.command_payload ?? {}) as Record<string, unknown>;
+      if (!cmd || Object.keys(cmd).length === 0) {
+        console.error("[BulkSchedule] toggle abortado — sem command_payload", s.id);
+        alert(
+          "Toggle abortado: a VPS não retornou o command_payload deste agendamento. " +
+            "Edite e salve novamente o schedule antes de pausar/ativar.",
+        );
+        return;
+      }
+      const summary = full?.summary ?? s;
+      const payload: Record<string, unknown> = {
+        ...cmd,
+        name: summary.name,
+        command_key: summary.command_key,
+        weekdays: summary.weekdays,
+        time_of_day: summary.time_of_day,
+        timezone: summary.timezone,
+        selection: summary.selection ?? detail.selection ?? {},
         enabled: !s.enabled,
-      });
+      };
+      await pwApi.updateBulkSchedule(s.id, payload as never);
       await loadSchedules();
     } catch (err) {
       console.error("toggleActive error:", err);
+    } finally {
+      setToggleLoading(null);
     }
   }, [loadSchedules]);
 

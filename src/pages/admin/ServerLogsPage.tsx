@@ -9,6 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useServers } from "@/hooks/useServers";
+import { useAuth } from "@/hooks/useAuth";
+import { useServerPermissions } from "@/hooks/useServerPermissions";
+import { useOperatorPermissions } from "@/hooks/useOperatorPermissions";
 import {
   EndpointMissingError,
   pwApi,
@@ -30,6 +33,12 @@ const SOURCES: { value: ServerLogSource; label: string }[] = [
 
 export default function ServerLogsPage() {
   const { active } = useServers();
+  const { isSuperadmin } = useAuth();
+  const { can } = useServerPermissions();
+  const { canAction } = useOperatorPermissions();
+  const allowed =
+    (isSuperadmin || can("view") || can("view_audit")) && canAction("getServerLogs");
+
   const [source, setSource] = useState<ServerLogSource>("gamedbd");
   const [query, setQuery] = useState("");
   const [data, setData] = useState<ServerLogsResponse | null>(null);
@@ -38,6 +47,7 @@ export default function ServerLogsPage() {
   const [endpointMissing, setEndpointMissing] = useState(false);
 
   const load = async (src: ServerLogSource = source) => {
+    if (!allowed) return;
     setLoading(true);
     setError(null);
     setEndpointMissing(false);
@@ -70,9 +80,10 @@ export default function ServerLogsPage() {
   };
 
   useEffect(() => {
+    if (!allowed) return;
     void load(source);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [source, active?.id]);
+  }, [source, active?.id, allowed]);
 
   const filtered = useMemo<ServerLogEntry[]>(() => {
     const all = data?.entries ?? [];
@@ -80,6 +91,15 @@ export default function ServerLogsPage() {
     if (!q) return all;
     return all.filter((e) => e.line.toLowerCase().includes(q));
   }, [data, query]);
+
+  if (!allowed) {
+    return (
+      <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-6 text-center text-sm text-muted-foreground">
+        Você não tem permissão para ler os logs do servidor nesta VPS
+        (<code className="font-mono">getServerLogs</code>).
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

@@ -47,6 +47,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useServers } from "@/hooks/useServers";
 import { useServerPermissions } from "@/hooks/useServerPermissions";
+import { useOperatorPermissions } from "@/hooks/useOperatorPermissions";
 import {
   EndpointMissingError,
   pwApi,
@@ -119,6 +120,7 @@ export default function ServerHistoryPage() {
   const { active } = useServers();
   const { isSuperadmin } = useAuth();
   const { can } = useServerPermissions();
+  const { canAction } = useOperatorPermissions();
 
   const [type, setType] = useState<string>("all");
   const [stateFilter, setStateFilter] = useState<string>("all");
@@ -147,7 +149,9 @@ export default function ServerHistoryPage() {
     });
   };
 
-  const allowed = isSuperadmin || can("view_audit") || can("view");
+  const allowed =
+    (isSuperadmin || can("view_audit") || can("view")) &&
+    canAction("getServerOperationsHistory");
 
   const load = async () => {
     setLoading(true);

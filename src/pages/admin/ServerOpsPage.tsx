@@ -82,6 +82,7 @@ const ServerOpsPageInner = () => {
   const { isSuperadmin } = useAuth();
   const { active } = useServers();
   const { can, loading } = useServerPermissions();
+  const { canAction, loading: opLoading } = useOperatorPermissions();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -94,11 +95,14 @@ const ServerOpsPageInner = () => {
     return "status";
   }, [location.pathname]);
 
-  const allowed = isSuperadmin || can("view");
+  // Gate de leitura: precisa de view (Supabase) E permissão real de ler na VPS.
+  // Sem isso, a tela abre e só descobre o bloqueio depois do fetch (Forbidden).
+  const allowed =
+    (isSuperadmin || can("view")) && (opLoading || canAction("getManageableServices"));
 
   if (!active) return <NoActiveServerState />;
 
-  if (!loading && !allowed) {
+  if (!loading && !opLoading && !allowed) {
     return (
       <div className="flex h-full items-center justify-center p-6">
         <div className="max-w-md rounded-2xl border border-destructive/40 bg-destructive/10 p-8 text-center">

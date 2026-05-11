@@ -36,6 +36,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useServers } from "@/hooks/useServers";
 import { useServerPermissions } from "@/hooks/useServerPermissions";
+import { useOperatorPermissions } from "@/hooks/useOperatorPermissions";
 import {
   EndpointMissingError,
   pwApi,
@@ -65,7 +66,8 @@ export function SystemMessageCard() {
   const { isSuperadmin } = useAuth();
   const { active } = useServers();
   const { can } = useServerPermissions();
-  const canSend = isSuperadmin || can("save_templates");
+  const { canAction } = useOperatorPermissions();
+  const canSend = (isSuperadmin || can("save_templates")) && canAction("sendSystemMessage");
 
   const [message, setMessage] = useState("");
   const [kind, setKind] = useState<SystemMessageKind>("system");

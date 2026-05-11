@@ -28,6 +28,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useServers } from "@/hooks/useServers";
 import { useServerPermissions } from "@/hooks/useServerPermissions";
+import { useOperatorPermissions } from "@/hooks/useOperatorPermissions";
 import {
   EndpointMissingError,
   pwApi,
@@ -47,7 +48,8 @@ export default function ServerActionsPage() {
   const { isSuperadmin } = useAuth();
   const { active } = useServers();
   const { can } = useServerPermissions();
-  const canExport = isSuperadmin || can("save_templates");
+  const { canAction } = useOperatorPermissions();
+  const canExport = (isSuperadmin || can("save_templates")) && canAction("exportClsconfig");
 
   const [state, setState] = useState<ExportState>({
     loading: false,

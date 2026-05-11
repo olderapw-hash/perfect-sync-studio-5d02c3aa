@@ -89,6 +89,7 @@ const App = () => (
                   {/* No modo VPS, "/" vai direto pro login; páginas públicas ficam ocultas */}
                   <Route path="/" element={isVpsMode ? <Navigate to="/auth" replace /> : <Landing />} />
                   <Route path="/auth" element={<Auth />} />
+                  <Route path="/auth/confirmed" element={<AuthConfirmed />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/pricing" element={isVpsMode ? <Navigate to="/auth" replace /> : <Pricing />} />
                   <Route path="/privacy" element={<PrivacyPolicy />} />

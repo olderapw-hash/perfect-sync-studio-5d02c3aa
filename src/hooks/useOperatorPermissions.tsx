@@ -203,7 +203,15 @@ export function OperatorPermissionsProvider({ children }: { children: ReactNode 
       if (!permissions) return false;
       // Mapeia action → chave de permissão.
       const permKey = ACTION_PERMISSION_MAP[action];
-      if (!permKey) return permissions.read; // actions desconhecidas: no mínimo read.
+      if (!permKey) {
+        // Action não mapeada → bloqueia por segurança (em vez de cair
+        // silenciosamente em `read`). Adicione a action ao
+        // ACTION_PERMISSION_MAP antes de chamá-la via canAction.
+        if (typeof console !== "undefined") {
+          console.warn(`[useOperatorPermissions] action sem mapping: ${action}`);
+        }
+        return false;
+      }
       return permissions[permKey];
     },
     [loading, endpointMissing, permissions],

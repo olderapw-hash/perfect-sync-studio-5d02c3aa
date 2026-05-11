@@ -52,6 +52,7 @@ import {
   type OperatorRole,
 } from "@/lib/pwApiActions";
 import { EndpointMissingNotice } from "@/components/admin/EndpointMissingNotice";
+import { supabase } from "@/integrations/supabase/client";
 
 const ROLES: { value: OperatorRole; label: string }[] = [
   { value: "viewer", label: "Viewer" },

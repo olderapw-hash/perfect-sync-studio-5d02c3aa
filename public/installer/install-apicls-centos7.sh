@@ -274,6 +274,13 @@ mkdir -p "$INSTALL_DIR/backups/gm-commander-v2/audit"
 
 cp -f "$TMP_API" "$INSTALL_DIR/api_cls.php"
 
+if [ -n "$ACTIVATION_TOKEN" ]; then
+  printf '%s\n' "$ACTIVATION_TOKEN" > "$INSTALL_DIR/.activation_token"
+  chmod 640 "$INSTALL_DIR/.activation_token" 2>/dev/null || true
+  chown "$WEB_USER":"$WEB_USER" "$INSTALL_DIR/.activation_token" 2>/dev/null || true
+  log "Activation token salvo em $INSTALL_DIR/.activation_token"
+fi
+
 cat > "$INSTALL_DIR/gm-queue-worker.php" <<'EOF'
 <?php
 

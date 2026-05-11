@@ -344,7 +344,7 @@ function OperatorManagementContent() {
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className={ROLE_COLORS[op.role] ?? ""}>
-                      {op.role}
+                      {labelForRole(op.role)}
                     </Badge>
                   </TableCell>
                   <TableCell>

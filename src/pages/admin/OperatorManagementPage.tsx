@@ -89,6 +89,13 @@ export default function OperatorManagementPage() {
 function OperatorManagementContent() {
   const { permissions, role, loading: permLoading } = useOperatorPermissions();
   const [operators, setOperators] = useState<OperatorRegistryEntry[]>([]);
+  const [registryMeta, setRegistryMeta] = useState<{
+    roles: OperatorRole[] | null;
+    roleMeta: Partial<Record<OperatorRole, OperatorRoleMeta>>;
+    invalidEntries: OperatorRegistryInvalidEntry[];
+    registryFile: string | null;
+    updatedAt: string | null;
+  }>({ roles: null, roleMeta: {}, invalidEntries: [], registryFile: null, updatedAt: null });
   const [loading, setLoading] = useState(true);
   const [endpointMissing, setEndpointMissing] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -103,8 +110,15 @@ function OperatorManagementContent() {
   const fetchOperators = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await pwApi.getOperatorRegistry();
+      const res: OperatorRegistryResponse = await pwApi.getOperatorRegistry();
       setOperators(res.operators ?? []);
+      setRegistryMeta({
+        roles: res.roles ?? null,
+        roleMeta: res.role_meta ?? {},
+        invalidEntries: res.invalid_entries ?? [],
+        registryFile: res.registry_file ?? null,
+        updatedAt: res.updated_at ?? null,
+      });
       setEndpointMissing(false);
     } catch (e) {
       if (e instanceof EndpointMissingError) {
@@ -118,6 +132,21 @@ function OperatorManagementContent() {
       setLoading(false);
     }
   }, []);
+
+  const rolesForSelect = useMemo<{ value: OperatorRole; label: string }[]>(() => {
+    if (registryMeta.roles && registryMeta.roles.length) {
+      return registryMeta.roles.map((r) => ({
+        value: r,
+        label: registryMeta.roleMeta[r]?.label ?? r,
+      }));
+    }
+    return ROLES;
+  }, [registryMeta.roles, registryMeta.roleMeta]);
+
+  const labelForRole = useCallback(
+    (r: OperatorRole) => registryMeta.roleMeta[r]?.label ?? ROLES.find((x) => x.value === r)?.label ?? r,
+    [registryMeta.roleMeta],
+  );
 
   useEffect(() => {
     if (!permLoading && canAccess) {

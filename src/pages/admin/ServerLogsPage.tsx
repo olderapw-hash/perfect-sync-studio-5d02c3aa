@@ -9,6 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useServers } from "@/hooks/useServers";
+import { useAuth } from "@/hooks/useAuth";
+import { useServerPermissions } from "@/hooks/useServerPermissions";
+import { useOperatorPermissions } from "@/hooks/useOperatorPermissions";
 import {
   EndpointMissingError,
   pwApi,

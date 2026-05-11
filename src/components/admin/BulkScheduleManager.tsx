@@ -403,11 +403,13 @@ export function BulkScheduleManager() {
 
 function ScheduleFormDialog({
   schedule,
+  scheduleDetail,
   existingSchedules,
   onClose,
   onSaved,
 }: {
   schedule: VpsBulkScheduleSummary | null;
+  scheduleDetail: Record<string, unknown> | null;
   existingSchedules: VpsBulkScheduleSummary[];
   onClose: () => void;
   onSaved: () => void | Promise<void>;
@@ -416,7 +418,6 @@ function ScheduleFormDialog({
   const [name, setName] = useState(schedule?.name || "");
   const [commandKey, setCommandKey] = useState<string>(schedule?.command_key || "sendMailItem");
   const [everyDay, setEveryDay] = useState(schedule ? isEveryDay(schedule) : false);
-  // VPS uses 1-7 (Mon=1..Sun=7)
   const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>(
     schedule?.weekdays?.length ? schedule.weekdays : [1]
   );
@@ -425,7 +426,6 @@ function ScheduleFormDialog({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Selection fields
   const [selMode, setSelMode] = useState("all_online");
   const [namesInput, setNamesInput] = useState("");
   const [guildId, setGuildId] = useState("");
@@ -433,7 +433,6 @@ function ScheduleFormDialog({
   const [levelMin, setLevelMin] = useState("");
   const [levelMax, setLevelMax] = useState("");
 
-  // Command payload fields
   const [itemId, setItemId] = useState("");
   const [itemCount, setItemCount] = useState("1");
   const [goldAmount, setGoldAmount] = useState("");
@@ -444,10 +443,12 @@ function ScheduleFormDialog({
 
   const needsAudience = !NO_AUDIENCE_COMMANDS.has(commandKey);
 
-  // Load from existing schedule
+  // Hidrata seleção e command_payload a partir do schedule completo da VPS
   useEffect(() => {
     if (!schedule) return;
-    const sel = schedule.selection || {};
+    const sel = (scheduleDetail?.selection as Record<string, unknown> | undefined)
+      ?? schedule.selection
+      ?? {};
     if (sel.all_online) setSelMode("all_online");
     else if (sel.names) { setSelMode("names"); setNamesInput(Array.isArray(sel.names) ? (sel.names as string[]).join("\n") : ""); }
     else if (sel.guild_id) { setSelMode("guild"); setGuildId(String(sel.guild_id)); }
@@ -457,9 +458,17 @@ function ScheduleFormDialog({
     if (sel.level_min) setLevelMin(String(sel.level_min));
     if (sel.level_max) setLevelMax(String(sel.level_max));
 
-    // Load command payload from detail if needed — for now use selection fields
-    // The VPS getBulkSchedule returns full command_payload in the schedule object
-  }, [schedule]);
+    // command_payload real vindo do getBulkSchedule
+    const cmd = (scheduleDetail?.command_payload as Record<string, unknown> | undefined) ?? {};
+    if (cmd.item_id != null) setItemId(String(cmd.item_id));
+    if (cmd.count != null) setItemCount(String(cmd.count));
+    if (cmd.money != null) setGoldAmount(String(cmd.money));
+    if (cmd.amount != null) setCashAmount(String(cmd.amount));
+    if (typeof cmd.subject === "string") setSubject(cmd.subject);
+    else if (typeof cmd.reason === "string") setSubject(cmd.reason);
+    if (typeof cmd.body === "string") setBody(cmd.body);
+    if (typeof cmd.message === "string") setMessage(cmd.message);
+  }, [schedule, scheduleDetail]);
 
   const handleSave = async () => {
     if (!name.trim()) { setError("Nome obrigatório"); return; }

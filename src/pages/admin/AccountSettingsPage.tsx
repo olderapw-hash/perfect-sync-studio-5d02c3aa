@@ -98,9 +98,9 @@ const AccountSettingsPage = () => {
 
 /* ---------- Subscription ---------- */
 const PLAN_PRICES: Record<string, { monthly: number; priceId: string; productId: string }> = {
-  iniciante: { monthly: 2500, priceId: "pw_admin_iniciante_monthly", productId: "pw_admin_iniciante" },
-  pro: { monthly: 15000, priceId: "pw_admin_pro_monthly", productId: "pw_admin_pro" },
-  ultimate: { monthly: 30000, priceId: "pw_admin_ultimate_monthly", productId: "pw_admin_ultimate" },
+  iniciante: { monthly: 1000, priceId: "pw_admin_iniciante_monthly", productId: "pw_admin_iniciante" },
+  pro: { monthly: 5000, priceId: "pw_admin_pro_monthly", productId: "pw_admin_pro" },
+  ultimate: { monthly: 10000, priceId: "pw_admin_ultimate_monthly", productId: "pw_admin_ultimate" },
 };
 
 const SubscriptionCard = () => {

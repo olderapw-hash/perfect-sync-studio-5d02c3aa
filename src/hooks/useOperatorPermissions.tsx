@@ -75,6 +75,31 @@ const ACTION_PERMISSION_MAP: Record<string, keyof OperatorPermissions> = {
   restartServer: "cash_and_gm_permissions",
   setMaintenanceMode: "cash_and_gm_permissions",
   exportClsconfig: "cash_and_gm_permissions",
+  // Control Center / Instances — leitura viewer+, controle gm_admin+.
+  getControlCenterSnapshot: "read",
+  getManageableInstances: "read",
+  startInstance: "cash_and_gm_permissions",
+  startInstances: "cash_and_gm_permissions",
+  stopInstance: "cash_and_gm_permissions",
+  stopInstances: "cash_and_gm_permissions",
+  restartInstance: "cash_and_gm_permissions",
+  restartInstances: "cash_and_gm_permissions",
+  setInstanceAutoStart: "cash_and_gm_permissions",
+  // Watchdog — leitura viewer+, controle gm_admin+.
+  getWatchdogStatus: "read",
+  getWatchdogHistory: "read",
+  saveWatchdogConfig: "cash_and_gm_permissions",
+  enableWatchdog: "cash_and_gm_permissions",
+  disableWatchdog: "cash_and_gm_permissions",
+  runWatchdogCheckNow: "cash_and_gm_permissions",
+  // Backups & Restore — leitura viewer+, escrita gm_admin+, restore super_admin.
+  backupNow: "cash_and_gm_permissions",
+  backupGamedbd: "cash_and_gm_permissions",
+  listPanelBackups: "read",
+  listBackups: "read",
+  getRestorePlan: "read",
+  getRestoreHistory: "read",
+  // restoreNow / restoreBackup já mapeados acima como restore_and_role_edit.
   // Operator Registry (super_admin only)
   getOperatorRegistry: "restore_and_role_edit",
   saveOperatorRegistryEntry: "restore_and_role_edit",

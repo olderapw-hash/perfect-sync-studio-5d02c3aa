@@ -111,6 +111,9 @@ import {
 import { NoActiveServerState } from "@/components/admin/NoActiveServerState";
 import { EndpointMissingNotice } from "@/components/admin/EndpointMissingNotice";
 import { BulkCommanderTab } from "@/components/admin/BulkCommanderTab";
+import { QuickPunishmentTab } from "@/components/admin/gm/QuickPunishmentTab";
+import { BroadcastScheduleTab } from "@/components/admin/gm/BroadcastScheduleTab";
+import { MeridianTitlesTab } from "@/components/admin/gm/MeridianTitlesTab";
 
 import { useAuth } from "@/hooks/useAuth";
 import { OperatorPermissionsProvider, useOperatorPermissions } from "@/hooks/useOperatorPermissions";

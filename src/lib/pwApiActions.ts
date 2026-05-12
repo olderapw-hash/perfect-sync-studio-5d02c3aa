@@ -997,7 +997,8 @@ export interface QueueBroadcastMessagePayload {
   message: string;
   kind?: string;
   priority?: string;
-  channel?: string;
+  /** Canal numérico exigido pelo backend (1-255). */
+  channel?: number;
   /** Estilo ainda não funcional no protocolo — backend trata como metadado. */
   style?: string;
   repeat_count?: number;

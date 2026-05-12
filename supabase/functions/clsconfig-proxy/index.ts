@@ -594,7 +594,14 @@ Deno.serve(async (req: Request) => {
     return jsonError("PW_API_BASE_URL inválida", 400);
   }
 
-  const endpoint = base.endsWith(".php") ? base : `${base}/apicls/api_cls.php`;
+  const baseEndpoint = base.endsWith(".php") ? base : `${base}/apicls/api_cls.php`;
+  const meridianEndpoint = base.endsWith(".php")
+    ? base.replace(/api_cls(?:_[a-z_]+)?\.php$/i, "api_cls_meridian_titles.php")
+    : `${base}/apicls/api_cls_meridian_titles.php`;
+  const endpointFor = (action: string): string =>
+    MERIDIAN_TITLE_ACTIONS.has(action) ? meridianEndpoint : baseEndpoint;
+  // Backwards-compatible alias used by the legacy /clsconfig routes below.
+  const endpoint = baseEndpoint;
 
   // Detecta rota /action/<name>
   const actionIdx = segments.indexOf("action");

@@ -5,13 +5,17 @@
 //   POST ?action=previewQuickPunishment
 //   POST ?action=executeQuickPunishment
 //
-// Regras:
-//  - Catálogo é a fonte da verdade; presets sem state="supported" aparecem
-//    desabilitados (ex.: "jail" quando vier como contract_only).
-//  - Preview e execução são chamadas REAIS — sem fake/mocking.
-//  - canAction() bloqueia o botão antes mesmo do fetch.
+// Contrato real do catálogo:
+//   preset.key, preset.status, preset.duration_required, preset.required_role
+//
+// Resposta real (preview/execute):
+//   { preset: { key, label }, plan: { underlying_action, target_scope,
+//     target, duration_seconds, warnings }, result: { ... } }
+//
+// Gating: além do canAction(), respeitamos preset.required_role contra
+// o role real do operador retornado pela VPS.
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Ban, Hammer, Loader2, RefreshCw, ShieldAlert, VolumeX } from "lucide-react";
+import { AlertTriangle, Ban, Hammer, Loader2, Lock, RefreshCw, ShieldAlert, VolumeX } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EndpointMissingNotice } from "@/components/admin/EndpointMissingNotice";
-import { useOperatorPermissions } from "@/hooks/useOperatorPermissions";
+import { roleMeetsRequirement, useOperatorPermissions } from "@/hooks/useOperatorPermissions";
 import { cn } from "@/lib/utils";
 import {
   EndpointMissingError,
@@ -41,22 +45,36 @@ const PRESET_ICON: Record<string, typeof Hammer> = {
   jail: ShieldAlert,
 };
 
+/** Chave canônica do preset (compat com VPS antigas que ainda mandam `id`). */
+function presetKey(p: QuickPunishmentPreset): string {
+  return (p.key ?? p.id ?? "") as string;
+}
+
+/** Status oficial (compat com `state` legado). */
+function presetStatus(p: QuickPunishmentPreset): string | undefined {
+  return p.status ?? p.state;
+}
+
+/** Indica se o backend marca este preset como suportado. */
 function isSupported(p: QuickPunishmentPreset): boolean {
-  // Presets sem state explícito assumem supported (compat com VPSes que ainda
-  // não devolvem o campo). Apenas marcamos como bloqueado quando o backend
-  // explicitamente diz contract_only / unsupported.
-  if (!p.state) return p.id !== "jail";
-  return p.state === "supported";
+  const st = presetStatus(p);
+  if (!st) return presetKey(p) !== "jail";
+  return st === "supported";
+}
+
+/** Duração obrigatória? Compat com `supports_duration` legado. */
+function durationRequired(p: QuickPunishmentPreset): boolean {
+  return Boolean(p.duration_required ?? p.supports_duration);
 }
 
 export function QuickPunishmentTab() {
-  const { canAction, loading: permLoading } = useOperatorPermissions();
+  const { canAction, role: operatorRole, loading: permLoading } = useOperatorPermissions();
   const [catalog, setCatalog] = useState<QuickPunishmentCatalogResponse | null>(null);
   const [catalogMissing, setCatalogMissing] = useState(false);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogError, setCatalogError] = useState<string | null>(null);
 
-  const [presetId, setPresetId] = useState<string | null>(null);
+  const [presetKeyState, setPresetKeyState] = useState<string | null>(null);
   const [roleid, setRoleid] = useState("");
   const [reason, setReason] = useState("");
   const [duration, setDuration] = useState("");
@@ -93,22 +111,28 @@ export function QuickPunishmentTab() {
 
   const presets = useMemo(() => catalog?.presets ?? [], [catalog]);
   const selected = useMemo(
-    () => presets.find((p) => p.id === presetId) ?? null,
-    [presets, presetId],
+    () => presets.find((p) => presetKey(p) === presetKeyState) ?? null,
+    [presets, presetKeyState],
   );
 
-  const canPreview = canAction("previewQuickPunishment");
-  const canExecute = canAction("executeQuickPunishment");
+  /** O operador real atende ao required_role do preset selecionado? */
+  const operatorMeetsRole = useMemo(() => {
+    if (!selected) return true;
+    return roleMeetsRequirement(operatorRole, selected.required_role);
+  }, [selected, operatorRole]);
+
+  const canPreview = canAction("previewQuickPunishment") && operatorMeetsRole;
+  const canExecute = canAction("executeQuickPunishment") && operatorMeetsRole;
 
   const buildPayload = (dryRun: boolean): QuickPunishmentRequest | null => {
     if (!selected) return null;
     if (!roleid.trim() || !reason.trim()) return null;
     const payload: QuickPunishmentRequest = {
-      preset: selected.id,
+      preset: presetKey(selected),
       roleid: roleid.trim(),
       reason: reason.trim(),
     };
-    if (selected.supports_duration && duration.trim()) {
+    if (durationRequired(selected) && duration.trim()) {
       const n = Number(duration.trim());
       if (Number.isFinite(n) && n > 0) payload.duration_seconds = n;
     }
@@ -195,30 +219,47 @@ export function QuickPunishmentTab() {
           ) : (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {presets.map((p) => {
-                const Icon = PRESET_ICON[p.id] ?? Hammer;
+                const k = presetKey(p);
+                const Icon = PRESET_ICON[k] ?? Hammer;
                 const supported = isSupported(p);
-                const active = presetId === p.id;
+                const meetsRole = roleMeetsRequirement(operatorRole, p.required_role);
+                const usable = supported && meetsRole;
+                const active = presetKeyState === k;
+                const status = presetStatus(p);
                 return (
                   <button
-                    key={p.id}
+                    key={k}
                     type="button"
-                    disabled={!supported}
-                    onClick={() => supported && setPresetId(p.id)}
+                    disabled={!usable}
+                    onClick={() => usable && setPresetKeyState(k)}
                     className={cn(
                       "rounded-xl border p-3 text-left transition-all",
-                      supported
+                      usable
                         ? active
                           ? "border-primary bg-primary/10 shadow-[0_0_18px_-6px_hsl(var(--primary)/0.4)]"
                           : "border-border/50 bg-card/50 hover:border-primary/40 hover:bg-primary/5"
                         : "cursor-not-allowed border-border/30 bg-muted/20 opacity-60",
                     )}
+                    title={
+                      !supported
+                        ? `Não suportado (${status ?? "n/a"})`
+                        : !meetsRole
+                          ? `Requer role ${p.required_role}`
+                          : undefined
+                    }
                   >
                     <div className="flex items-center gap-2">
                       <Icon className="h-4 w-4 text-primary" />
                       <span className="text-sm font-bold text-foreground">{p.label}</span>
                       {!supported && (
                         <Badge variant="outline" className="ml-auto border-amber-500/40 text-[9px] uppercase text-amber-400">
-                          {p.state ?? "não suportado"}
+                          {status ?? "não suportado"}
+                        </Badge>
+                      )}
+                      {supported && !meetsRole && (
+                        <Badge variant="outline" className="ml-auto border-destructive/40 text-[9px] uppercase text-destructive">
+                          <Lock className="mr-0.5 h-2.5 w-2.5" />
+                          {p.required_role}
                         </Badge>
                       )}
                     </div>
@@ -263,7 +304,7 @@ export function QuickPunishmentTab() {
                   inputMode="numeric"
                 />
               </div>
-              {selected.supports_duration && (
+              {durationRequired(selected) && (
                 <div>
                   <Label className="text-xs">Duração (segundos)</Label>
                   <Input
@@ -348,7 +389,12 @@ export function QuickPunishmentTab() {
                 {executeBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
                 Executar agora
               </Button>
-              {!canExecute && !permLoading && (
+              {!operatorMeetsRole && !permLoading && (
+                <span className="text-[11px] text-destructive">
+                  Operador não atende ao required_role: <code>{selected.required_role}</code>.
+                </span>
+              )}
+              {operatorMeetsRole && !canExecute && !permLoading && (
                 <span className="text-[11px] text-amber-400">
                   Operador sem permissão real para executar (canAction=false).
                 </span>
@@ -385,16 +431,30 @@ export function QuickPunishmentTab() {
 }
 
 function PunishmentResultView({ result }: { result: QuickPunishmentResponse }) {
+  const plan = result.plan ?? {};
+  const presetKeyOut = result.preset?.key;
+  const presetLabel = result.preset?.label;
   return (
     <div className="space-y-2">
       <div className="grid gap-2 sm:grid-cols-2">
-        <Field label="Preset" value={result.preset} />
-        <Field label="underlying_action" value={result.underlying_action} />
-        <Field label="target_scope" value={result.target_scope} />
-        <Field label="duration_seconds" value={result.duration_seconds} />
+        <Field label="preset.key" value={presetKeyOut} />
+        <Field label="preset.label" value={presetLabel} />
+        <Field label="plan.underlying_action" value={plan.underlying_action} />
+        <Field label="plan.target_scope" value={plan.target_scope} />
+        <Field label="plan.duration_seconds" value={plan.duration_seconds} />
         <Field label="dry_run" value={String(result.dry_run ?? false)} />
         <Field label="success" value={String(result.success)} />
       </div>
+      {plan.target && Object.keys(plan.target).length > 0 && (
+        <div className="rounded-lg border border-border/40 bg-background/40 p-2">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            plan.target
+          </div>
+          <pre className="mt-1 max-h-40 overflow-auto rounded bg-muted/30 p-2 text-[10px]">
+            {JSON.stringify(plan.target, null, 2)}
+          </pre>
+        </div>
+      )}
       {result.resolved && (
         <div className="rounded-lg border border-border/40 bg-background/40 p-2">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -408,6 +468,14 @@ function PunishmentResultView({ result }: { result: QuickPunishmentResponse }) {
           </div>
         </div>
       )}
+      {plan.warnings && plan.warnings.length > 0 && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-2 text-amber-400">
+          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider">plan.warnings</div>
+          {plan.warnings.map((w, i) => (
+            <div key={i}>⚠ {w}</div>
+          ))}
+        </div>
+      )}
       {result.warnings && result.warnings.length > 0 && (
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-2 text-amber-400">
           {result.warnings.map((w, i) => (
@@ -417,17 +485,18 @@ function PunishmentResultView({ result }: { result: QuickPunishmentResponse }) {
       )}
       {result.result && (
         <div className="rounded-lg border border-border/40 bg-background/40 p-2">
+          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            result
+          </div>
           {result.result.message && (
             <div className="text-foreground">{result.result.message}</div>
           )}
           {result.result.warning && (
             <div className="mt-1 text-amber-400">⚠ {result.result.warning}</div>
           )}
-          {result.result.account_ban && (
-            <pre className="mt-2 max-h-40 overflow-auto rounded bg-muted/30 p-2 text-[10px]">
-              {JSON.stringify(result.result.account_ban, null, 2)}
-            </pre>
-          )}
+          <pre className="mt-2 max-h-40 overflow-auto rounded bg-muted/30 p-2 text-[10px]">
+            {JSON.stringify(result.result, null, 2)}
+          </pre>
         </div>
       )}
     </div>

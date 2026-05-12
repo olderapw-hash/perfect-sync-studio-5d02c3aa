@@ -270,6 +270,16 @@ const ACTION_PERMISSION: Record<string, string> = {
   executePvpRankingRewards: "manage_security",
   savePvpRankingRewardSchedule: "manage_security",
   deletePvpRankingRewardSchedule: "manage_security",
+  // GM Commander v3 — Punições rápidas.
+  getQuickPunishmentCatalog: "view",
+  previewQuickPunishment: "manage_security",
+  executeQuickPunishment: "manage_security",
+  // GM Commander v3 — Broadcast agendado.
+  queueBroadcastMessage: "save_templates",
+  // Meridiano & Títulos.
+  getMeridianTitlePresetCatalog: "view",
+  previewMeridianTitlePreset: "save_real_roles",
+  applyMeridianTitlePreset: "save_real_roles",
 };
 
 function jsonError(message: string, status: number): Response {

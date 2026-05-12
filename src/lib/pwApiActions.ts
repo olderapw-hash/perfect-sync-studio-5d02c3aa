@@ -913,24 +913,32 @@ export type QuickPunishmentPresetId =
   | "jail"
   | string;
 
+/** Preset retornado pelo catálogo real da VPS.
+ *  Shape oficial: usa `key` + `status` + `duration_required`.
+ *  Campos legados (`id`, `state`, `supports_duration`) são opcionais
+ *  apenas para compat reversa de leitura. */
 export interface QuickPunishmentPreset {
-  id: QuickPunishmentPresetId;
+  /** Chave canônica (oficial). */
+  key: QuickPunishmentPresetId;
   label: string;
   summary?: string;
   description?: string;
   underlying_action?: string;
   target_scope?: "role" | "account" | string;
-  /** Estado retornado pelo catálogo: "supported" | "contract_only" | "unsupported". */
-  state?: string;
-  required_role?: string;
-  /** Permite duração customizada (ex.: mute/ban temporário). */
-  supports_duration?: boolean;
-  /** Sugestões de duração (segundos) que a UI pode oferecer como atalhos. */
+  /** Status oficial: "supported" | "contract_only" | "unsupported". */
+  status?: string;
+  /** Role mínimo (hierarquia OperatorRole) exigido para executar. */
+  required_role?: OperatorRole | string;
+  /** Indica se duração é obrigatória (ex.: mute/ban temporário). */
+  duration_required?: boolean;
   duration_presets_seconds?: number[];
   default_duration_seconds?: number;
-  /** Aceita kick_online quando aplicável (ex.: ban). */
   supports_kick_online?: boolean;
   warnings?: string[];
+  /** Compat legado — não usar em código novo. */
+  id?: QuickPunishmentPresetId;
+  state?: string;
+  supports_duration?: boolean;
   [k: string]: unknown;
 }
 
@@ -942,6 +950,7 @@ export interface QuickPunishmentCatalogResponse {
 }
 
 export interface QuickPunishmentRequest {
+  /** Chave do preset (preset.key do catálogo). */
   preset: QuickPunishmentPresetId;
   roleid: number | string;
   reason: string;
@@ -951,19 +960,29 @@ export interface QuickPunishmentRequest {
   dry_run?: boolean;
 }
 
+/** Bloco operacional retornado pela API após preview/execute. */
+export interface QuickPunishmentPlan {
+  underlying_action?: string;
+  target_scope?: string;
+  target?: Record<string, unknown>;
+  duration_seconds?: number;
+  warnings?: string[];
+  [k: string]: unknown;
+}
+
 export interface QuickPunishmentResponse {
   success: boolean;
   dry_run?: boolean;
-  preset?: QuickPunishmentPresetId;
-  underlying_action?: string;
-  target_scope?: string;
+  /** Preset agora vem como objeto { key, label, ... }. */
+  preset?: { key: QuickPunishmentPresetId; label?: string; [k: string]: unknown };
+  /** Detalhes operacionais (substitui campos top-level antigos). */
+  plan?: QuickPunishmentPlan;
   resolved?: {
     roleid?: number;
     userid?: number | string;
     account?: string;
     name?: string;
   };
-  duration_seconds?: number;
   warnings?: string[];
   result?: {
     message?: string;

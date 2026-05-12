@@ -186,7 +186,7 @@ export function MeridianTitlesTab() {
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {presets.map((p) => {
                 const active = presetId === p.id;
-                const isReset = p.id.startsWith("reset_") || p.kind === "reset";
+                const isReset = (p.id ?? "").startsWith("reset_") || p.kind === "reset";
                 return (
                   <button
                     key={p.id}

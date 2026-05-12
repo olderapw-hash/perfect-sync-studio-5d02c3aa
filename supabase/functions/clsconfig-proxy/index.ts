@@ -862,6 +862,14 @@ const NEW_ACTIONS_FALLBACK_MISSING = new Set([
   "stopServer",
   "restartServer",
   "getServerOperationStatus",
+  // GM Commander v3 / Meridiano-Títulos.
+  "getQuickPunishmentCatalog",
+  "previewQuickPunishment",
+  "executeQuickPunishment",
+  "queueBroadcastMessage",
+  "getMeridianTitlePresetCatalog",
+  "previewMeridianTitlePreset",
+  "applyMeridianTitlePreset",
 ]);
 
 async function relay(

@@ -152,13 +152,7 @@ export function QuickPunishmentTab() {
   };
 
   if (catalogMissing) {
-    return (
-      <EndpointMissingNotice
-        action="getQuickPunishmentCatalog"
-        title="Punições rápidas indisponíveis"
-        description="Esta VPS ainda não expõe o catálogo getQuickPunishmentCatalog. Atualize o api_cls.php para habilitar a aba."
-      />
-    );
+    return <EndpointMissingNotice action="getQuickPunishmentCatalog" />;
   }
 
   return (

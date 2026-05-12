@@ -124,6 +124,28 @@ const ACTION_PERMISSION_MAP: Record<string, keyof OperatorPermissions> = {
   applyMeridianTitlePreset: "bulk_rewards",
 };
 
+/* ─── Hierarquia de roles (alinhado ao backend) ─── */
+const ROLE_RANK: Record<OperatorRole, number> = {
+  viewer: 0,
+  gm_operator: 1,
+  gm_supervisor: 2,
+  gm_admin: 3,
+  super_admin: 4,
+};
+
+/** true se `role` ≥ `required` na hierarquia. Roles desconhecidas → false. */
+export function roleMeetsRequirement(
+  role: OperatorRole | null | undefined,
+  required: OperatorRole | string | null | undefined,
+): boolean {
+  if (!required) return true;
+  if (!role) return false;
+  const a = ROLE_RANK[role];
+  const b = ROLE_RANK[required as OperatorRole];
+  if (a == null || b == null) return false;
+  return a >= b;
+}
+
 interface OperatorState {
   /** Permissões resolvidas pela VPS. null = ainda carregando ou endpoint ausente. */
   permissions: OperatorPermissions | null;

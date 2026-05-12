@@ -567,7 +567,10 @@ function GmCommanderPageInner() {
             {([
               { key: "compensation" as TabKey, label: "Compensação", gateAction: "sendMailItem" },
               { key: "moderation" as TabKey, label: "Moderação", gateAction: "kickRole" },
+              { key: "punish" as TabKey, label: "Punições rápidas", gateAction: "previewQuickPunishment" },
               { key: "communication" as TabKey, label: "Comunicação", gateAction: "sendSystemMessage" },
+              { key: "broadcast" as TabKey, label: "Broadcast agendado", gateAction: "queueBroadcastMessage" },
+              { key: "meridian" as TabKey, label: "Meridiano & Títulos", gateAction: "previewMeridianTitlePreset" },
               { key: "permissions" as TabKey, label: "Permissões GM", gateAction: "grantGmPermission" },
               { key: "bulk" as TabKey, label: "Bulk Commander", gateAction: "queueBulkCommand" },
               { key: "history" as TabKey, label: "Histórico", gateAction: "getGmActionHistory" },
@@ -595,8 +598,17 @@ function GmCommanderPageInner() {
           <TabsContent value="moderation" className="space-y-4">
             <ModerationTab caps={caps} onActed={refreshHistory} isSuperadmin={isSuperadmin} cardVisibility={cardVisibility} onToggleVisibility={toggleCardVisibility} />
           </TabsContent>
+          <TabsContent value="punish" className="space-y-4">
+            <QuickPunishmentTab />
+          </TabsContent>
           <TabsContent value="communication" className="space-y-4">
             <CommunicationTab caps={caps} onActed={refreshHistory} isSuperadmin={isSuperadmin} cardVisibility={cardVisibility} onToggleVisibility={toggleCardVisibility} />
+          </TabsContent>
+          <TabsContent value="broadcast" className="space-y-4">
+            <BroadcastScheduleTab />
+          </TabsContent>
+          <TabsContent value="meridian" className="space-y-4">
+            <MeridianTitlesTab />
           </TabsContent>
           <TabsContent value="permissions" className="space-y-4">
             <GmPermissionsTab caps={caps} onActed={refreshHistory} isSuperadmin={isSuperadmin} cardVisibility={cardVisibility} onToggleVisibility={toggleCardVisibility} />

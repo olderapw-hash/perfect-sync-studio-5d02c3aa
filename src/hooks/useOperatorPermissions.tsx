@@ -113,13 +113,15 @@ const ACTION_PERMISSION_MAP: Record<string, keyof OperatorPermissions> = {
   savePvpRankingRewardSchedule: "cash_and_gm_permissions",
   deletePvpRankingRewardSchedule: "cash_and_gm_permissions",
   // GM Commander v3 — Punições rápidas / Broadcast / Meridiano-Títulos.
+  // Meridiano/Títulos: leitura é viewer+, preview/apply é gm_operator+
+  // (alinhado ao backend; required_role do preset faz o gating fino).
   getQuickPunishmentCatalog: "read",
   previewQuickPunishment: "bulk_rewards",
   executeQuickPunishment: "bulk_rewards",
   queueBroadcastMessage: "broadcast",
   getMeridianTitlePresetCatalog: "read",
-  previewMeridianTitlePreset: "restore_and_role_edit",
-  applyMeridianTitlePreset: "restore_and_role_edit",
+  previewMeridianTitlePreset: "bulk_rewards",
+  applyMeridianTitlePreset: "bulk_rewards",
 };
 
 interface OperatorState {

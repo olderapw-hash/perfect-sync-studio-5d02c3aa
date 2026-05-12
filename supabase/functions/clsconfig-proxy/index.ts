@@ -798,7 +798,7 @@ Deno.serve(async (req: Request) => {
         if (k === "action") continue;
         qs.append(k, v);
       }
-      const target = `${endpoint}?${qs.toString()}`;
+      const target = `${endpointFor(action)}?${qs.toString()}`;
 
       const init: RequestInit = {
         method: req.method,

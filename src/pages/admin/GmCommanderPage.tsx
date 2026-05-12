@@ -628,6 +628,9 @@ const TAB_LABELS: Record<TabKey, string> = {
   communication: "Comunicação",
   permissions: "Permissões GM",
   bulk: "Bulk Commander",
+  punish: "Punições rápidas",
+  meridian: "Meridiano & Títulos",
+  broadcast: "Broadcast agendado",
   history: "Histórico",
 };
 

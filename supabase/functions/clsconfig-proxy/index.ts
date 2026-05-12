@@ -135,6 +135,27 @@ const ALLOWED_ACTIONS = new Set([
   "getPvpRankingRewardSchedule",
   "savePvpRankingRewardSchedule",
   "deletePvpRankingRewardSchedule",
+  // GM Commander v3 — Punições rápidas (kick/mute/ban presets).
+  "getQuickPunishmentCatalog",
+  "previewQuickPunishment",
+  "executeQuickPunishment",
+  // GM Commander v3 — Broadcast agendado / campanha.
+  "queueBroadcastMessage",
+  // Meridiano & Títulos — gateway dedicado em api_cls_meridian_titles.php.
+  "getMeridianTitlePresetCatalog",
+  "previewMeridianTitlePreset",
+  "applyMeridianTitlePreset",
+]);
+
+/**
+ * Actions roteadas para o gateway dedicado `api_cls_meridian_titles.php`.
+ * Quando PW_API_BASE_URL já termina em `.php`, mantemos o valor; caso contrário
+ * apontamos para `<base>/apicls/api_cls_meridian_titles.php`.
+ */
+const MERIDIAN_TITLE_ACTIONS = new Set([
+  "getMeridianTitlePresetCatalog",
+  "previewMeridianTitlePreset",
+  "applyMeridianTitlePreset",
 ]);
 
 // Mapa Action → permissão exigida (deve refletir src/lib/serverPermissions.ts).

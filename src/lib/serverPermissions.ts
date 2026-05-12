@@ -64,6 +64,15 @@ export const ACTION_PERMISSION: Record<string, ServerPermissionKey> = {
   queueBulkCommand: "manage_security",
   getBulkCommandJob: "view_audit",
   getBulkCommandJobs: "view_audit",
+
+  // GM Commander v3 — Punições rápidas / Broadcast / Meridiano-Títulos.
+  getQuickPunishmentCatalog: "view",
+  previewQuickPunishment: "manage_security",
+  executeQuickPunishment: "manage_security",
+  queueBroadcastMessage: "save_templates",
+  getMeridianTitlePresetCatalog: "view",
+  previewMeridianTitlePreset: "save_real_roles",
+  applyMeridianTitlePreset: "save_real_roles",
 };
 
 /** Operações UI que mapeiam pra mais de uma action. */

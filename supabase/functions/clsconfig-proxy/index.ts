@@ -135,6 +135,27 @@ const ALLOWED_ACTIONS = new Set([
   "getPvpRankingRewardSchedule",
   "savePvpRankingRewardSchedule",
   "deletePvpRankingRewardSchedule",
+  // GM Commander v3 — Punições rápidas (kick/mute/ban presets).
+  "getQuickPunishmentCatalog",
+  "previewQuickPunishment",
+  "executeQuickPunishment",
+  // GM Commander v3 — Broadcast agendado / campanha.
+  "queueBroadcastMessage",
+  // Meridiano & Títulos — gateway dedicado em api_cls_meridian_titles.php.
+  "getMeridianTitlePresetCatalog",
+  "previewMeridianTitlePreset",
+  "applyMeridianTitlePreset",
+]);
+
+/**
+ * Actions roteadas para o gateway dedicado `api_cls_meridian_titles.php`.
+ * Quando PW_API_BASE_URL já termina em `.php`, mantemos o valor; caso contrário
+ * apontamos para `<base>/apicls/api_cls_meridian_titles.php`.
+ */
+const MERIDIAN_TITLE_ACTIONS = new Set([
+  "getMeridianTitlePresetCatalog",
+  "previewMeridianTitlePreset",
+  "applyMeridianTitlePreset",
 ]);
 
 // Mapa Action → permissão exigida (deve refletir src/lib/serverPermissions.ts).
@@ -249,6 +270,16 @@ const ACTION_PERMISSION: Record<string, string> = {
   executePvpRankingRewards: "manage_security",
   savePvpRankingRewardSchedule: "manage_security",
   deletePvpRankingRewardSchedule: "manage_security",
+  // GM Commander v3 — Punições rápidas.
+  getQuickPunishmentCatalog: "view",
+  previewQuickPunishment: "manage_security",
+  executeQuickPunishment: "manage_security",
+  // GM Commander v3 — Broadcast agendado.
+  queueBroadcastMessage: "save_templates",
+  // Meridiano & Títulos.
+  getMeridianTitlePresetCatalog: "view",
+  previewMeridianTitlePreset: "save_real_roles",
+  applyMeridianTitlePreset: "save_real_roles",
 };
 
 function jsonError(message: string, status: number): Response {
@@ -563,7 +594,14 @@ Deno.serve(async (req: Request) => {
     return jsonError("PW_API_BASE_URL inválida", 400);
   }
 
-  const endpoint = base.endsWith(".php") ? base : `${base}/apicls/api_cls.php`;
+  const baseEndpoint = base.endsWith(".php") ? base : `${base}/apicls/api_cls.php`;
+  const meridianEndpoint = base.endsWith(".php")
+    ? base.replace(/api_cls(?:_[a-z_]+)?\.php$/i, "api_cls_meridian_titles.php")
+    : `${base}/apicls/api_cls_meridian_titles.php`;
+  const endpointFor = (action: string): string =>
+    MERIDIAN_TITLE_ACTIONS.has(action) ? meridianEndpoint : baseEndpoint;
+  // Backwards-compatible alias used by the legacy /clsconfig routes below.
+  const endpoint = baseEndpoint;
 
   // Detecta rota /action/<name>
   const actionIdx = segments.indexOf("action");
@@ -591,6 +629,10 @@ Deno.serve(async (req: Request) => {
     "resolveBulkTargets", "previewBulkTargets", "queueBulkCommand",
     "saveBulkTemplate", "updateBulkTemplate", "deleteBulkTemplate",
     "previewBulkTemplate", "executeBulkTemplate",
+    // GM Commander v3 — Punições rápidas / Broadcast / Meridiano.
+    "previewQuickPunishment", "executeQuickPunishment",
+    "queueBroadcastMessage",
+    "previewMeridianTitlePreset", "applyMeridianTitlePreset",
   ]);
 
   /** Checks if the caller has at least a pro (or ultimate) subscription. */
@@ -756,7 +798,7 @@ Deno.serve(async (req: Request) => {
         if (k === "action") continue;
         qs.append(k, v);
       }
-      const target = `${endpoint}?${qs.toString()}`;
+      const target = `${endpointFor(action)}?${qs.toString()}`;
 
       const init: RequestInit = {
         method: req.method,
@@ -820,6 +862,14 @@ const NEW_ACTIONS_FALLBACK_MISSING = new Set([
   "stopServer",
   "restartServer",
   "getServerOperationStatus",
+  // GM Commander v3 / Meridiano-Títulos.
+  "getQuickPunishmentCatalog",
+  "previewQuickPunishment",
+  "executeQuickPunishment",
+  "queueBroadcastMessage",
+  "getMeridianTitlePresetCatalog",
+  "previewMeridianTitlePreset",
+  "applyMeridianTitlePreset",
 ]);
 
 async function relay(

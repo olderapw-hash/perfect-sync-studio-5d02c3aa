@@ -853,7 +853,251 @@ export const pwApi = {
       { method: "POST", body },
     );
   },
+
+  /* ─────────── GM Commander v3 — Punições rápidas ─────────── */
+  getQuickPunishmentCatalog() {
+    return callAction<QuickPunishmentCatalogResponse>("getQuickPunishmentCatalog", {
+      method: "GET",
+    });
+  },
+  previewQuickPunishment(body: QuickPunishmentRequest) {
+    return callAction<QuickPunishmentResponse>("previewQuickPunishment", {
+      method: "POST",
+      body,
+    });
+  },
+  executeQuickPunishment(body: QuickPunishmentRequest) {
+    return callAction<QuickPunishmentResponse>("executeQuickPunishment", {
+      method: "POST",
+      body,
+    });
+  },
+
+  /* ─────────── GM Commander v3 — Broadcast agendado ─────────── */
+  queueBroadcastMessage(body: QueueBroadcastMessagePayload) {
+    return callAction<QueueBroadcastMessageResponse>("queueBroadcastMessage", {
+      method: "POST",
+      body,
+    });
+  },
+
+  /* ─────────── Meridiano & Títulos ─────────── */
+  getMeridianTitlePresetCatalog() {
+    return callAction<MeridianTitlePresetCatalogResponse>(
+      "getMeridianTitlePresetCatalog",
+      { method: "GET" },
+    );
+  },
+  previewMeridianTitlePreset(body: MeridianTitlePresetRequest) {
+    return callAction<MeridianTitlePreviewResponse>("previewMeridianTitlePreset", {
+      method: "POST",
+      body,
+    });
+  },
+  applyMeridianTitlePreset(body: MeridianTitlePresetRequest) {
+    return callAction<MeridianTitleApplyResponse>("applyMeridianTitlePreset", {
+      method: "POST",
+      body,
+    });
+  },
 };
+
+/* ─────────── GM Commander v3 — tipos ─────────── */
+
+export type QuickPunishmentPresetId =
+  | "kick_role"
+  | "mute_account_temporary"
+  | "mute_role_temporary"
+  | "ban_account_temporary"
+  | "ban_account_permanent"
+  | "jail"
+  | string;
+
+export interface QuickPunishmentPreset {
+  id: QuickPunishmentPresetId;
+  label: string;
+  summary?: string;
+  description?: string;
+  underlying_action?: string;
+  target_scope?: "role" | "account" | string;
+  /** Estado retornado pelo catálogo: "supported" | "contract_only" | "unsupported". */
+  state?: string;
+  required_role?: string;
+  /** Permite duração customizada (ex.: mute/ban temporário). */
+  supports_duration?: boolean;
+  /** Sugestões de duração (segundos) que a UI pode oferecer como atalhos. */
+  duration_presets_seconds?: number[];
+  default_duration_seconds?: number;
+  /** Aceita kick_online quando aplicável (ex.: ban). */
+  supports_kick_online?: boolean;
+  warnings?: string[];
+  [k: string]: unknown;
+}
+
+export interface QuickPunishmentCatalogResponse {
+  success: boolean;
+  presets?: QuickPunishmentPreset[];
+  warnings?: string[];
+  error?: string;
+}
+
+export interface QuickPunishmentRequest {
+  preset: QuickPunishmentPresetId;
+  roleid: number | string;
+  reason: string;
+  duration_seconds?: number;
+  kick_online?: boolean;
+  context?: Record<string, unknown>;
+  dry_run?: boolean;
+}
+
+export interface QuickPunishmentResponse {
+  success: boolean;
+  dry_run?: boolean;
+  preset?: QuickPunishmentPresetId;
+  underlying_action?: string;
+  target_scope?: string;
+  resolved?: {
+    roleid?: number;
+    userid?: number | string;
+    account?: string;
+    name?: string;
+  };
+  duration_seconds?: number;
+  warnings?: string[];
+  result?: {
+    message?: string;
+    warning?: string;
+    account_ban?: Record<string, unknown>;
+    [k: string]: unknown;
+  };
+  error?: string;
+}
+
+export interface QueueBroadcastMessagePayload {
+  message: string;
+  kind?: string;
+  priority?: string;
+  channel?: string;
+  /** Estilo ainda não funcional no protocolo — backend trata como metadado. */
+  style?: string;
+  repeat_count?: number;
+  repeat_interval_seconds?: number;
+  schedule_at?: string;
+  context?: Record<string, unknown>;
+  dry_run?: boolean;
+}
+
+export interface QueueBroadcastJob {
+  job_id?: string;
+  schedule_at?: string;
+  not_before_at?: string;
+  index?: number;
+  status?: string;
+  [k: string]: unknown;
+}
+
+export interface QueueBroadcastMessageResponse {
+  success: boolean;
+  dry_run?: boolean;
+  campaign_id?: string;
+  repeat_count?: number;
+  repeat_interval_seconds?: number;
+  schedule_at?: string;
+  schedule_timezone?: string;
+  not_before_at?: string;
+  jobs?: QueueBroadcastJob[];
+  context?: Record<string, unknown>;
+  warnings?: string[];
+  error?: string;
+}
+
+/* ─────────── Meridiano & Títulos — tipos ─────────── */
+
+export type MeridianTitlePresetId =
+  | "full_meridian"
+  | "full_titles"
+  | "full_meridian_titles"
+  | "reset_meridian"
+  | "reset_titles"
+  | "reset_meridian_titles"
+  | string;
+
+export type MeridianTargetMode = "role" | "cls_template";
+
+export interface MeridianTitlePresetMeta {
+  id: MeridianTitlePresetId;
+  label: string;
+  summary?: string;
+  kind?: "full" | "reset" | string;
+  scope?: "meridian" | "titles" | "meridian_titles" | string;
+  warnings?: string[];
+  [k: string]: unknown;
+}
+
+export interface MeridianClsTemplateMeta {
+  id: string | number;
+  label?: string;
+  cls?: number;
+  [k: string]: unknown;
+}
+
+export interface MeridianTitlePresetCatalogResponse {
+  success: boolean;
+  presets?: MeridianTitlePresetMeta[];
+  target_modes?: MeridianTargetMode[];
+  cls_templates?: MeridianClsTemplateMeta[];
+  warnings?: string[];
+  error?: string;
+}
+
+export interface MeridianTitlePresetRequest {
+  preset: MeridianTitlePresetId;
+  target_mode: MeridianTargetMode;
+  roleid?: number | string;
+  cls_template_id?: string | number;
+  kick_online?: boolean;
+  context?: Record<string, unknown>;
+}
+
+export interface MeridianDiffBlock {
+  current?: Record<string, unknown> | unknown[];
+  after?: Record<string, unknown> | unknown[];
+  would_change?: boolean;
+  changed_fields?: string[];
+  baseline?: Record<string, unknown> | unknown[];
+  baseline_source?: string;
+  [k: string]: unknown;
+}
+
+export interface MeridianTitlePreviewResponse {
+  success: boolean;
+  preset?: MeridianTitlePresetId;
+  target_mode?: MeridianTargetMode;
+  target?: Record<string, unknown>;
+  diff?: MeridianDiffBlock;
+  current?: MeridianDiffBlock["current"];
+  after?: MeridianDiffBlock["after"];
+  would_change?: boolean;
+  baseline?: MeridianDiffBlock["baseline"];
+  baseline_source?: string;
+  warnings?: string[];
+  error?: string;
+}
+
+export interface MeridianTitleApplyResponse {
+  success: boolean;
+  preset?: MeridianTitlePresetId;
+  target_mode?: MeridianTargetMode;
+  target?: Record<string, unknown>;
+  changed?: boolean;
+  save?: Record<string, unknown>;
+  verified?: boolean;
+  session_kick?: Record<string, unknown> | boolean;
+  audit_file?: string;
+  warnings?: string[];
+  error?: string;
+}
 
 /* ─────────── Rank PvP — tipos ─────────── */
 

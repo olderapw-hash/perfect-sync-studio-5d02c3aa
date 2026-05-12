@@ -111,6 +111,9 @@ import {
 import { NoActiveServerState } from "@/components/admin/NoActiveServerState";
 import { EndpointMissingNotice } from "@/components/admin/EndpointMissingNotice";
 import { BulkCommanderTab } from "@/components/admin/BulkCommanderTab";
+import { QuickPunishmentTab } from "@/components/admin/gm/QuickPunishmentTab";
+import { BroadcastScheduleTab } from "@/components/admin/gm/BroadcastScheduleTab";
+import { MeridianTitlesTab } from "@/components/admin/gm/MeridianTitlesTab";
 
 import { useAuth } from "@/hooks/useAuth";
 import { OperatorPermissionsProvider, useOperatorPermissions } from "@/hooks/useOperatorPermissions";
@@ -324,7 +327,16 @@ const ROLE_LABELS: Record<string, string> = {
   super_admin: "Super Admin",
 };
 
-type TabKey = "compensation" | "moderation" | "communication" | "permissions" | "bulk" | "history";
+type TabKey =
+  | "compensation"
+  | "moderation"
+  | "communication"
+  | "permissions"
+  | "bulk"
+  | "punish"
+  | "meridian"
+  | "broadcast"
+  | "history";
 
 
 const DEFAULT_TAB_ICONS: Record<TabKey, string> = {
@@ -333,6 +345,9 @@ const DEFAULT_TAB_ICONS: Record<TabKey, string> = {
   communication: "MessageSquare",
   permissions: "Shield",
   bulk: "Users",
+  punish: "ShieldAlert",
+  meridian: "Crown",
+  broadcast: "Megaphone",
   history: "History",
 };
 
@@ -552,7 +567,10 @@ function GmCommanderPageInner() {
             {([
               { key: "compensation" as TabKey, label: "Compensação", gateAction: "sendMailItem" },
               { key: "moderation" as TabKey, label: "Moderação", gateAction: "kickRole" },
+              { key: "punish" as TabKey, label: "Punições rápidas", gateAction: "previewQuickPunishment" },
               { key: "communication" as TabKey, label: "Comunicação", gateAction: "sendSystemMessage" },
+              { key: "broadcast" as TabKey, label: "Broadcast agendado", gateAction: "queueBroadcastMessage" },
+              { key: "meridian" as TabKey, label: "Meridiano & Títulos", gateAction: "previewMeridianTitlePreset" },
               { key: "permissions" as TabKey, label: "Permissões GM", gateAction: "grantGmPermission" },
               { key: "bulk" as TabKey, label: "Bulk Commander", gateAction: "queueBulkCommand" },
               { key: "history" as TabKey, label: "Histórico", gateAction: "getGmActionHistory" },
@@ -580,8 +598,17 @@ function GmCommanderPageInner() {
           <TabsContent value="moderation" className="space-y-4">
             <ModerationTab caps={caps} onActed={refreshHistory} isSuperadmin={isSuperadmin} cardVisibility={cardVisibility} onToggleVisibility={toggleCardVisibility} />
           </TabsContent>
+          <TabsContent value="punish" className="space-y-4">
+            <QuickPunishmentTab />
+          </TabsContent>
           <TabsContent value="communication" className="space-y-4">
             <CommunicationTab caps={caps} onActed={refreshHistory} isSuperadmin={isSuperadmin} cardVisibility={cardVisibility} onToggleVisibility={toggleCardVisibility} />
+          </TabsContent>
+          <TabsContent value="broadcast" className="space-y-4">
+            <BroadcastScheduleTab />
+          </TabsContent>
+          <TabsContent value="meridian" className="space-y-4">
+            <MeridianTitlesTab />
           </TabsContent>
           <TabsContent value="permissions" className="space-y-4">
             <GmPermissionsTab caps={caps} onActed={refreshHistory} isSuperadmin={isSuperadmin} cardVisibility={cardVisibility} onToggleVisibility={toggleCardVisibility} />
@@ -613,6 +640,9 @@ const TAB_LABELS: Record<TabKey, string> = {
   communication: "Comunicação",
   permissions: "Permissões GM",
   bulk: "Bulk Commander",
+  punish: "Punições rápidas",
+  meridian: "Meridiano & Títulos",
+  broadcast: "Broadcast agendado",
   history: "Histórico",
 };
 

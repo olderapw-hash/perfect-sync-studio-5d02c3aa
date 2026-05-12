@@ -327,7 +327,16 @@ const ROLE_LABELS: Record<string, string> = {
   super_admin: "Super Admin",
 };
 
-type TabKey = "compensation" | "moderation" | "communication" | "permissions" | "bulk" | "history";
+type TabKey =
+  | "compensation"
+  | "moderation"
+  | "communication"
+  | "permissions"
+  | "bulk"
+  | "punish"
+  | "meridian"
+  | "broadcast"
+  | "history";
 
 
 const DEFAULT_TAB_ICONS: Record<TabKey, string> = {
@@ -336,6 +345,9 @@ const DEFAULT_TAB_ICONS: Record<TabKey, string> = {
   communication: "MessageSquare",
   permissions: "Shield",
   bulk: "Users",
+  punish: "ShieldAlert",
+  meridian: "Crown",
+  broadcast: "Megaphone",
   history: "History",
 };
 

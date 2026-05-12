@@ -1045,20 +1045,28 @@ export type MeridianTitlePresetId =
 
 export type MeridianTargetMode = "role" | "cls_template";
 
+/** Preset retornado pelo gateway real (api_cls_meridian_titles.php).
+ *  Usa `key` como identificador canônico e expõe `baseline_source`. */
 export interface MeridianTitlePresetMeta {
-  id: MeridianTitlePresetId;
+  key: MeridianTitlePresetId;
   label: string;
   summary?: string;
   kind?: "full" | "reset" | string;
   scope?: "meridian" | "titles" | "meridian_titles" | string;
+  baseline_source?: string;
   warnings?: string[];
+  /** Compat legado — não usar em código novo. */
+  id?: MeridianTitlePresetId;
   [k: string]: unknown;
 }
 
+/** Template de classe retornado pelo catálogo. Identificado por `roleid`. */
 export interface MeridianClsTemplateMeta {
-  id: string | number;
+  roleid: number | string;
   label?: string;
   cls?: number;
+  /** Compat legado. */
+  id?: string | number;
   [k: string]: unknown;
 }
 
@@ -1072,10 +1080,12 @@ export interface MeridianTitlePresetCatalogResponse {
 }
 
 export interface MeridianTitlePresetRequest {
+  /** Chave canônica (preset.key). */
   preset: MeridianTitlePresetId;
   target_mode: MeridianTargetMode;
+  /** Para target_mode="role" → roleid do personagem.
+   *  Para target_mode="cls_template" → roleid do template (NÃO usar cls_template_id). */
   roleid?: number | string;
-  cls_template_id?: string | number;
   kick_online?: boolean;
   context?: Record<string, unknown>;
 }
@@ -1090,29 +1100,35 @@ export interface MeridianDiffBlock {
   [k: string]: unknown;
 }
 
+/** Bloco target devolvido pelo backend — contém `target_mode`. */
+export interface MeridianTargetBlock {
+  target_mode?: MeridianTargetMode;
+  roleid?: number | string;
+  cls?: number;
+  [k: string]: unknown;
+}
+
 export interface MeridianTitlePreviewResponse {
   success: boolean;
-  preset?: MeridianTitlePresetId;
-  target_mode?: MeridianTargetMode;
-  target?: Record<string, unknown>;
+  /** Preset retornado pode vir como objeto { key, label, baseline_source, ... }
+   *  ou (compat) como string. */
+  preset?:
+    | { key: MeridianTitlePresetId; label?: string; baseline_source?: string; [k: string]: unknown }
+    | MeridianTitlePresetId;
+  target?: MeridianTargetBlock;
   diff?: MeridianDiffBlock;
-  current?: MeridianDiffBlock["current"];
-  after?: MeridianDiffBlock["after"];
-  would_change?: boolean;
-  baseline?: MeridianDiffBlock["baseline"];
-  baseline_source?: string;
   warnings?: string[];
   error?: string;
 }
 
 export interface MeridianTitleApplyResponse {
   success: boolean;
-  preset?: MeridianTitlePresetId;
-  target_mode?: MeridianTargetMode;
-  target?: Record<string, unknown>;
+  preset?:
+    | { key: MeridianTitlePresetId; label?: string; baseline_source?: string; [k: string]: unknown }
+    | MeridianTitlePresetId;
+  target?: MeridianTargetBlock;
   changed?: boolean;
   save?: Record<string, unknown>;
-  verified?: boolean;
   session_kick?: Record<string, unknown> | boolean;
   audit_file?: string;
   warnings?: string[];

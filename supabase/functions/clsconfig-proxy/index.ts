@@ -629,6 +629,10 @@ Deno.serve(async (req: Request) => {
     "resolveBulkTargets", "previewBulkTargets", "queueBulkCommand",
     "saveBulkTemplate", "updateBulkTemplate", "deleteBulkTemplate",
     "previewBulkTemplate", "executeBulkTemplate",
+    // GM Commander v3 — Punições rápidas / Broadcast / Meridiano.
+    "previewQuickPunishment", "executeQuickPunishment",
+    "queueBroadcastMessage",
+    "previewMeridianTitlePreset", "applyMeridianTitlePreset",
   ]);
 
   /** Checks if the caller has at least a pro (or ultimate) subscription. */

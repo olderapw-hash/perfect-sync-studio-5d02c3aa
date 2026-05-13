@@ -913,24 +913,32 @@ export type QuickPunishmentPresetId =
   | "jail"
   | string;
 
+/** Preset retornado pelo catálogo real da VPS.
+ *  Shape oficial: usa `key` + `status` + `duration_required`.
+ *  Campos legados (`id`, `state`, `supports_duration`) são opcionais
+ *  apenas para compat reversa de leitura. */
 export interface QuickPunishmentPreset {
-  id: QuickPunishmentPresetId;
+  /** Chave canônica (oficial). */
+  key: QuickPunishmentPresetId;
   label: string;
   summary?: string;
   description?: string;
   underlying_action?: string;
   target_scope?: "role" | "account" | string;
-  /** Estado retornado pelo catálogo: "supported" | "contract_only" | "unsupported". */
-  state?: string;
-  required_role?: string;
-  /** Permite duração customizada (ex.: mute/ban temporário). */
-  supports_duration?: boolean;
-  /** Sugestões de duração (segundos) que a UI pode oferecer como atalhos. */
+  /** Status oficial: "supported" | "contract_only" | "unsupported". */
+  status?: string;
+  /** Role mínimo (hierarquia OperatorRole) exigido para executar. */
+  required_role?: OperatorRole | string;
+  /** Indica se duração é obrigatória (ex.: mute/ban temporário). */
+  duration_required?: boolean;
   duration_presets_seconds?: number[];
   default_duration_seconds?: number;
-  /** Aceita kick_online quando aplicável (ex.: ban). */
   supports_kick_online?: boolean;
   warnings?: string[];
+  /** Compat legado — não usar em código novo. */
+  id?: QuickPunishmentPresetId;
+  state?: string;
+  supports_duration?: boolean;
   [k: string]: unknown;
 }
 
@@ -942,6 +950,7 @@ export interface QuickPunishmentCatalogResponse {
 }
 
 export interface QuickPunishmentRequest {
+  /** Chave do preset (preset.key do catálogo). */
   preset: QuickPunishmentPresetId;
   roleid: number | string;
   reason: string;
@@ -951,19 +960,29 @@ export interface QuickPunishmentRequest {
   dry_run?: boolean;
 }
 
+/** Bloco operacional retornado pela API após preview/execute. */
+export interface QuickPunishmentPlan {
+  underlying_action?: string;
+  target_scope?: string;
+  target?: Record<string, unknown>;
+  duration_seconds?: number;
+  warnings?: string[];
+  [k: string]: unknown;
+}
+
 export interface QuickPunishmentResponse {
   success: boolean;
   dry_run?: boolean;
-  preset?: QuickPunishmentPresetId;
-  underlying_action?: string;
-  target_scope?: string;
+  /** Preset agora vem como objeto { key, label, ... }. */
+  preset?: { key: QuickPunishmentPresetId; label?: string; [k: string]: unknown };
+  /** Detalhes operacionais (substitui campos top-level antigos). */
+  plan?: QuickPunishmentPlan;
   resolved?: {
     roleid?: number;
     userid?: number | string;
     account?: string;
     name?: string;
   };
-  duration_seconds?: number;
   warnings?: string[];
   result?: {
     message?: string;
@@ -978,7 +997,8 @@ export interface QueueBroadcastMessagePayload {
   message: string;
   kind?: string;
   priority?: string;
-  channel?: string;
+  /** Canal numérico exigido pelo backend (1-255). */
+  channel?: number;
   /** Estilo ainda não funcional no protocolo — backend trata como metadado. */
   style?: string;
   repeat_count?: number;
@@ -1025,20 +1045,28 @@ export type MeridianTitlePresetId =
 
 export type MeridianTargetMode = "role" | "cls_template";
 
+/** Preset retornado pelo gateway real (api_cls_meridian_titles.php).
+ *  Usa `key` como identificador canônico e expõe `baseline_source`. */
 export interface MeridianTitlePresetMeta {
-  id: MeridianTitlePresetId;
+  key: MeridianTitlePresetId;
   label: string;
   summary?: string;
   kind?: "full" | "reset" | string;
   scope?: "meridian" | "titles" | "meridian_titles" | string;
+  baseline_source?: string;
   warnings?: string[];
+  /** Compat legado — não usar em código novo. */
+  id?: MeridianTitlePresetId;
   [k: string]: unknown;
 }
 
+/** Template de classe retornado pelo catálogo. Identificado por `roleid`. */
 export interface MeridianClsTemplateMeta {
-  id: string | number;
+  roleid: number | string;
   label?: string;
   cls?: number;
+  /** Compat legado. */
+  id?: string | number;
   [k: string]: unknown;
 }
 
@@ -1052,10 +1080,12 @@ export interface MeridianTitlePresetCatalogResponse {
 }
 
 export interface MeridianTitlePresetRequest {
+  /** Chave canônica (preset.key). */
   preset: MeridianTitlePresetId;
   target_mode: MeridianTargetMode;
+  /** Para target_mode="role" → roleid do personagem.
+   *  Para target_mode="cls_template" → roleid do template (NÃO usar cls_template_id). */
   roleid?: number | string;
-  cls_template_id?: string | number;
   kick_online?: boolean;
   context?: Record<string, unknown>;
 }
@@ -1070,29 +1100,35 @@ export interface MeridianDiffBlock {
   [k: string]: unknown;
 }
 
+/** Bloco target devolvido pelo backend — contém `target_mode`. */
+export interface MeridianTargetBlock {
+  target_mode?: MeridianTargetMode;
+  roleid?: number | string;
+  cls?: number;
+  [k: string]: unknown;
+}
+
 export interface MeridianTitlePreviewResponse {
   success: boolean;
-  preset?: MeridianTitlePresetId;
-  target_mode?: MeridianTargetMode;
-  target?: Record<string, unknown>;
+  /** Preset retornado pode vir como objeto { key, label, baseline_source, ... }
+   *  ou (compat) como string. */
+  preset?:
+    | { key: MeridianTitlePresetId; label?: string; baseline_source?: string; [k: string]: unknown }
+    | MeridianTitlePresetId;
+  target?: MeridianTargetBlock;
   diff?: MeridianDiffBlock;
-  current?: MeridianDiffBlock["current"];
-  after?: MeridianDiffBlock["after"];
-  would_change?: boolean;
-  baseline?: MeridianDiffBlock["baseline"];
-  baseline_source?: string;
   warnings?: string[];
   error?: string;
 }
 
 export interface MeridianTitleApplyResponse {
   success: boolean;
-  preset?: MeridianTitlePresetId;
-  target_mode?: MeridianTargetMode;
-  target?: Record<string, unknown>;
+  preset?:
+    | { key: MeridianTitlePresetId; label?: string; baseline_source?: string; [k: string]: unknown }
+    | MeridianTitlePresetId;
+  target?: MeridianTargetBlock;
   changed?: boolean;
   save?: Record<string, unknown>;
-  verified?: boolean;
   session_kick?: Record<string, unknown> | boolean;
   audit_file?: string;
   warnings?: string[];

@@ -5,8 +5,12 @@
 //   POST ?action=previewMeridianTitlePreset
 //   POST ?action=applyMeridianTitlePreset
 //
-// `full_*` aplica o preset legado; `reset_*` volta para o baseline padrão
-// salvo/restaurado pelo backend. NUNCA inventamos baseline localmente.
+// Contrato real:
+//   - preset.key (não "id")
+//   - cls_template.roleid (não "id" / "cls_template_id")
+//   - request envia `roleid` para os dois target_modes
+//   - response: target.target_mode, preset.baseline_source
+//   - NÃO existe `verified` no topo (apenas `changed` + `save`).
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Crown, Loader2, RefreshCw, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +41,20 @@ import {
   type MeridianTitlePreviewResponse,
 } from "@/lib/pwApiActions";
 
+/** preset.key oficial (compat com VPS antigas que ainda mandam `id`). */
+function pKey(p: MeridianTitlePresetMeta): string {
+  return (p.key ?? p.id ?? "") as string;
+}
+
+/** Normaliza preset retornado: pode vir como string ou objeto. */
+function readPreset(
+  p: MeridianTitlePreviewResponse["preset"] | MeridianTitleApplyResponse["preset"],
+): { key?: string; label?: string; baseline_source?: string } {
+  if (!p) return {};
+  if (typeof p === "string") return { key: p };
+  return { key: p.key, label: p.label, baseline_source: p.baseline_source };
+}
+
 export function MeridianTitlesTab() {
   const { canAction, loading: permLoading } = useOperatorPermissions();
   const canPreview = canAction("previewMeridianTitlePreset");
@@ -47,10 +65,10 @@ export function MeridianTitlesTab() {
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogError, setCatalogError] = useState<string | null>(null);
 
-  const [presetId, setPresetId] = useState<string | null>(null);
+  const [presetKeyState, setPresetKeyState] = useState<string | null>(null);
   const [targetMode, setTargetMode] = useState<MeridianTargetMode>("role");
   const [roleid, setRoleid] = useState("");
-  const [clsTemplateId, setClsTemplateId] = useState<string>("");
+  const [templateRoleid, setTemplateRoleid] = useState<string>("");
   const [kickOnline, setKickOnline] = useState(false);
 
   const [previewBusy, setPreviewBusy] = useState(false);
@@ -89,14 +107,14 @@ export function MeridianTitlesTab() {
   );
   const clsTemplates = useMemo(() => catalog?.cls_templates ?? [], [catalog]);
   const selected = useMemo<MeridianTitlePresetMeta | null>(
-    () => presets.find((p) => p.id === presetId) ?? null,
-    [presets, presetId],
+    () => presets.find((p) => pKey(p) === presetKeyState) ?? null,
+    [presets, presetKeyState],
   );
 
   const buildPayload = (): MeridianTitlePresetRequest | null => {
     if (!selected) return null;
     const payload: MeridianTitlePresetRequest = {
-      preset: selected.id,
+      preset: pKey(selected),
       target_mode: targetMode,
     };
     if (targetMode === "role") {
@@ -104,8 +122,9 @@ export function MeridianTitlesTab() {
       payload.roleid = roleid.trim();
       if (kickOnline) payload.kick_online = true;
     } else {
-      if (!clsTemplateId) return null;
-      payload.cls_template_id = clsTemplateId;
+      // cls_template → backend espera `roleid` do template (não cls_template_id).
+      if (!templateRoleid) return null;
+      payload.roleid = templateRoleid;
     }
     return payload;
   };
@@ -185,13 +204,14 @@ export function MeridianTitlesTab() {
           ) : (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {presets.map((p) => {
-                const active = presetId === p.id;
-                const isReset = (p.id ?? "").startsWith("reset_") || p.kind === "reset";
+                const k = pKey(p);
+                const active = presetKeyState === k;
+                const isReset = k.startsWith("reset_") || p.kind === "reset";
                 return (
                   <button
-                    key={p.id}
+                    key={k}
                     type="button"
-                    onClick={() => setPresetId(p.id)}
+                    onClick={() => setPresetKeyState(k)}
                     className={cn(
                       "rounded-xl border p-3 text-left transition-all",
                       active
@@ -217,11 +237,18 @@ export function MeridianTitlesTab() {
                     {p.summary && (
                       <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">{p.summary}</p>
                     )}
-                    {p.scope && (
-                      <Badge variant="secondary" className="mt-2 text-[9px] uppercase">
-                        {p.scope}
-                      </Badge>
-                    )}
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {p.scope && (
+                        <Badge variant="secondary" className="text-[9px] uppercase">
+                          {p.scope}
+                        </Badge>
+                      )}
+                      {p.baseline_source && (
+                        <Badge variant="outline" className="text-[9px] uppercase">
+                          baseline: {p.baseline_source}
+                        </Badge>
+                      )}
+                    </div>
                   </button>
                 );
               })}
@@ -264,18 +291,22 @@ export function MeridianTitlesTab() {
                 </div>
               ) : (
                 <div>
-                  <Label className="text-xs">cls_template</Label>
-                  <Select value={clsTemplateId} onValueChange={setClsTemplateId}>
+                  <Label className="text-xs">cls_template (roleid)</Label>
+                  <Select value={templateRoleid} onValueChange={setTemplateRoleid}>
                     <SelectTrigger>
                       <SelectValue placeholder={clsTemplates.length === 0 ? "Catálogo vazio" : "Selecione…"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {clsTemplates.map((t) => (
-                        <SelectItem key={String(t.id)} value={String(t.id)}>
-                          {t.label ?? `cls_template ${t.id}`}
-                          {typeof t.cls === "number" ? ` · cls ${t.cls}` : ""}
-                        </SelectItem>
-                      ))}
+                      {clsTemplates.map((t) => {
+                        const rid = String(t.roleid ?? t.id ?? "");
+                        return (
+                          <SelectItem key={rid} value={rid}>
+                            {t.label ?? `template ${rid}`}
+                            {typeof t.cls === "number" ? ` · cls ${t.cls}` : ""}
+                            {` · roleid ${rid}`}
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
@@ -345,11 +376,14 @@ export function MeridianTitlesTab() {
 }
 
 function PreviewView({ preview }: { preview: MeridianTitlePreviewResponse }) {
-  const wouldChange = preview.would_change ?? preview.diff?.would_change;
-  const baseline = preview.baseline ?? preview.diff?.baseline;
-  const baselineSource = preview.baseline_source ?? preview.diff?.baseline_source;
-  const current = preview.current ?? preview.diff?.current;
-  const after = preview.after ?? preview.diff?.after;
+  const presetInfo = readPreset(preview.preset);
+  const targetMode = preview.target?.target_mode;
+  const diff = preview.diff ?? {};
+  const wouldChange = diff.would_change;
+  const baseline = diff.baseline;
+  const baselineSource = presetInfo.baseline_source ?? diff.baseline_source;
+  const current = diff.current;
+  const after = diff.after;
   return (
     <Card className="border-border/50 bg-card/40 backdrop-blur-sm">
       <CardHeader className="pb-2">
@@ -357,8 +391,8 @@ function PreviewView({ preview }: { preview: MeridianTitlePreviewResponse }) {
       </CardHeader>
       <CardContent className="space-y-2 text-xs">
         <div className="flex flex-wrap gap-2">
-          {preview.preset && <Badge variant="outline">preset: {preview.preset}</Badge>}
-          {preview.target_mode && <Badge variant="outline">{preview.target_mode}</Badge>}
+          {presetInfo.key && <Badge variant="outline">preset: {presetInfo.key}</Badge>}
+          {targetMode && <Badge variant="outline">{targetMode}</Badge>}
           {wouldChange != null && (
             <Badge variant={wouldChange ? "default" : "secondary"}>
               would_change: {String(wouldChange)}
@@ -388,6 +422,8 @@ function PreviewView({ preview }: { preview: MeridianTitlePreviewResponse }) {
 }
 
 function ApplyView({ apply }: { apply: MeridianTitleApplyResponse }) {
+  const presetInfo = readPreset(apply.preset);
+  const targetMode = apply.target?.target_mode;
   return (
     <Card
       className={cn(
@@ -401,13 +437,13 @@ function ApplyView({ apply }: { apply: MeridianTitleApplyResponse }) {
       <CardContent className="space-y-2 text-xs">
         <div className="flex flex-wrap gap-2">
           <Badge variant={apply.success ? "default" : "destructive"}>success: {String(apply.success)}</Badge>
-          {apply.preset && <Badge variant="outline">preset: {apply.preset}</Badge>}
-          {apply.target_mode && <Badge variant="outline">{apply.target_mode}</Badge>}
+          {presetInfo.key && <Badge variant="outline">preset: {presetInfo.key}</Badge>}
+          {targetMode && <Badge variant="outline">{targetMode}</Badge>}
           {apply.changed != null && (
             <Badge variant={apply.changed ? "default" : "secondary"}>changed: {String(apply.changed)}</Badge>
           )}
-          {apply.verified != null && (
-            <Badge variant={apply.verified ? "default" : "secondary"}>verified: {String(apply.verified)}</Badge>
+          {presetInfo.baseline_source && (
+            <Badge variant="outline">baseline_source: {presetInfo.baseline_source}</Badge>
           )}
         </div>
         {apply.warnings && apply.warnings.length > 0 && (

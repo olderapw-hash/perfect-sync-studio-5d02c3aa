@@ -26,7 +26,8 @@ export function BroadcastScheduleTab() {
   const [message, setMessage] = useState("");
   const [kind, setKind] = useState("system");
   const [priority, setPriority] = useState("normal");
-  const [channel, setChannel] = useState("global");
+  // Backend exige `channel` numérico entre 1 e 255 — default seguro = 1 (global).
+  const [channel, setChannel] = useState<string>("1");
   const [style, setStyle] = useState("");
   const [repeatCount, setRepeatCount] = useState("1");
   const [repeatInterval, setRepeatInterval] = useState("");
@@ -37,12 +38,21 @@ export function BroadcastScheduleTab() {
   const [result, setResult] = useState<QueueBroadcastMessageResponse | null>(null);
   const [resultKind, setResultKind] = useState<"preview" | "submit" | null>(null);
 
+  const channelNumber = (() => {
+    const n = Number(channel.trim());
+    if (!Number.isFinite(n) || !Number.isInteger(n)) return null;
+    if (n < 1 || n > 255) return null;
+    return n;
+  })();
+  const channelInvalid = channel.trim() !== "" && channelNumber == null;
+
   const buildPayload = (dryRun: boolean): QueueBroadcastMessagePayload | null => {
     if (!message.trim()) return null;
+    if (channelInvalid) return null;
     const payload: QueueBroadcastMessagePayload = { message: message.trim() };
     if (kind.trim()) payload.kind = kind.trim();
     if (priority.trim()) payload.priority = priority.trim();
-    if (channel.trim()) payload.channel = channel.trim();
+    if (channelNumber != null) payload.channel = channelNumber;
     if (style.trim()) payload.style = style.trim();
     if (repeatCount.trim()) {
       const n = Number(repeatCount.trim());
@@ -107,8 +117,19 @@ export function BroadcastScheduleTab() {
               <Input value={priority} onChange={(e) => setPriority(e.target.value)} placeholder="normal" />
             </div>
             <div>
-              <Label className="text-xs">channel</Label>
-              <Input value={channel} onChange={(e) => setChannel(e.target.value)} placeholder="global" />
+              <Label className="text-xs">channel (1-255)</Label>
+              <Input
+                value={channel}
+                onChange={(e) => setChannel(e.target.value)}
+                inputMode="numeric"
+                placeholder="ex: 1 = global"
+                className={cn(channelInvalid && "border-destructive")}
+              />
+              {channelInvalid && (
+                <p className="mt-1 text-[10px] text-destructive">
+                  Backend exige inteiro entre 1 e 255.
+                </p>
+              )}
             </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
@@ -155,14 +176,14 @@ export function BroadcastScheduleTab() {
             <Button
               variant="outline"
               onClick={() => void submit(true)}
-              disabled={permLoading || !can || busy !== "none" || !message.trim()}
+              disabled={permLoading || !can || busy !== "none" || !message.trim() || channelInvalid}
             >
               {busy === "preview" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
               Simular
             </Button>
             <Button
               onClick={() => void submit(false)}
-              disabled={permLoading || !can || busy !== "none" || !message.trim()}
+              disabled={permLoading || !can || busy !== "none" || !message.trim() || channelInvalid}
             >
               {busy === "submit" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
               Agendar

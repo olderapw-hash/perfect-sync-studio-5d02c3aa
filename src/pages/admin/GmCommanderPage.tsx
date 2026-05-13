@@ -507,8 +507,8 @@ function GmCommanderPageInner() {
               <Zap className="h-3 w-3" />
               GM · v1
             </div>
-            <h1 className="truncate text-xl font-extrabold tracking-tight text-foreground">
-              GM Commander
+            <h1 className="truncate text-xl font-extrabold tracking-tight text-foreground uppercase">
+              cOMANDOS gm
             </h1>
             <p className="text-xs leading-relaxed text-muted-foreground">
               Compensação, moderação e comunicação operacional. Toda ação

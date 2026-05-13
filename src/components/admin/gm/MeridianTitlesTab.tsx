@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { EndpointMissingNotice } from "@/components/admin/EndpointMissingNotice";
-import { useOperatorPermissions } from "@/hooks/useOperatorPermissions";
+import { roleMeetsRequirement, useOperatorPermissions } from "@/hooks/useOperatorPermissions";
 import { cn } from "@/lib/utils";
 import {
   EndpointMissingError,

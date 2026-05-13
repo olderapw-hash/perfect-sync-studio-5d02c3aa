@@ -121,6 +121,7 @@ import { useServers } from "@/hooks/useServers";
 import { useServerPermissions } from "@/hooks/useServerPermissions";
 import { logAuditEvent } from "@/lib/auditLog";
 import { cn } from "@/lib/utils";
+import gmCommanderIcon from "@/assets/gm-commander-icon.png";
 import {
   EndpointMissingError,
   pwApi,
@@ -498,8 +499,8 @@ function GmCommanderPageInner() {
         <div className="pointer-events-none absolute -left-10 bottom-0 h-40 w-40 rounded-full bg-primary/5 blur-3xl" />
         
         <div className="relative flex flex-wrap items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-purple-500/30 bg-purple-500/10 text-purple-400 ring-1 ring-purple-500/10 transition-transform hover:scale-105">
-            <Wand2 className="h-6 w-6" />
+          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-purple-500/30 bg-[#050505] ring-1 ring-purple-500/10 transition-transform hover:scale-105">
+            <img src={gmCommanderIcon} alt="GM Commander" className="h-full w-full object-contain" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-purple-400 shadow-[0_0_12px_-3px_hsl(270_60%_55%/0.3)]">

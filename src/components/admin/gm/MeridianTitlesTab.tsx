@@ -359,9 +359,14 @@ export function MeridianTitlesTab() {
                 {applyBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
                 Aplicar
               </Button>
-              {!canApply && !permLoading && (
+              {!canApplyAction && !permLoading && (
                 <span className="text-[11px] text-amber-400">
                   Operador sem permissão para aplicar (canAction=false).
+                </span>
+              )}
+              {canApplyAction && !operatorMeetsApplyRole && !permLoading && (
+                <span className="text-[11px] text-destructive">
+                  target_mode <code>{targetMode}</code> exige role <code>{requiredApplyRole}</code>.
                 </span>
               )}
             </div>

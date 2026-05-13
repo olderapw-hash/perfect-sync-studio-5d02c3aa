@@ -150,7 +150,7 @@ const SECTIONS: NavSection[] = [
   },
   {
     id: "gm",
-    label: "GM Commander",
+    label: "cOMANDOS gm",
     icon: GmCommanderIcon,
     basePath: "/admin/gm",
     proInTrial: true,

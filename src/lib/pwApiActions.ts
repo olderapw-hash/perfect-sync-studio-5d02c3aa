@@ -945,6 +945,9 @@ export interface QuickPunishmentPreset {
 export interface QuickPunishmentCatalogResponse {
   success: boolean;
   presets?: QuickPunishmentPreset[];
+  /** Presets retornados pelo backend como NÃO suportados/contract_only.
+   *  A UI deve renderizá-los visivelmente bloqueados (ex.: jail). */
+  unsupported_presets?: QuickPunishmentPreset[];
   warnings?: string[];
   error?: string;
 }

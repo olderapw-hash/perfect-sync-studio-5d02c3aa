@@ -119,9 +119,12 @@ const ACTION_PERMISSION_MAP: Record<string, keyof OperatorPermissions> = {
   previewQuickPunishment: "bulk_rewards",
   executeQuickPunishment: "bulk_rewards",
   queueBroadcastMessage: "broadcast",
+  // Meridiano/Títulos: preview = viewer; apply = gm_admin (role) /
+  // super_admin (cls_template). O gating fino por target_mode é feito
+  // direto na UI com roleMeetsRequirement().
   getMeridianTitlePresetCatalog: "read",
-  previewMeridianTitlePreset: "bulk_rewards",
-  applyMeridianTitlePreset: "bulk_rewards",
+  previewMeridianTitlePreset: "read",
+  applyMeridianTitlePreset: "cash_and_gm_permissions",
 };
 
 /* ─── Hierarquia de roles (alinhado ao backend) ─── */

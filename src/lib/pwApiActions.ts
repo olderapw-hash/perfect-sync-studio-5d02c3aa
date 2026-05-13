@@ -945,6 +945,9 @@ export interface QuickPunishmentPreset {
 export interface QuickPunishmentCatalogResponse {
   success: boolean;
   presets?: QuickPunishmentPreset[];
+  /** Presets retornados pelo backend como NÃO suportados/contract_only.
+   *  A UI deve renderizá-los visivelmente bloqueados (ex.: jail). */
+  unsupported_presets?: QuickPunishmentPreset[];
   warnings?: string[];
   error?: string;
 }
@@ -1116,6 +1119,14 @@ export interface MeridianTitlePreviewResponse {
     | { key: MeridianTitlePresetId; label?: string; baseline_source?: string; [k: string]: unknown }
     | MeridianTitlePresetId;
   target?: MeridianTargetBlock;
+  /** Shape REAL do gateway: blocos top-level. */
+  current?: Record<string, unknown> | unknown[];
+  after?: Record<string, unknown> | unknown[];
+  baseline?: Record<string, unknown> | unknown[];
+  would_change?: boolean;
+  changed_fields?: string[];
+  baseline_source?: string;
+  /** Compat com versões antigas que aninhavam tudo em `diff`. */
   diff?: MeridianDiffBlock;
   warnings?: string[];
   error?: string;

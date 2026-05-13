@@ -277,9 +277,11 @@ const ACTION_PERMISSION: Record<string, string> = {
   // GM Commander v3 — Broadcast agendado.
   queueBroadcastMessage: "save_templates",
   // Meridiano & Títulos.
+  // Meridiano/Títulos: preview = view; apply = manage_servers (gating fino
+  // por target_mode role/cls_template é feito na UI + reforçado pela VPS).
   getMeridianTitlePresetCatalog: "view",
-  previewMeridianTitlePreset: "save_real_roles",
-  applyMeridianTitlePreset: "save_real_roles",
+  previewMeridianTitlePreset: "view",
+  applyMeridianTitlePreset: "manage_servers",
 };
 
 function jsonError(message: string, status: number): Response {

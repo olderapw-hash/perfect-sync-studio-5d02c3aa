@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { EndpointMissingNotice } from "@/components/admin/EndpointMissingNotice";
-import { useOperatorPermissions } from "@/hooks/useOperatorPermissions";
+import { roleMeetsRequirement, useOperatorPermissions } from "@/hooks/useOperatorPermissions";
 import { cn } from "@/lib/utils";
 import {
   EndpointMissingError,
@@ -56,9 +56,9 @@ function readPreset(
 }
 
 export function MeridianTitlesTab() {
-  const { canAction, loading: permLoading } = useOperatorPermissions();
+  const { canAction, role: operatorRole, loading: permLoading } = useOperatorPermissions();
   const canPreview = canAction("previewMeridianTitlePreset");
-  const canApply = canAction("applyMeridianTitlePreset");
+  const canApplyAction = canAction("applyMeridianTitlePreset");
 
   const [catalog, setCatalog] = useState<MeridianTitlePresetCatalogResponse | null>(null);
   const [catalogMissing, setCatalogMissing] = useState(false);
@@ -76,6 +76,12 @@ export function MeridianTitlesTab() {
   const [preview, setPreview] = useState<MeridianTitlePreviewResponse | null>(null);
   const [apply, setApply] = useState<MeridianTitleApplyResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  /** Gating fino: backend exige gm_admin para target_mode=role
+   *  e super_admin para target_mode=cls_template. */
+  const requiredApplyRole = targetMode === "cls_template" ? "super_admin" : "gm_admin";
+  const operatorMeetsApplyRole = roleMeetsRequirement(operatorRole, requiredApplyRole);
+  const canApply = canApplyAction && operatorMeetsApplyRole;
 
   const loadCatalog = useCallback(async () => {
     setCatalogLoading(true);
@@ -353,9 +359,14 @@ export function MeridianTitlesTab() {
                 {applyBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
                 Aplicar
               </Button>
-              {!canApply && !permLoading && (
+              {!canApplyAction && !permLoading && (
                 <span className="text-[11px] text-amber-400">
                   Operador sem permissão para aplicar (canAction=false).
+                </span>
+              )}
+              {canApplyAction && !operatorMeetsApplyRole && !permLoading && (
+                <span className="text-[11px] text-destructive">
+                  target_mode <code>{targetMode}</code> exige role <code>{requiredApplyRole}</code>.
                 </span>
               )}
             </div>
@@ -378,12 +389,15 @@ export function MeridianTitlesTab() {
 function PreviewView({ preview }: { preview: MeridianTitlePreviewResponse }) {
   const presetInfo = readPreset(preview.preset);
   const targetMode = preview.target?.target_mode;
+  // Shape REAL do gateway: blocos top-level. Mantém fallback para `diff.*`
+  // só pra tolerar versões antigas do PHP.
   const diff = preview.diff ?? {};
-  const wouldChange = diff.would_change;
-  const baseline = diff.baseline;
-  const baselineSource = presetInfo.baseline_source ?? diff.baseline_source;
-  const current = diff.current;
-  const after = diff.after;
+  const wouldChange = preview.would_change ?? diff.would_change;
+  const baseline = preview.baseline ?? diff.baseline;
+  const baselineSource =
+    presetInfo.baseline_source ?? preview.baseline_source ?? diff.baseline_source;
+  const current = preview.current ?? diff.current;
+  const after = preview.after ?? diff.after;
   return (
     <Card className="border-border/50 bg-card/40 backdrop-blur-sm">
       <CardHeader className="pb-2">

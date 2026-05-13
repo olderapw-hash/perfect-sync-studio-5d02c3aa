@@ -110,6 +110,12 @@ export function QuickPunishmentTab() {
   }, [loadCatalog]);
 
   const presets = useMemo(() => catalog?.presets ?? [], [catalog]);
+  /** Presets explicitamente marcados como não suportados pelo backend
+   *  (ex.: jail). Renderizamos visivelmente bloqueados. */
+  const unsupportedPresets = useMemo(
+    () => catalog?.unsupported_presets ?? [],
+    [catalog],
+  );
   const selected = useMemo(
     () => presets.find((p) => presetKey(p) === presetKeyState) ?? null,
     [presets, presetKeyState],
@@ -280,6 +286,54 @@ export function QuickPunishmentTab() {
                   </button>
                 );
               })}
+            </div>
+          )}
+          {unsupportedPresets.length > 0 && (
+            <div className="mt-4">
+              <div className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <Lock className="h-3 w-3" />
+                Presets não suportados pelo backend
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {unsupportedPresets.map((p) => {
+                  const k = presetKey(p);
+                  const Icon = PRESET_ICON[k] ?? Hammer;
+                  const status = presetStatus(p) ?? "unsupported";
+                  return (
+                    <div
+                      key={k}
+                      className="cursor-not-allowed rounded-xl border border-border/30 bg-muted/10 p-3 opacity-60"
+                      title={`Não suportado (${status})`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Icon className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-bold text-muted-foreground line-through">
+                          {p.label ?? k}
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className="ml-auto border-amber-500/40 text-[9px] uppercase text-amber-400"
+                        >
+                          {status}
+                        </Badge>
+                      </div>
+                      {p.summary && (
+                        <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">
+                          {p.summary}
+                        </p>
+                      )}
+                      <div className="mt-2 flex flex-wrap gap-1 text-[9px] uppercase tracking-wider text-muted-foreground">
+                        {p.underlying_action && <Badge variant="secondary">{p.underlying_action}</Badge>}
+                        {p.required_role && (
+                          <Badge variant="outline" className="border-primary/30 text-primary">
+                            {p.required_role}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </CardContent>

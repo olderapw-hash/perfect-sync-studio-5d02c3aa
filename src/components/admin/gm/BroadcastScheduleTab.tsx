@@ -117,8 +117,19 @@ export function BroadcastScheduleTab() {
               <Input value={priority} onChange={(e) => setPriority(e.target.value)} placeholder="normal" />
             </div>
             <div>
-              <Label className="text-xs">channel</Label>
-              <Input value={channel} onChange={(e) => setChannel(e.target.value)} placeholder="global" />
+              <Label className="text-xs">channel (1-255)</Label>
+              <Input
+                value={channel}
+                onChange={(e) => setChannel(e.target.value)}
+                inputMode="numeric"
+                placeholder="ex: 1 = global"
+                className={cn(channelInvalid && "border-destructive")}
+              />
+              {channelInvalid && (
+                <p className="mt-1 text-[10px] text-destructive">
+                  Backend exige inteiro entre 1 e 255.
+                </p>
+              )}
             </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">

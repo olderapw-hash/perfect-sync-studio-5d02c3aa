@@ -121,6 +121,7 @@ import { useServers } from "@/hooks/useServers";
 import { useServerPermissions } from "@/hooks/useServerPermissions";
 import { logAuditEvent } from "@/lib/auditLog";
 import { cn } from "@/lib/utils";
+import gmCommanderIcon from "@/assets/gm-commander-icon.png";
 import {
   EndpointMissingError,
   pwApi,

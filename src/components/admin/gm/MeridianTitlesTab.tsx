@@ -77,6 +77,12 @@ export function MeridianTitlesTab() {
   const [apply, setApply] = useState<MeridianTitleApplyResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  /** Gating fino: backend exige gm_admin para target_mode=role
+   *  e super_admin para target_mode=cls_template. */
+  const requiredApplyRole = targetMode === "cls_template" ? "super_admin" : "gm_admin";
+  const operatorMeetsApplyRole = roleMeetsRequirement(operatorRole, requiredApplyRole);
+  const canApply = canApplyAction && operatorMeetsApplyRole;
+
   const loadCatalog = useCallback(async () => {
     setCatalogLoading(true);
     setCatalogMissing(false);

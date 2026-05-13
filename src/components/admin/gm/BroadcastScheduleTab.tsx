@@ -176,7 +176,7 @@ export function BroadcastScheduleTab() {
             <Button
               variant="outline"
               onClick={() => void submit(true)}
-              disabled={permLoading || !can || busy !== "none" || !message.trim()}
+              disabled={permLoading || !can || busy !== "none" || !message.trim() || channelInvalid}
             >
               {busy === "preview" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
               Simular

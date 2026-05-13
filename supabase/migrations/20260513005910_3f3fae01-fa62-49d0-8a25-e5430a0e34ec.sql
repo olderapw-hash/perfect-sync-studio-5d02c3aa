@@ -1,0 +1,1 @@
+ALTER TABLE public.tenants DROP COLUMN IF EXISTS pw_api_secret;

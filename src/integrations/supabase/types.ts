@@ -1389,7 +1389,6 @@ export type Database = {
           owner_id: string
           primary_color: string | null
           pw_api_base_url: string | null
-          pw_api_secret: string | null
           server_name: string
           updated_at: string
         }
@@ -1406,7 +1405,6 @@ export type Database = {
           owner_id: string
           primary_color?: string | null
           pw_api_base_url?: string | null
-          pw_api_secret?: string | null
           server_name?: string
           updated_at?: string
         }
@@ -1423,7 +1421,6 @@ export type Database = {
           owner_id?: string
           primary_color?: string | null
           pw_api_base_url?: string | null
-          pw_api_secret?: string | null
           server_name?: string
           updated_at?: string
         }

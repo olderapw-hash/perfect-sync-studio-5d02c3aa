@@ -64,6 +64,11 @@ import {
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
+import gmCommanderIcon from "@/assets/gm-commander-icon.png";
+
+const GmCommanderIcon = ({ className }: { className?: string }) => (
+  <img src={gmCommanderIcon} alt="" className={cn("object-contain", className)} />
+);
 
 interface NavChild {
   to: string;
@@ -146,7 +151,7 @@ const SECTIONS: NavSection[] = [
   {
     id: "gm",
     label: "GM Commander",
-    icon: Wand2,
+    icon: GmCommanderIcon,
     basePath: "/admin/gm",
     proInTrial: true,
     children: [

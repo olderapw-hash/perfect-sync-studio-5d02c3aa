@@ -183,7 +183,7 @@ export function BroadcastScheduleTab() {
             </Button>
             <Button
               onClick={() => void submit(false)}
-              disabled={permLoading || !can || busy !== "none" || !message.trim()}
+              disabled={permLoading || !can || busy !== "none" || !message.trim() || channelInvalid}
             >
               {busy === "submit" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
               Agendar

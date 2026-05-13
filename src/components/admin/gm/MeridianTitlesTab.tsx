@@ -389,12 +389,15 @@ export function MeridianTitlesTab() {
 function PreviewView({ preview }: { preview: MeridianTitlePreviewResponse }) {
   const presetInfo = readPreset(preview.preset);
   const targetMode = preview.target?.target_mode;
+  // Shape REAL do gateway: blocos top-level. Mantém fallback para `diff.*`
+  // só pra tolerar versões antigas do PHP.
   const diff = preview.diff ?? {};
-  const wouldChange = diff.would_change;
-  const baseline = diff.baseline;
-  const baselineSource = presetInfo.baseline_source ?? diff.baseline_source;
-  const current = diff.current;
-  const after = diff.after;
+  const wouldChange = preview.would_change ?? diff.would_change;
+  const baseline = preview.baseline ?? diff.baseline;
+  const baselineSource =
+    presetInfo.baseline_source ?? preview.baseline_source ?? diff.baseline_source;
+  const current = preview.current ?? diff.current;
+  const after = preview.after ?? diff.after;
   return (
     <Card className="border-border/50 bg-card/40 backdrop-blur-sm">
       <CardHeader className="pb-2">

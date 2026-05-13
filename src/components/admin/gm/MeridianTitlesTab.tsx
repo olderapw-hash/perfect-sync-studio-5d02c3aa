@@ -56,9 +56,9 @@ function readPreset(
 }
 
 export function MeridianTitlesTab() {
-  const { canAction, loading: permLoading } = useOperatorPermissions();
+  const { canAction, role: operatorRole, loading: permLoading } = useOperatorPermissions();
   const canPreview = canAction("previewMeridianTitlePreset");
-  const canApply = canAction("applyMeridianTitlePreset");
+  const canApplyAction = canAction("applyMeridianTitlePreset");
 
   const [catalog, setCatalog] = useState<MeridianTitlePresetCatalogResponse | null>(null);
   const [catalogMissing, setCatalogMissing] = useState(false);

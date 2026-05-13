@@ -71,8 +71,8 @@ export const ACTION_PERMISSION: Record<string, ServerPermissionKey> = {
   executeQuickPunishment: "manage_security",
   queueBroadcastMessage: "save_templates",
   getMeridianTitlePresetCatalog: "view",
-  previewMeridianTitlePreset: "save_real_roles",
-  applyMeridianTitlePreset: "save_real_roles",
+  previewMeridianTitlePreset: "view",
+  applyMeridianTitlePreset: "manage_servers",
 };
 
 /** Operações UI que mapeiam pra mais de uma action. */

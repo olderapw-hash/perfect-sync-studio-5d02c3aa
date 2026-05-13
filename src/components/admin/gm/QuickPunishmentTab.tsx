@@ -110,6 +110,12 @@ export function QuickPunishmentTab() {
   }, [loadCatalog]);
 
   const presets = useMemo(() => catalog?.presets ?? [], [catalog]);
+  /** Presets explicitamente marcados como não suportados pelo backend
+   *  (ex.: jail). Renderizamos visivelmente bloqueados. */
+  const unsupportedPresets = useMemo(
+    () => catalog?.unsupported_presets ?? [],
+    [catalog],
+  );
   const selected = useMemo(
     () => presets.find((p) => presetKey(p) === presetKeyState) ?? null,
     [presets, presetKeyState],

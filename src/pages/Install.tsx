@@ -56,6 +56,7 @@ const API_FEATURES: { label: string; detail: string }[] = [
 const INCLUDED_FILES = [
   "api_cls.php",
   "install-apicls-centos7.sh",
+  "install-apicls-debian12.sh",
   "pw_send_mail.php",
   "sendreward-api.sh",
   "backupgamedbd-api.sh",
@@ -64,6 +65,9 @@ const INCLUDED_FILES = [
   "sudoers.gamedbd-backup.example",
   "README.md",
 ];
+
+type OsType = "centos7" | "debian12";
+type ServerVersion = "pw155" | "pw178";
 
 function expectedApiUrl(rawUrl: string | null | undefined): string {
   if (!rawUrl) return "http://SEU_IP/apicls/api_cls.php";
@@ -86,6 +90,8 @@ const Install = () => {
   const [hasStorageZip, setHasStorageZip] = useState(false);
   const [vpsToken, setVpsToken] = useState<string | null>(null);
   const [vpsStatus, setVpsStatus] = useState<string | null>(null);
+  const [osType, setOsType] = useState<OsType>("centos7");
+  const [serverVersion, setServerVersion] = useState<ServerVersion>("pw178");
 
   // Check if zip exists in storage
   useEffect(() => {
@@ -188,8 +194,9 @@ const Install = () => {
   // ---- Commands ----
   const step2Command = `scp -r C:\\orphea\\* root@${ipDisplay}:/root/orphea/`;
   const activationPart = vpsToken ? ` --activation-token ${vpsToken}` : "";
-  const superadminPart = isSuperadmin && !vpsToken ? " --superadmin-bypass" : "";
-  const step3Command = `ssh root@${ipDisplay} "bash /root/orphea/install-apicls-centos7.sh --secret ${secretDisplay}${activationPart}${superadminPart}"`;
+  const installerScript = osType === "debian12" ? "install-apicls-debian12.sh" : "install-apicls-centos7.sh";
+  const gameVersion = serverVersion === "pw155" ? "155" : "178";
+  const step3Command = `ssh root@${ipDisplay} "bash /root/orphea/${installerScript} --secret ${secretDisplay}${activationPart} --game-version ${gameVersion}"`;
 
   if (authLoading) {
     return (
@@ -473,6 +480,47 @@ const Install = () => {
               </div>
             </div>
 
+            <div className="mb-4 grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Sistema operacional
+                </Label>
+                <Select value={osType} onValueChange={(v) => setOsType(v as OsType)}>
+                  <SelectTrigger className="mt-1 h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="centos7">CentOS 7</SelectItem>
+                    <SelectItem value="debian12">Debian 12</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  {osType === "debian12"
+                    ? "Debian 12 usa install-apicls-debian12.sh"
+                    : "CentOS 7 usa install-apicls-centos7.sh"}
+                </p>
+              </div>
+              <div>
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Versão do servidor
+                </Label>
+                <Select value={serverVersion} onValueChange={(v) => setServerVersion(v as ServerVersion)}>
+                  <SelectTrigger className="mt-1 h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pw155">PW 1.5.5</SelectItem>
+                    <SelectItem value="pw178">PW 1.7.8</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  {serverVersion === "pw155"
+                    ? "Use 155 para servidores PW 1.5.5"
+                    : "Use 178 para servidores PW 1.7.8"}
+                </p>
+              </div>
+            </div>
+
             <div className="relative">
               <pre className="overflow-x-auto rounded-md border border-border bg-background p-3 font-mono text-xs">
                 {step3Command}
@@ -492,10 +540,9 @@ const Install = () => {
               <p>✅ Configura sudoers e scripts auxiliares</p>
               <p>✅ Secrets salvos no .env (nunca no código-fonte)</p>
               <p>✅ Testa a conexão com o gamedbd</p>
+              <p>ℹ️ O mesmo pacote suporta PW 1.5.5 e PW 1.7.8 — o que muda é o <code className="font-mono">--game-version</code>. O script muda conforme o SO.</p>
               {vpsToken ? (
                 <p className="text-primary font-semibold">🔒 Token de ativação VPS incluído — protegido contra redistribuição</p>
-              ) : isSuperadmin ? (
-                <p className="text-primary font-semibold">👑 Superadmin bypass ativo — token não necessário</p>
               ) : (
                 <p className="text-destructive font-semibold">🚫 Sem token de ativação VPS — a API será BLOQUEADA. Crie uma licença primeiro.</p>
               )}

@@ -194,8 +194,9 @@ const Install = () => {
   // ---- Commands ----
   const step2Command = `scp -r C:\\orphea\\* root@${ipDisplay}:/root/orphea/`;
   const activationPart = vpsToken ? ` --activation-token ${vpsToken}` : "";
-  const superadminPart = isSuperadmin && !vpsToken ? " --superadmin-bypass" : "";
-  const step3Command = `ssh root@${ipDisplay} "bash /root/orphea/install-apicls-centos7.sh --secret ${secretDisplay}${activationPart}${superadminPart}"`;
+  const installerScript = osType === "debian12" ? "install-apicls-debian12.sh" : "install-apicls-centos7.sh";
+  const gameVersion = serverVersion === "pw155" ? "155" : "178";
+  const step3Command = `ssh root@${ipDisplay} "bash /root/orphea/${installerScript} --secret ${secretDisplay}${activationPart} --game-version ${gameVersion}"`;
 
   if (authLoading) {
     return (

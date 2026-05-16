@@ -56,6 +56,7 @@ const API_FEATURES: { label: string; detail: string }[] = [
 const INCLUDED_FILES = [
   "api_cls.php",
   "install-apicls-centos7.sh",
+  "install-apicls-debian12.sh",
   "pw_send_mail.php",
   "sendreward-api.sh",
   "backupgamedbd-api.sh",
@@ -64,6 +65,9 @@ const INCLUDED_FILES = [
   "sudoers.gamedbd-backup.example",
   "README.md",
 ];
+
+type OsType = "centos7" | "debian12";
+type ServerVersion = "pw155" | "pw178";
 
 function expectedApiUrl(rawUrl: string | null | undefined): string {
   if (!rawUrl) return "http://SEU_IP/apicls/api_cls.php";

@@ -1,0 +1,19 @@
+{
+  "updated_at": "2026-05-07T00:00:00Z",
+  "operators": [
+    {
+      "id": "lovable-admin",
+      "email": "admin@seudominio.com",
+      "name": "Lovable Admin",
+      "role": "gm_admin",
+      "enabled": true
+    },
+    {
+      "id": "lovable-ops",
+      "email": "ops@seudominio.com",
+      "name": "Lovable Ops",
+      "role": "gm_operator",
+      "enabled": true
+    }
+  ]
+}

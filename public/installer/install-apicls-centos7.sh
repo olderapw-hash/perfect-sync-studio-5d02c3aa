@@ -1,5 +1,5 @@
 #!/bin/bash
-# Instala a bridge PW Admin / api_cls.php em CentOS 7.
+# Instala a bridge PW Admin / api_cls.php em CentOS 7 para servidores PW 1.5.5 e 1.7.8.
 #
 # Uso comum:
 #   bash install-apicls-centos7.sh --secret SEU_SECRET
@@ -13,12 +13,11 @@
 set -Eeuo pipefail
 
 INSTALL_DIR="/var/www/html/apicls"
-LEGACY_APACHE_DIR="/var/www/html/apicls"
-LEGACY_APACHE_FILE="$LEGACY_APACHE_DIR/api_cls.php"
 API_SRC=""
 API_URL=""
 SECRET="${PW_API_SECRET:-}"
 ACTIVATION_TOKEN="${PW_ACTIVATION_TOKEN:-}"
+GAME_VERSION="${PW_GAME_VERSION:-178}"
 WEB_USER=""
 OPEN_FIREWALL=1
 INSTALL_PACKAGES=1
@@ -46,8 +45,10 @@ usage() {
 Instalador PW Admin API CLS para CentOS 7
 
 Opcoes:
-  --secret VALOR             Secret da VPS gerado no painel. Se omitir, gera um novo.
-  --activation-token TOKEN   Token de ativacao da licenca (opcional).
+  --secret VALOR       Secret da VPS gerado no painel. Se omitir, gera um novo.
+  --activation-token TOKEN
+                       Token de ativacao da licenca (opcional).
+  --game-version VER   Versao do servidor PW. Suporta: 101, 155, 178. Default: 178.
   --api-src CAMINHO    Caminho local do api_cls.php. Default: ./api_cls.php.
   --api-url URL        Baixa api_cls.php desta URL.
   --web-user USUARIO   Usuario do Apache/PHP. Default: auto-detecta apache.
@@ -71,6 +72,10 @@ while [ "$#" -gt 0 ]; do
       ;;
     --activation-token)
       ACTIVATION_TOKEN="${2:-}"
+      shift 2
+      ;;
+    --game-version)
+      GAME_VERSION="${2:-}"
       shift 2
       ;;
     --api-src)
@@ -136,6 +141,14 @@ esac
 if [ "${#SECRET}" -lt 8 ]; then
   die "Secret muito curto. Use pelo menos 8 caracteres."
 fi
+
+case "$GAME_VERSION" in
+  101|155|178)
+    ;;
+  *)
+    die "game_version invalida: '$GAME_VERSION'. Use 101, 155 ou 178."
+    ;;
+esac
 
 if [ "$INSTALL_PACKAGES" = "1" ]; then
   if command -v yum >/dev/null 2>&1; then
@@ -232,8 +245,8 @@ if ! grep -q "sendSystemMessage" "$TMP_API" || ! grep -q "getGmCommandCatalog" "
   die "api_cls.php parece desatualizado. Ele precisa conter sendSystemMessage, getGmCommandCatalog, getGmActionHistory, getGmPermissionCatalog, getGmPermissionState, grantGmPermission, revokeGmPermission, getMallCashBalance, grantMallCash, muteAccount, muteRole, teleportRole, getMaintenanceMode, getManageableServices, getManageableInstances, setInstanceAutoStart, startInstance, startInstances, stopInstance, stopInstances, restartInstance, restartInstances, getServerOperationStatus, getServerOperationsHistory, setMaintenanceMode, startServer, stopServer, restartServer, startService, stopService, restartService, backupNow, getRestorePlan, getRestoreHistory e restoreNow."
 fi
 
-if ! grep -q "scheduleBulkCommand" "$TMP_API" || ! grep -q "getBulkSchedules" "$TMP_API" || ! grep -q "runDueBulkSchedules" "$TMP_API"; then
-  die "api_cls.php parece desatualizado. Ele precisa conter scheduleBulkCommand, getBulkSchedules e runDueBulkSchedules."
+if ! grep -q "scheduleBulkCommand" "$TMP_API" || ! grep -q "getBulkSchedules" "$TMP_API" || ! grep -q "runDueBulkSchedules" "$TMP_API" || ! grep -q "saveBulkTemplate" "$TMP_API" || ! grep -q "executeBulkTemplate" "$TMP_API"; then
+  die "api_cls.php parece desatualizado. Ele precisa conter scheduleBulkCommand, getBulkSchedules, runDueBulkSchedules, saveBulkTemplate e executeBulkTemplate."
 fi
 
 if grep -q "'api_secret'" "$TMP_API"; then
@@ -242,6 +255,12 @@ elif grep -q "\$SECRET[[:space:]]*=" "$TMP_API"; then
   sed -i -E "s/(\$SECRET[[:space:]]*=[[:space:]]*)'[^']*'/\1'$SECRET'/" "$TMP_API"
 else
   die "Nao encontrei campo api_secret/\$SECRET no api_cls.php."
+fi
+
+if grep -q "'game_version'" "$TMP_API"; then
+  sed -i -E "s/('game_version'[[:space:]]*=>[[:space:]]*)'[^']*'/\1'$GAME_VERSION'/" "$TMP_API"
+else
+  die "Nao encontrei campo game_version no api_cls.php."
 fi
 
 php -l "$TMP_API" >/dev/null || die "api_cls.php baixado/copied tem erro de sintaxe."
@@ -272,22 +291,10 @@ mkdir -p "$INSTALL_DIR/backups/gm-commander-v2/queue/attempts"
 mkdir -p "$INSTALL_DIR/backups/gm-commander-v2/queue/logs"
 mkdir -p "$INSTALL_DIR/backups/gm-commander-v2/schedules/items"
 mkdir -p "$INSTALL_DIR/backups/gm-commander-v2/schedules/logs"
+mkdir -p "$INSTALL_DIR/backups/gm-commander-v2/templates/items"
 mkdir -p "$INSTALL_DIR/backups/gm-commander-v2/audit"
 
-if [ -L "$INSTALL_DIR/api_cls.php" ] || [ -e "$INSTALL_DIR/api_cls.php" ]; then
-  rm -f "$INSTALL_DIR/api_cls.php"
-fi
 cp -f "$TMP_API" "$INSTALL_DIR/api_cls.php"
-
-mkdir -p "$LEGACY_APACHE_DIR"
-if [ "$INSTALL_DIR/api_cls.php" != "$LEGACY_APACHE_FILE" ]; then
-  if [ -L "$LEGACY_APACHE_FILE" ] || [ -e "$LEGACY_APACHE_FILE" ]; then
-    rm -f "$LEGACY_APACHE_FILE"
-  fi
-  ln -sfn "$INSTALL_DIR/api_cls.php" "$LEGACY_APACHE_FILE"
-else
-  chmod 640 "$LEGACY_APACHE_FILE" 2>/dev/null || true
-fi
 
 if [ -n "$ACTIVATION_TOKEN" ]; then
   printf '%s\n' "$ACTIVATION_TOKEN" > "$INSTALL_DIR/.activation_token"
@@ -2267,9 +2274,148 @@ done
 printf '{"success":true,"action":"stop","count":%s,"instances":[%s]}\n' "$count" "$results"
 EOF
 
+cat > /usr/local/sbin/gmv2-ranking-api.sh <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+SOURCE_KEY="${1:-}"
+LIMIT_ROWS="${2:-200}"
+DB_NAME="${3:-pw_ranking}"
+MYSQL_DEFAULTS_FILE="/root/.my.cnf"
+
+if [ "$(id -u)" != "0" ]; then
+  echo "gmv2-ranking-api.sh precisa rodar como root" >&2
+  exit 10
+fi
+
+case "$SOURCE_KEY" in
+  pvp_points|pvp_ranking_reset) ;;
+  *)
+    echo "Fonte de ranking nao suportada: $SOURCE_KEY" >&2
+    exit 11
+    ;;
+esac
+
+[[ "$LIMIT_ROWS" =~ ^[0-9]+$ ]] || { echo "limit_rows invalido" >&2; exit 12; }
+if [ "$SOURCE_KEY" = "pvp_ranking_reset" ]; then
+  [ "$LIMIT_ROWS" -ge 0 ] || { echo "limit_rows invalido" >&2; exit 13; }
+else
+  [ "$LIMIT_ROWS" -gt 0 ] || { echo "limit_rows invalido" >&2; exit 13; }
+fi
+[ "$LIMIT_ROWS" -le 1000 ] || LIMIT_ROWS=1000
+[[ "$DB_NAME" =~ ^[A-Za-z0-9_]+$ ]] || { echo "db_name invalido" >&2; exit 14; }
+
+MYSQL_BIN="$(command -v mysql 2>/dev/null || true)"
+[ -n "$MYSQL_BIN" ] || { echo "mysql nao encontrado" >&2; exit 15; }
+
+ERR="$(mktemp /tmp/gmv2-ranking-api.XXXXXX.err)"
+OUT="$(mktemp /tmp/gmv2-ranking-api.XXXXXX.out)"
+trap 'rm -f "$ERR" "$OUT"' EXIT
+
+mysql_exec() {
+  local sql="$1"
+  local mysql_exit=0
+  if [ -f "$MYSQL_DEFAULTS_FILE" ]; then
+    "$MYSQL_BIN" --defaults-extra-file="$MYSQL_DEFAULTS_FILE" --database="$DB_NAME" --batch --skip-column-names -e "$sql" >"$OUT" 2>"$ERR" || mysql_exit=$?
+  else
+    "$MYSQL_BIN" --database="$DB_NAME" --batch --skip-column-names -e "$sql" >"$OUT" 2>"$ERR" || mysql_exit=$?
+  fi
+
+  mysql_exit="${mysql_exit:-0}"
+  if [ "$mysql_exit" -ne 0 ]; then
+    ERR_TEXT="$(cat "$ERR" 2>/dev/null || true)"
+    if printf '%s' "$ERR_TEXT" | grep -qi 'access denied'; then
+      cat >&2 <<'MYSQL_AUTH_HINT'
+mysql nao autenticou para ranking. Configure um arquivo /root/.my.cnf com as credenciais do MariaDB, por exemplo:
+[client]
+user=root
+password=SUA_SENHA
+host=localhost
+MYSQL_AUTH_HINT
+    fi
+    printf '%s\n' "$ERR_TEXT" >&2
+    exit "$mysql_exit"
+  fi
+}
+
+SQL_QUERY=""
+case "$SOURCE_KEY" in
+  pvp_points)
+    SQL_QUERY="
+      SELECT
+        COALESCE(player_id, 0) AS roleid,
+        COALESCE(account_id, 0) AS userid,
+        COALESCE(player_name, '') AS name,
+        COALESCE(class_id, 0) AS cls,
+        COALESCE(level, 0) AS level,
+        0 AS level2,
+        0 AS exp,
+        0 AS reputation,
+        COALESCE(UNIX_TIMESTAMP(last_kill_at), 0) AS lastlogin_time,
+        COALESCE(points, 0) AS ranking_value,
+        COALESCE(kills, 0) AS kills,
+        COALESCE(deaths, 0) AS deaths,
+        COALESCE(DATE_FORMAT(last_kill_at, '%Y-%m-%d %H:%i:%s'), '') AS last_kill_at
+      FROM pvp_ranking
+      WHERE kills > 0
+      ORDER BY points DESC, last_kill_at DESC
+      LIMIT $LIMIT_ROWS
+    "
+    ;;
+  pvp_ranking_reset)
+    SQL_QUERY="TRUNCATE TABLE pvp_ranking"
+    ;;
+esac
+
+mysql_exec "$SQL_QUERY"
+
+php -r '
+$source = (string) $argv[1];
+$dbName = (string) $argv[2];
+$file = (string) $argv[3];
+$resetOnly = ($source === "pvp_ranking_reset");
+$entries = [];
+$lines = @file($file, FILE_IGNORE_NEW_LINES);
+if (!$resetOnly && is_array($lines)) {
+    foreach ($lines as $line) {
+        if (trim((string) $line) === "") {
+            continue;
+        }
+        $cols = explode("\t", $line);
+        $cols = array_pad($cols, 13, "");
+        $entries[] = [
+            "roleid" => (int) $cols[0],
+            "userid" => (int) $cols[1],
+            "name" => (string) $cols[2],
+            "cls" => (int) $cols[3],
+            "level" => (int) $cols[4],
+            "level2" => (int) $cols[5],
+            "exp" => (int) $cols[6],
+            "reputation" => (int) $cols[7],
+            "lastlogin_time" => (int) $cols[8],
+            "ranking_value" => (int) $cols[9],
+            "kills" => (int) $cols[10],
+            "deaths" => (int) $cols[11],
+            "last_kill_at" => (string) $cols[12],
+        ];
+    }
+}
+$payload = [
+    "success" => true,
+    "source" => $source,
+    "db_name" => $dbName,
+    "entries" => $entries,
+    "reset" => $resetOnly,
+    "collected_at" => gmdate("c"),
+];
+echo json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . PHP_EOL;
+' "$SOURCE_KEY" "$DB_NAME" "$OUT"
+EOF
+
 sed -i 's/\r$//' /usr/local/sbin/exportclsconfig-api.sh /usr/local/sbin/backupgamedbd-api.sh /usr/local/sbin/backupclsconfig-api.sh /usr/local/sbin/backupmysql-api.sh /usr/local/sbin/restoremysql-api.sh /usr/local/sbin/grantmallcash-api.sh /usr/local/sbin/gmpermission-api.sh /usr/local/sbin/accountforbid-api.sh /usr/local/sbin/backupuniquenamed-api.sh /usr/local/sbin/backuppanel-api.sh /usr/local/sbin/backupfull-api.sh /usr/local/sbin/pw-watchdog-runner.sh /usr/local/bin/pw_send_mail.php /usr/local/sbin/sendreward-api.sh /usr/local/sbin/panel_service_control.sh /usr/local/sbin/panel_start.sh /usr/local/sbin/panel_stop.sh /usr/local/sbin/panel_restart.sh /usr/local/sbin/panel_instance_start.sh /usr/local/sbin/panel_instance_stop.sh
-chown root:root /usr/local/sbin/exportclsconfig-api.sh /usr/local/sbin/backupgamedbd-api.sh /usr/local/sbin/backupclsconfig-api.sh /usr/local/sbin/backupmysql-api.sh /usr/local/sbin/restoremysql-api.sh /usr/local/sbin/grantmallcash-api.sh /usr/local/sbin/gmpermission-api.sh /usr/local/sbin/accountforbid-api.sh /usr/local/sbin/backupuniquenamed-api.sh /usr/local/sbin/backuppanel-api.sh /usr/local/sbin/backupfull-api.sh /usr/local/sbin/pw-watchdog-runner.sh /usr/local/bin/pw_send_mail.php /usr/local/sbin/sendreward-api.sh /usr/local/sbin/panel_service_control.sh /usr/local/sbin/panel_start.sh /usr/local/sbin/panel_stop.sh /usr/local/sbin/panel_restart.sh /usr/local/sbin/panel_instance_start.sh /usr/local/sbin/panel_instance_stop.sh
-chmod 750 /usr/local/sbin/exportclsconfig-api.sh /usr/local/sbin/backupgamedbd-api.sh /usr/local/sbin/backupclsconfig-api.sh /usr/local/sbin/backupmysql-api.sh /usr/local/sbin/restoremysql-api.sh /usr/local/sbin/grantmallcash-api.sh /usr/local/sbin/gmpermission-api.sh /usr/local/sbin/accountforbid-api.sh /usr/local/sbin/backupuniquenamed-api.sh /usr/local/sbin/backuppanel-api.sh /usr/local/sbin/backupfull-api.sh /usr/local/sbin/pw-watchdog-runner.sh /usr/local/bin/pw_send_mail.php /usr/local/sbin/sendreward-api.sh /usr/local/sbin/panel_service_control.sh /usr/local/sbin/panel_start.sh /usr/local/sbin/panel_stop.sh /usr/local/sbin/panel_restart.sh /usr/local/sbin/panel_instance_start.sh /usr/local/sbin/panel_instance_stop.sh
+sed -i 's/\r$//' /usr/local/sbin/gmv2-ranking-api.sh
+chown root:root /usr/local/sbin/exportclsconfig-api.sh /usr/local/sbin/backupgamedbd-api.sh /usr/local/sbin/backupclsconfig-api.sh /usr/local/sbin/backupmysql-api.sh /usr/local/sbin/restoremysql-api.sh /usr/local/sbin/grantmallcash-api.sh /usr/local/sbin/gmpermission-api.sh /usr/local/sbin/accountforbid-api.sh /usr/local/sbin/gmv2-ranking-api.sh /usr/local/sbin/backupuniquenamed-api.sh /usr/local/sbin/backuppanel-api.sh /usr/local/sbin/backupfull-api.sh /usr/local/sbin/pw-watchdog-runner.sh /usr/local/bin/pw_send_mail.php /usr/local/sbin/sendreward-api.sh /usr/local/sbin/panel_service_control.sh /usr/local/sbin/panel_start.sh /usr/local/sbin/panel_stop.sh /usr/local/sbin/panel_restart.sh /usr/local/sbin/panel_instance_start.sh /usr/local/sbin/panel_instance_stop.sh
+chmod 750 /usr/local/sbin/exportclsconfig-api.sh /usr/local/sbin/backupgamedbd-api.sh /usr/local/sbin/backupclsconfig-api.sh /usr/local/sbin/backupmysql-api.sh /usr/local/sbin/restoremysql-api.sh /usr/local/sbin/grantmallcash-api.sh /usr/local/sbin/gmpermission-api.sh /usr/local/sbin/accountforbid-api.sh /usr/local/sbin/gmv2-ranking-api.sh /usr/local/sbin/backupuniquenamed-api.sh /usr/local/sbin/backuppanel-api.sh /usr/local/sbin/backupfull-api.sh /usr/local/sbin/pw-watchdog-runner.sh /usr/local/bin/pw_send_mail.php /usr/local/sbin/sendreward-api.sh /usr/local/sbin/panel_service_control.sh /usr/local/sbin/panel_start.sh /usr/local/sbin/panel_stop.sh /usr/local/sbin/panel_restart.sh /usr/local/sbin/panel_instance_start.sh /usr/local/sbin/panel_instance_stop.sh
 
 if [ -e "$SUDOERS_FILE" ] && [ ! -f "$SUDOERS_FILE" ]; then
   die "$SUDOERS_FILE existe, mas nao e arquivo. Remova ou renomeie esse caminho."
@@ -2284,6 +2430,7 @@ $WEB_USER ALL=(root) NOPASSWD: /usr/local/sbin/restoremysql-api.sh
 $WEB_USER ALL=(root) NOPASSWD: /usr/local/sbin/grantmallcash-api.sh
 $WEB_USER ALL=(root) NOPASSWD: /usr/local/sbin/gmpermission-api.sh
 $WEB_USER ALL=(root) NOPASSWD: /usr/local/sbin/accountforbid-api.sh
+$WEB_USER ALL=(root) NOPASSWD: /usr/local/sbin/gmv2-ranking-api.sh
 $WEB_USER ALL=(root) NOPASSWD: /usr/local/sbin/backupuniquenamed-api.sh
 $WEB_USER ALL=(root) NOPASSWD: /usr/local/sbin/backuppanel-api.sh
 $WEB_USER ALL=(root) NOPASSWD: /usr/local/sbin/backupfull-api.sh
@@ -2317,10 +2464,6 @@ chown -R "$WEB_USER:$WEB_USER" "$INSTALL_DIR"
 chmod 750 "$INSTALL_DIR"
 chmod 640 "$INSTALL_DIR/api_cls.php"
 chmod 640 "$INSTALL_DIR/gm-queue-worker.php" "$INSTALL_DIR/gm-schedule-worker.php"
-chown "$WEB_USER:$WEB_USER" "$LEGACY_APACHE_DIR" 2>/dev/null || true
-if [ -e "$LEGACY_APACHE_FILE" ]; then
-  chown -h "$WEB_USER:$WEB_USER" "$LEGACY_APACHE_FILE" 2>/dev/null || chown "$WEB_USER:$WEB_USER" "$LEGACY_APACHE_FILE" 2>/dev/null || true
-fi
 find "$INSTALL_DIR/backups" -type d -exec chmod 750 {} \;
 find "$INSTALL_DIR/backups" -type f -exec chmod 640 {} \; 2>/dev/null || true
 chown root:"$WEB_USER" /usr/local/sbin/pw-watchdog-runner.sh
@@ -2662,6 +2805,7 @@ PW Admin API CLS instalada.
 URL local:   $BASE_URL
 URL painel:  http://${PUBLIC_IP:-SEU_IP}/apicls/api_cls.php
 Secret:     $SECRET
+Versao PW:  $GAME_VERSION
 Usuario web: $WEB_USER
 
 Cadastre/atualize estes dados em: PW Admin -> Servidores
@@ -2677,6 +2821,7 @@ Comandos de validacao:
   php -l $INSTALL_DIR/gm-queue-worker.php
   php -l $INSTALL_DIR/gm-schedule-worker.php
   curl -s -H "x-sync-secret: $SECRET" "$BASE_URL?action=getClasses"
+  curl -s -H "x-sync-secret: $SECRET" "$BASE_URL?action=getBulkTemplates&limit=20"
   curl -s -H "x-sync-secret: $SECRET" "$BASE_URL?action=getBulkSchedules&limit=20"
   curl -s -X POST -H "x-sync-secret: $SECRET" -H "Content-Type: application/json" -d '{}' "$BASE_URL?action=runDueBulkSchedules"
   curl -s -H "x-sync-secret: $SECRET" "$BASE_URL?action=getServiceStatus"

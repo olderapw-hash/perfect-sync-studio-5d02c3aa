@@ -11,6 +11,7 @@
  *   POST /apicls/api_cls.php?action=sendMailItem&secret=SEU_SECRET
  *   POST /apicls/api_cls.php?action=sendMailGold&secret=SEU_SECRET
  *   POST /apicls/api_cls.php?action=grantMallCash&secret=SEU_SECRET
+ *   POST /apicls/api_cls.php?action=executeBulkCommandNow&secret=SEU_SECRET
  *   GET  /apicls/api_cls.php?action=getMallCashBalance&secret=SEU_SECRET
  *   POST /apicls/api_cls.php?action=sendSystemMessage&secret=SEU_SECRET
  *   GET  /apicls/api_cls.php?action=getGmCommandCatalog&secret=SEU_SECRET
@@ -63,7 +64,7 @@ $CONFIG = [
     'gamedbd_ip'   => '127.0.0.1',
     'gamedbd_port' => 29400,
     'api_secret'   => '91639268',
-    'game_version' => '101',
+    'game_version' => '178',
     'clsconfig_export_workdir' => '/',
     'clsconfig_export_command' => '/usr/bin/sudo -n /usr/local/sbin/exportclsconfig-api.sh',
     'clsconfig_export_attempts' => 5,
@@ -149,18 +150,49 @@ $CONFIG = [
     'gm_v2_schedules_dir' => __DIR__ . '/backups/gm-commander-v2/schedules/items',
     'gm_v2_schedule_logs_dir' => __DIR__ . '/backups/gm-commander-v2/schedules/logs',
     'gm_v2_schedule_lock_file' => __DIR__ . '/backups/gm-commander-v2/schedules/worker.lock',
+    'gm_v2_templates_dir' => __DIR__ . '/backups/gm-commander-v2/templates/items',
+    'gm_v2_pvp_ranking_schedules_dir' => __DIR__ . '/backups/gm-commander-v2/pvp-ranking/schedules',
+    'gm_v2_pvp_ranking_history_file' => __DIR__ . '/backups/gm-commander-v2/pvp-ranking/history.log',
+    'gm_v2_pvp_ranking_default_limit' => 3,
     'gm_v2_directory_limit' => 200,
     'gm_v2_preview_sample_size' => 20,
     'gm_v2_max_targets_per_job' => 500,
+    'gm_v2_execute_now_max_targets' => 100,
     'gm_v2_queue_batch_size' => 10,
     'gm_v2_queue_retry_limit' => 3,
     'gm_v2_queue_backoff_seconds' => 30,
+    'gm_v2_broadcast_repeat_max' => 100,
+    'gm_v2_broadcast_max_interval_seconds' => 86400,
     'gm_v2_queue_scan_limit' => 20,
     'gm_v2_queue_allowed_commands' => ['sendMailItem', 'sendMailGold', 'grantMallCash', 'sendSystemMessage'],
-    'gm_v2_schedule_allowed_commands' => ['sendMailItem', 'sendMailGold', 'grantMallCash'],
+    'gm_v2_schedule_allowed_commands' => ['sendMailItem', 'sendMailGold', 'grantMallCash', 'sendSystemMessage'],
+    'gm_v2_template_allowed_commands' => ['sendMailItem', 'sendMailGold', 'grantMallCash', 'sendSystemMessage'],
+    'gm_v2_template_categories' => ['evento', 'punicao', 'recompensa', 'broadcast'],
     'gm_v2_schedule_scan_limit' => 50,
     'gm_v2_schedule_retry_backoff_seconds' => 300,
     'gm_v2_schedule_default_timezone' => 'America/Sao_Paulo',
+    'gm_v2_ranking_query_command' => '/usr/bin/sudo -n /usr/local/sbin/gmv2-ranking-api.sh',
+    'gm_v2_ranking_mysql_db_name' => 'pw_ranking',
+    'gm_v2_ranking_supported_keys' => ['pvp_points', 'level', 'level2', 'exp', 'reputation', 'lastlogin_time', 'create_time'],
+    'gm_v2_ranking_dump_paths' => [
+        'base' => [
+            '/home/gamedbd/dbdata/base',
+            '/home/gamedbd/base',
+            '/gamedbd/dbdata/base',
+            '/gamedbd/base',
+        ],
+        'status' => [
+            '/home/gamedbd/dbdata/status',
+            '/home/gamedbd/status',
+            '/gamedbd/dbdata/status',
+            '/gamedbd/status',
+        ],
+    ],
+    'operator_permissions_mode' => 'audit',
+    'operator_permissions_registry_file' => __DIR__ . '/backups/gm-commander-v2/operators.json',
+    'operator_permissions_allow_request_role' => false,
+    'operator_permissions_require_known_operator' => false,
+    'operator_permissions_default_role' => 'viewer',
     'maintenance_reason_max_length' => 240,
     'maintenance_eta_max_minutes' => 1440,
     'maintenance_state_file' => __DIR__ . '/backups/maintenance/state.json',
@@ -213,6 +245,8 @@ $CONFIG = [
     'security_kick_max_seconds' => 600,
     'security_unban_seconds' => 0,
     'security_ban_permanent_seconds' => 2147483647,
+    'gm_v2_quick_mute_default_seconds' => 3600,
+    'gm_v2_quick_ban_default_seconds' => 86400,
     'security_reason_min_length' => 3,
     'security_log_dir' => __DIR__ . '/backups/security-logs',
     // Templates reais do painel antigo. Ignora placeholders vazios/level 1 do clsconfig.
@@ -224,6 +258,14 @@ $CONFIG = [
         '/home/gamedbd/visibleid.txt',
     ],
 ];
+
+$CONFIG_LOCAL_OVERRIDE_FILE = __DIR__ . '/api_cls.local.php';
+if (is_file($CONFIG_LOCAL_OVERRIDE_FILE) && is_readable($CONFIG_LOCAL_OVERRIDE_FILE)) {
+    $configLocalOverrides = require $CONFIG_LOCAL_OVERRIDE_FILE;
+    if (is_array($configLocalOverrides)) {
+        $CONFIG = array_replace($CONFIG, $configLocalOverrides);
+    }
+}
 
 $CULTIVATION_MAP = [
     0  => 'Leal',
@@ -369,7 +411,7 @@ class GamedProtocol
             'teleportRole' => 0,
         ];
 
-        if (in_array($version, ['101', '155'], true)) {
+        if (in_array($version, ['101', '155', '178'], true)) {
             $map['muteAccount'] = 362;
             $map['muteRole'] = 356;
         } elseif ($version === '352') {
@@ -3280,6 +3322,270 @@ class GamedProtocol
         return $this->unmarshal($data, $this->struct_raw_read);
     }
 
+    private function getRawRowsFromLocalDump($table, &$debug = null)
+    {
+        $debug = [
+            'used_command' => '',
+            'used_path' => '',
+            'attempts' => [],
+        ];
+
+        if (!function_exists('exec')) {
+            $debug['error'] = 'exec() desabilitado no PHP';
+            return [];
+        }
+
+        $paths = gmV2RankingDumpPaths($table, $GLOBALS['CONFIG']);
+        $commands = [
+            'db_dump',
+            '/usr/bin/db_dump',
+            'db5.3_dump',
+            '/usr/bin/db5.3_dump',
+            'db4.8_dump',
+            '/usr/bin/db4.8_dump',
+            'db4_dump',
+            '/usr/bin/db4_dump',
+        ];
+
+        foreach ($paths as $path) {
+            if (!file_exists($path) || !is_readable($path)) {
+                $debug['attempts'][] = [
+                    'path' => $path,
+                    'status' => 'unreadable',
+                ];
+                continue;
+            }
+
+            foreach ($commands as $command) {
+                $output = [];
+                $exitCode = 0;
+                @exec($command . ' -p ' . escapeshellarg($path) . ' 2>&1', $output, $exitCode);
+
+                $rows = ($exitCode === 0) ? $this->parseDbDumpOutput($output) : [];
+                $debug['attempts'][] = [
+                    'path' => $path,
+                    'command' => $command,
+                    'exit_code' => $exitCode,
+                    'row_count' => count($rows),
+                    'sample' => isset($output[0]) ? $output[0] : '',
+                ];
+
+                if (!empty($rows)) {
+                    $debug['used_command'] = $command;
+                    $debug['used_path'] = $path;
+                    return $rows;
+                }
+            }
+        }
+
+        return [];
+    }
+
+    private function getRankingTableRows($table, $ip, $port, &$debug = null)
+    {
+        $debug = [
+            'table' => $table,
+            'source' => '',
+            'local_dump' => [],
+            'raw_table' => [],
+        ];
+
+        $rows = $this->getRawRowsFromLocalDump($table, $localDebug);
+        $debug['local_dump'] = $localDebug;
+        if (!empty($rows)) {
+            $debug['source'] = 'local_dump';
+            return $rows;
+        }
+
+        try {
+            $raw = $this->getRawTable($table, $ip, $port);
+            $rows = (is_array($raw) && !empty($raw['Raw']) && is_array($raw['Raw'])) ? array_values($raw['Raw']) : [];
+            $debug['raw_table'] = [
+                'handle_len' => strlen(array_value(is_array($raw) ? $raw : [], 'handle', '')),
+                'row_count' => count($rows),
+            ];
+            if (!empty($rows)) {
+                $debug['source'] = 'raw_table';
+                return $rows;
+            }
+        } catch (Exception $e) {
+            $debug['raw_table'] = [
+                'error' => $e->getMessage(),
+            ];
+        }
+
+        return [];
+    }
+
+    private function decodeRankingBaseRows($rows, $source)
+    {
+        $entries = [];
+        foreach ((array) $rows as $row) {
+            $decoded = $this->decodeHexStruct(array_value($row, 'value', ''), $this->struct_db_base);
+            if (!is_array($decoded)) {
+                continue;
+            }
+
+            $roleid = $this->decodeRoleIdFromHexKey(array_value($row, 'key', ''));
+            if ($roleid <= 0) {
+                $roleid = intval(array_value($decoded, 'id', 0));
+            }
+            if ($roleid <= 0) {
+                continue;
+            }
+
+            $entries[$roleid] = [
+                'roleid' => $roleid,
+                'userid' => intval(array_value($decoded, 'userid', 0)),
+                'name' => decode_octet_text((string) array_value($decoded, 'name', '')),
+                'cls' => intval(array_value($decoded, 'cls', 0)),
+                'create_time' => intval(array_value($decoded, 'create_time', 0)),
+                'lastlogin_time' => intval(array_value($decoded, 'lastlogin_time', 0)),
+                'source' => $source,
+            ];
+        }
+
+        return $entries;
+    }
+
+    private function decodeRankingStatusRows($rows, $source)
+    {
+        $entries = [];
+        foreach ((array) $rows as $row) {
+            $decoded = $this->decodeHexStruct(array_value($row, 'value', ''), $this->struct_status);
+            if (!is_array($decoded)) {
+                continue;
+            }
+
+            $roleid = $this->decodeRoleIdFromHexKey(array_value($row, 'key', ''));
+            if ($roleid <= 0) {
+                continue;
+            }
+
+            $entries[$roleid] = [
+                'roleid' => $roleid,
+                'level' => intval(array_value($decoded, 'level', 0)),
+                'level2' => intval(array_value($decoded, 'level2', 0)),
+                'exp' => intval(array_value($decoded, 'exp', 0)),
+                'reputation' => intval(array_value($decoded, 'reputation', 0)),
+                'source' => $source,
+            ];
+        }
+
+        return $entries;
+    }
+
+    public function getRankingEntries($rankingKey, $ip, $port, $limit = 0)
+    {
+        $rankingKey = gmV2NormalizeRankingKey($rankingKey, $GLOBALS['CONFIG']);
+        if ($rankingKey === '') {
+            throw new InvalidArgumentException('ranking_key invalido');
+        }
+
+        $baseRows = $this->getRankingTableRows('base', $ip, $port, $baseDebug);
+        $statusRows = $this->getRankingTableRows('status', $ip, $port, $statusDebug);
+
+        if (empty($baseRows) || empty($statusRows)) {
+            throw new Exception('Nao foi possivel carregar base/status do gamedbd para ranking');
+        }
+
+        $baseMap = $this->decodeRankingBaseRows($baseRows, array_value($baseDebug, 'source', ''));
+        $statusMap = $this->decodeRankingStatusRows($statusRows, array_value($statusDebug, 'source', ''));
+        if (empty($baseMap) || empty($statusMap)) {
+            throw new Exception('Nao foi possivel decodificar base/status do gamedbd para ranking');
+        }
+
+        $entries = [];
+        $roleids = array_values(array_unique(array_merge(array_keys($baseMap), array_keys($statusMap))));
+        foreach ($roleids as $roleid) {
+            $base = isset($baseMap[$roleid]) ? $baseMap[$roleid] : [];
+            $status = isset($statusMap[$roleid]) ? $statusMap[$roleid] : [];
+            if (empty($base) || empty($status)) {
+                continue;
+            }
+
+            switch ($rankingKey) {
+                case 'level':
+                    $rankingValue = intval(array_value($status, 'level', 0));
+                    break;
+                case 'level2':
+                    $rankingValue = intval(array_value($status, 'level2', 0));
+                    break;
+                case 'exp':
+                    $rankingValue = intval(array_value($status, 'exp', 0));
+                    break;
+                case 'reputation':
+                    $rankingValue = intval(array_value($status, 'reputation', 0));
+                    break;
+                case 'lastlogin_time':
+                    $rankingValue = intval(array_value($base, 'lastlogin_time', 0));
+                    break;
+                case 'create_time':
+                    $rankingValue = intval(array_value($base, 'create_time', 0));
+                    break;
+                default:
+                    throw new InvalidArgumentException('ranking_key invalido');
+            }
+
+            $entries[] = [
+                'roleid' => intval($roleid),
+                'userid' => intval(array_value($base, 'userid', 0)),
+                'name' => trim((string) array_value($base, 'name', '')),
+                'cls' => intval(array_value($base, 'cls', 0)),
+                'create_time' => intval(array_value($base, 'create_time', 0)),
+                'lastlogin_time' => intval(array_value($base, 'lastlogin_time', 0)),
+                'level' => intval(array_value($status, 'level', 0)),
+                'level2' => intval(array_value($status, 'level2', 0)),
+                'exp' => intval(array_value($status, 'exp', 0)),
+                'reputation' => intval(array_value($status, 'reputation', 0)),
+                'ranking_key' => $rankingKey,
+                'ranking_value' => $rankingValue,
+            ];
+        }
+
+        usort($entries, function ($a, $b) {
+            $cmp = intval(array_value($b, 'ranking_value', 0)) <=> intval(array_value($a, 'ranking_value', 0));
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+
+            $levelCmp = intval(array_value($b, 'level', 0)) <=> intval(array_value($a, 'level', 0));
+            if ($levelCmp !== 0) {
+                return $levelCmp;
+            }
+
+            $level2Cmp = intval(array_value($b, 'level2', 0)) <=> intval(array_value($a, 'level2', 0));
+            if ($level2Cmp !== 0) {
+                return $level2Cmp;
+            }
+
+            $nameCmp = strnatcasecmp((string) array_value($a, 'name', ''), (string) array_value($b, 'name', ''));
+            if ($nameCmp !== 0) {
+                return $nameCmp;
+            }
+
+            return intval(array_value($a, 'roleid', 0)) <=> intval(array_value($b, 'roleid', 0));
+        });
+
+        $limit = max(0, intval($limit));
+        if ($limit > 0 && count($entries) > $limit) {
+            $entries = array_slice($entries, 0, $limit);
+        }
+
+        return [
+            'ranking_key' => $rankingKey,
+            'entries' => $entries,
+            'source' => [
+                'base' => array_value($baseDebug, 'source', ''),
+                'status' => array_value($statusDebug, 'source', ''),
+            ],
+            'diagnostics' => [
+                'base' => $baseDebug,
+                'status' => $statusDebug,
+            ],
+        ];
+    }
+
     private function getClsconfigStruct()
     {
         return [
@@ -4742,6 +5048,21 @@ function gmV2ScheduleLockFile(array $config)
     return trim((string) array_value($config, 'gm_v2_schedule_lock_file', gmV2StateDir($config) . '/schedules/worker.lock'));
 }
 
+function gmV2TemplatesDir(array $config)
+{
+    return trim((string) array_value($config, 'gm_v2_templates_dir', gmV2StateDir($config) . '/templates/items'));
+}
+
+function gmV2PvpRankingSchedulesDir(array $config)
+{
+    return trim((string) array_value($config, 'gm_v2_pvp_ranking_schedules_dir', gmV2StateDir($config) . '/pvp-ranking/schedules'));
+}
+
+function gmV2PvpRankingHistoryFile(array $config)
+{
+    return trim((string) array_value($config, 'gm_v2_pvp_ranking_history_file', gmV2StateDir($config) . '/pvp-ranking/history.log'));
+}
+
 function gmV2EnsureEnvironment(array $config)
 {
     if (!gmV2Enabled($config)) {
@@ -4755,9 +5076,12 @@ function gmV2EnsureEnvironment(array $config)
         gmV2QueueLogsDir($config),
         gmV2SchedulesDir($config),
         gmV2ScheduleLogsDir($config),
+        gmV2TemplatesDir($config),
+        gmV2PvpRankingSchedulesDir($config),
         dirname(gmV2AuditFile($config)),
         dirname(gmV2QueueLockFile($config)),
         dirname(gmV2ScheduleLockFile($config)),
+        dirname(gmV2PvpRankingHistoryFile($config)),
     ];
 
     foreach ($dirs as $dir) {
@@ -4771,6 +5095,9 @@ function gmV2EnsureEnvironment(array $config)
         'logs_dir' => gmV2QueueLogsDir($config),
         'schedules_dir' => gmV2SchedulesDir($config),
         'schedule_logs_dir' => gmV2ScheduleLogsDir($config),
+        'templates_dir' => gmV2TemplatesDir($config),
+        'pvp_ranking_schedules_dir' => gmV2PvpRankingSchedulesDir($config),
+        'pvp_ranking_history_file' => gmV2PvpRankingHistoryFile($config),
         'audit_file' => gmV2AuditFile($config),
         'lock_file' => gmV2QueueLockFile($config),
         'schedule_lock_file' => gmV2ScheduleLockFile($config),
@@ -4815,6 +5142,39 @@ function gmV2AllowedScheduleCommands(array $config)
     return $commands;
 }
 
+function gmV2AllowedTemplateCommands(array $config)
+{
+    $configured = array_value($config, 'gm_v2_template_allowed_commands', array_value($config, 'gm_v2_queue_allowed_commands', []));
+    $commands = [];
+    foreach ((array) $configured as $candidate) {
+        $definition = gmCommandDefinition($config, $candidate);
+        if (!is_array($definition)) {
+            continue;
+        }
+
+        $canonical = trim((string) array_value($definition, 'key', ''));
+        if ($canonical !== '' && !in_array($canonical, $commands, true)) {
+            $commands[] = $canonical;
+        }
+    }
+
+    return $commands;
+}
+
+function gmV2TemplateCategories(array $config)
+{
+    $configured = array_value($config, 'gm_v2_template_categories', ['evento', 'punicao', 'recompensa', 'broadcast']);
+    $categories = [];
+    foreach ((array) $configured as $candidate) {
+        $normalized = strtolower(trimOneLineText((string) $candidate));
+        if ($normalized !== '' && !in_array($normalized, $categories, true)) {
+            $categories[] = $normalized;
+        }
+    }
+
+    return !empty($categories) ? $categories : ['evento', 'punicao', 'recompensa', 'broadcast'];
+}
+
 function gmV2RequestIp()
 {
     $candidates = [
@@ -4831,6 +5191,1111 @@ function gmV2RequestIp()
     }
 
     return '';
+}
+
+function operatorPermissionsMode(array $config)
+{
+    $mode = strtolower(trim((string) array_value($config, 'operator_permissions_mode', 'audit')));
+    if (!in_array($mode, ['off', 'audit', 'enforce'], true)) {
+        $mode = 'audit';
+    }
+    return $mode;
+}
+
+function operatorPermissionsEnabled(array $config)
+{
+    return operatorPermissionsMode($config) !== 'off';
+}
+
+function operatorPermissionsRegistryFile(array $config)
+{
+    return trim((string) array_value($config, 'operator_permissions_registry_file', __DIR__ . '/backups/gm-commander-v2/operators.json'));
+}
+
+function operatorPermissionsAllowRequestRole(array $config)
+{
+    return truthyValue(array_value($config, 'operator_permissions_allow_request_role', false));
+}
+
+function operatorPermissionsRequireKnownOperator(array $config)
+{
+    return truthyValue(array_value($config, 'operator_permissions_require_known_operator', false));
+}
+
+function operatorRoleAliasMap()
+{
+    return [
+        'view' => 'viewer',
+        'viewer' => 'viewer',
+        'read_only' => 'viewer',
+        'readonly' => 'viewer',
+        'operator' => 'gm_operator',
+        'gm_operator' => 'gm_operator',
+        'gm-operator' => 'gm_operator',
+        'supervisor' => 'gm_supervisor',
+        'gm_supervisor' => 'gm_supervisor',
+        'gm-supervisor' => 'gm_supervisor',
+        'admin' => 'gm_admin',
+        'gm_admin' => 'gm_admin',
+        'gm-admin' => 'gm_admin',
+        'super_admin' => 'super_admin',
+        'super-admin' => 'super_admin',
+        'root' => 'super_admin',
+    ];
+}
+
+function operatorNormalizeRole($role)
+{
+    $role = strtolower(trimOneLineText((string) $role));
+    $aliases = operatorRoleAliasMap();
+
+    return isset($aliases[$role]) ? $aliases[$role] : 'viewer';
+}
+
+function operatorRoleInputIsValid($role)
+{
+    $role = strtolower(trimOneLineText((string) $role));
+    return isset(operatorRoleAliasMap()[$role]);
+}
+
+function operatorRoleRank($role)
+{
+    switch (operatorNormalizeRole($role)) {
+        case 'gm_operator':
+            return 20;
+        case 'gm_supervisor':
+            return 30;
+        case 'gm_admin':
+            return 40;
+        case 'super_admin':
+            return 50;
+        case 'viewer':
+        default:
+            return 10;
+    }
+}
+
+function operatorRoleAtLeast($role, $requiredRole)
+{
+    return operatorRoleRank($role) >= operatorRoleRank($requiredRole);
+}
+
+function operatorRolesCatalog()
+{
+    return [
+        'viewer' => [
+            'label' => 'Viewer',
+            'rank' => 10,
+            'summary' => 'Leitura, auditoria e consulta de estado.',
+        ],
+        'gm_operator' => [
+            'label' => 'GM Operator',
+            'rank' => 20,
+            'summary' => 'Preview, fila, agendamento e recompensas operacionais basicas.',
+        ],
+        'gm_supervisor' => [
+            'label' => 'GM Supervisor',
+            'rank' => 30,
+            'summary' => 'Broadcast global e acoes operacionais de impacto moderado.',
+        ],
+        'gm_admin' => [
+            'label' => 'GM Admin',
+            'rank' => 40,
+            'summary' => 'Cash, permissoes GM, punicoes administrativas e operacao de servicos.',
+        ],
+        'super_admin' => [
+            'label' => 'Super Admin',
+            'rank' => 50,
+            'summary' => 'Restore, mutacoes estruturais e controle total da VPS.',
+        ],
+    ];
+}
+
+function operatorPermissionNormalizeCommandAlias($commandKey)
+{
+    $commandKey = trimOneLineText((string) $commandKey);
+    $map = [
+        'addShopGold' => 'grantMallCash',
+        'grantCash' => 'grantMallCash',
+        'addCash' => 'grantMallCash',
+        'grantItemMallGold' => 'grantMallCash',
+        'setGmPermission' => 'grantGmPermission',
+        'removeGmPermission' => 'revokeGmPermission',
+        'unsetGmPermission' => 'revokeGmPermission',
+        'playerTeleport' => 'teleportRole',
+        'muteAcc' => 'muteAccount',
+    ];
+
+    return isset($map[$commandKey]) ? $map[$commandKey] : $commandKey;
+}
+
+function operatorReadRegistry(array $config)
+{
+    $path = operatorPermissionsRegistryFile($config);
+    if ($path === '' || !is_file($path) || !is_readable($path)) {
+        return [
+            'available' => false,
+            'path' => $path,
+            'operators' => [],
+        ];
+    }
+
+    $raw = @file_get_contents($path);
+    $decoded = json_decode((string) $raw, true);
+    if (!is_array($decoded)) {
+        return [
+            'available' => false,
+            'path' => $path,
+            'operators' => [],
+            'error' => 'registry_json_invalido',
+        ];
+    }
+
+    $source = array_value($decoded, 'operators', $decoded);
+    $operators = [];
+    foreach ((array) $source as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+
+        $id = truncateUtf8Text(trimOneLineText((string) firstArrayValue($row, ['id', 'user_id', 'userId', 'login'], '')), 120);
+        $email = strtolower(truncateUtf8Text(trimOneLineText((string) firstArrayValue($row, ['email', 'mail'], '')), 190));
+        $role = operatorNormalizeRole(firstArrayValue($row, ['role', 'operator_role', 'operatorRole'], 'viewer'));
+        $name = truncateUtf8Text(trimOneLineText((string) firstArrayValue($row, ['name', 'display_name', 'displayName'], '')), 160);
+        $enabled = !array_key_exists('enabled', $row) || truthyValue($row['enabled']);
+
+        $allowedIps = [];
+        foreach ((array) firstArrayValue($row, ['allowed_ips', 'allowedIps'], []) as $value) {
+            $candidate = trimOneLineText((string) $value);
+            if ($candidate !== '' && !containsControlChars($candidate)) {
+                $allowedIps[] = truncateUtf8Text($candidate, 120);
+            }
+        }
+
+        if (!$enabled || ($id === '' && $email === '')) {
+            continue;
+        }
+
+        $operators[] = [
+            'id' => $id,
+            'email' => $email,
+            'role' => $role,
+            'name' => $name,
+            'enabled' => true,
+            'allowed_ips' => array_values(array_unique($allowedIps)),
+        ];
+    }
+
+    return [
+        'available' => true,
+        'path' => $path,
+        'operators' => $operators,
+        'updated_at' => array_value($decoded, 'updated_at', null),
+    ];
+}
+
+function operatorReadRegistryDocument(array $config)
+{
+    $path = operatorPermissionsRegistryFile($config);
+    if ($path === '' || !is_file($path) || !is_readable($path)) {
+        return [
+            'available' => false,
+            'path' => $path,
+            'operators' => [],
+            'updated_at' => null,
+        ];
+    }
+
+    $raw = @file_get_contents($path);
+    $decoded = json_decode((string) $raw, true);
+    if (!is_array($decoded)) {
+        return [
+            'available' => false,
+            'path' => $path,
+            'operators' => [],
+            'updated_at' => null,
+            'error' => 'registry_json_invalido',
+        ];
+    }
+
+    $source = array_value($decoded, 'operators', $decoded);
+    return [
+        'available' => true,
+        'path' => $path,
+        'operators' => is_array($source) ? array_values($source) : [],
+        'updated_at' => array_value($decoded, 'updated_at', null),
+    ];
+}
+
+function operatorNormalizeAllowedIpList($value)
+{
+    $items = [];
+    if (is_array($value)) {
+        $items = $value;
+    } elseif (is_string($value)) {
+        $items = preg_split('/[\r\n,;|]+/', trim($value));
+    } elseif ($value !== null && $value !== '') {
+        $items = [$value];
+    }
+
+    $normalized = [];
+    foreach ((array) $items as $item) {
+        $candidate = trimOneLineText((string) $item);
+        if ($candidate === '' || containsControlChars($candidate)) {
+            continue;
+        }
+        $normalized[] = truncateUtf8Text($candidate, 120);
+    }
+
+    return array_values(array_unique($normalized));
+}
+
+function operatorRegistryNormalizeEntry(array $row)
+{
+    $id = truncateUtf8Text(trimOneLineText((string) firstArrayValue($row, ['id', 'user_id', 'userId', 'login'], '')), 120);
+    $email = strtolower(truncateUtf8Text(trimOneLineText((string) firstArrayValue($row, ['email', 'mail'], '')), 190));
+    $name = truncateUtf8Text(trimOneLineText((string) firstArrayValue($row, ['name', 'display_name', 'displayName'], '')), 160);
+    $roleRaw = trimOneLineText((string) firstArrayValue($row, ['role', 'operator_role', 'operatorRole'], ''));
+    if ($roleRaw === '' || !operatorRoleInputIsValid($roleRaw)) {
+        throw new InvalidArgumentException('role invalida. Use: viewer, gm_operator, gm_supervisor, gm_admin ou super_admin');
+    }
+
+    if ($id === '' && $email === '') {
+        throw new InvalidArgumentException('id ou email obrigatorio');
+    }
+
+    return [
+        'id' => $id,
+        'email' => $email,
+        'name' => $name,
+        'role' => operatorNormalizeRole($roleRaw),
+        'enabled' => !array_key_exists('enabled', $row) || truthyValue($row['enabled']),
+        'allowed_ips' => operatorNormalizeAllowedIpList(firstArrayValue($row, ['allowed_ips', 'allowedIps'], [])),
+    ];
+}
+
+function operatorRegistryCountEnabledRole(array $operators, $role)
+{
+    $role = operatorNormalizeRole($role);
+    $count = 0;
+    foreach ($operators as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        if (!truthyValue(array_value($row, 'enabled', true))) {
+            continue;
+        }
+        if (operatorNormalizeRole(array_value($row, 'role', 'viewer')) === $role) {
+            $count++;
+        }
+    }
+    return $count;
+}
+
+function operatorRegistryFindIndex(array $operators, array $entry)
+{
+    $id = trim((string) array_value($entry, 'id', ''));
+    $email = strtolower(trim((string) array_value($entry, 'email', '')));
+
+    foreach ($operators as $index => $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        if ($id !== '' && strcasecmp((string) array_value($row, 'id', ''), $id) === 0) {
+            return $index;
+        }
+        if ($email !== '' && strtolower((string) array_value($row, 'email', '')) === $email) {
+            return $index;
+        }
+    }
+
+    return -1;
+}
+
+function operatorRegistryEnsureUniqueIdentity(array $operators, array $entry, $ignoreIndex = -1)
+{
+    $id = trim((string) array_value($entry, 'id', ''));
+    $email = strtolower(trim((string) array_value($entry, 'email', '')));
+    foreach ($operators as $index => $row) {
+        if (!is_array($row) || intval($index) === intval($ignoreIndex)) {
+            continue;
+        }
+        $rowId = trim((string) array_value($row, 'id', ''));
+        $rowEmail = strtolower(trim((string) array_value($row, 'email', '')));
+        if ($id !== '' && $rowId !== '' && strcasecmp($rowId, $id) === 0) {
+            throw new InvalidArgumentException('Ja existe operador com este id');
+        }
+        if ($email !== '' && $rowEmail !== '' && $rowEmail === $email) {
+            throw new InvalidArgumentException('Ja existe operador com este email');
+        }
+    }
+}
+
+function operatorRegistrySortEntries(array $operators)
+{
+    usort($operators, function ($a, $b) {
+        $rankDiff = operatorRoleRank(array_value($b, 'role', 'viewer')) <=> operatorRoleRank(array_value($a, 'role', 'viewer'));
+        if ($rankDiff !== 0) {
+            return $rankDiff;
+        }
+        $enabledDiff = (truthyValue(array_value($b, 'enabled', true)) ? 1 : 0) <=> (truthyValue(array_value($a, 'enabled', true)) ? 1 : 0);
+        if ($enabledDiff !== 0) {
+            return $enabledDiff;
+        }
+        $nameA = strtolower(trim((string) firstArrayValue($a, ['name', 'email', 'id'], '')));
+        $nameB = strtolower(trim((string) firstArrayValue($b, ['name', 'email', 'id'], '')));
+        return strcmp($nameA, $nameB);
+    });
+    return array_values($operators);
+}
+
+function operatorRegistryEnsureSuperAdminSafety(array $operatorsBefore, array $operatorsAfter, array $actorContext = [])
+{
+    $beforeCount = operatorRegistryCountEnabledRole($operatorsBefore, 'super_admin');
+    $afterCount = operatorRegistryCountEnabledRole($operatorsAfter, 'super_admin');
+    if ($beforeCount > 0 && $afterCount <= 0) {
+        throw new InvalidArgumentException('O registry precisa manter ao menos um super_admin habilitado');
+    }
+
+    $actorId = trim((string) array_value($actorContext, 'user_id', ''));
+    $actorEmail = strtolower(trim((string) array_value($actorContext, 'email', '')));
+    $actorRole = operatorNormalizeRole(array_value($actorContext, 'role', 'viewer'));
+    if ($actorRole !== 'super_admin' || ($actorId === '' && $actorEmail === '')) {
+        return;
+    }
+
+    $selfExists = false;
+    foreach ($operatorsAfter as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        $rowId = trim((string) array_value($row, 'id', ''));
+        $rowEmail = strtolower(trim((string) array_value($row, 'email', '')));
+        $matches = ($actorId !== '' && $rowId !== '' && strcasecmp($rowId, $actorId) === 0)
+            || ($actorEmail !== '' && $rowEmail !== '' && $rowEmail === $actorEmail);
+        if (!$matches) {
+            continue;
+        }
+        $selfExists = true;
+        if (!truthyValue(array_value($row, 'enabled', true))) {
+            throw new InvalidArgumentException('Voce nao pode desabilitar o proprio acesso super_admin pelo painel');
+        }
+        if (operatorNormalizeRole(array_value($row, 'role', 'viewer')) !== 'super_admin') {
+            throw new InvalidArgumentException('Voce nao pode remover o proprio papel de super_admin pelo painel');
+        }
+    }
+
+    if (!$selfExists) {
+        throw new InvalidArgumentException('Voce nao pode remover o proprio acesso super_admin pelo painel');
+    }
+}
+
+function operatorWriteRegistryDocument(array $config, array $operators)
+{
+    $path = operatorPermissionsRegistryFile($config);
+    if ($path === '') {
+        throw new Exception('Arquivo de registry de operadores nao configurado');
+    }
+
+    $document = [
+        'updated_at' => gmdate('c'),
+        'operators' => operatorRegistrySortEntries(array_values($operators)),
+    ];
+    writeAtomicFile($path, safeJsonEncode($document));
+    return [
+        'path' => $path,
+        'document' => $document,
+    ];
+}
+
+function operatorResolveContext(array $config, array $request = [])
+{
+    $operatorId = '';
+    if (isset($_SERVER['HTTP_X_OPERATOR_ID'])) {
+        $operatorId = truncateUtf8Text(trimOneLineText((string) $_SERVER['HTTP_X_OPERATOR_ID']), 120);
+    }
+    if ($operatorId === '') {
+        $operatorId = truncateUtf8Text(trimOneLineText((string) firstArrayValue($request, [
+        'operator_id',
+        'operatorId',
+        'actor_user_id',
+        'actorUserId',
+        'operator.id',
+        'actor.id',
+    ], '')), 120);
+    }
+
+    $operatorEmail = '';
+    if (isset($_SERVER['HTTP_X_OPERATOR_EMAIL'])) {
+        $operatorEmail = strtolower(truncateUtf8Text(trimOneLineText((string) $_SERVER['HTTP_X_OPERATOR_EMAIL']), 190));
+    }
+    if ($operatorEmail === '') {
+        $operatorEmail = strtolower(truncateUtf8Text(trimOneLineText((string) firstArrayValue($request, [
+        'operator_email',
+        'operatorEmail',
+        'actor_email',
+        'actorEmail',
+        'operator.email',
+        'actor.email',
+    ], '')), 190));
+    }
+
+    $operatorName = '';
+    if (isset($_SERVER['HTTP_X_OPERATOR_NAME'])) {
+        $operatorName = truncateUtf8Text(trimOneLineText((string) $_SERVER['HTTP_X_OPERATOR_NAME']), 160);
+    }
+    if ($operatorName === '') {
+        $operatorName = truncateUtf8Text(trimOneLineText((string) firstArrayValue($request, [
+        'operator_name',
+        'operatorName',
+        'actor_name',
+        'actorName',
+        'operator.name',
+        'actor.name',
+        'requested_by',
+        'requestedBy',
+    ], '')), 160);
+    }
+
+    $requestedRole = 'viewer';
+    if (isset($_SERVER['HTTP_X_OPERATOR_ROLE'])) {
+        $requestedRole = operatorNormalizeRole($_SERVER['HTTP_X_OPERATOR_ROLE']);
+    }
+    if ($requestedRole === 'viewer') {
+        $requestedRole = operatorNormalizeRole(firstArrayValue($request, [
+        'operator_role',
+        'operatorRole',
+        'actor_role',
+        'actorRole',
+        'operator.role',
+        'actor.role',
+    ], ''));
+    }
+
+    $ip = gmV2RequestIp();
+    $registry = operatorReadRegistry($config);
+    $matched = null;
+    $source = 'default';
+    foreach ((array) array_value($registry, 'operators', []) as $entry) {
+        if (!is_array($entry)) {
+            continue;
+        }
+        $allowedIps = (array) array_value($entry, 'allowed_ips', []);
+        if (!empty($allowedIps) && $ip !== '' && !in_array($ip, $allowedIps, true)) {
+            continue;
+        }
+        if ($operatorId !== '' && strcasecmp((string) array_value($entry, 'id', ''), $operatorId) === 0) {
+            $matched = $entry;
+            $source = 'registry_id';
+            break;
+        }
+        if ($operatorEmail !== '' && strcasecmp((string) array_value($entry, 'email', ''), $operatorEmail) === 0) {
+            $matched = $entry;
+            $source = 'registry_email';
+            break;
+        }
+    }
+
+    $known = is_array($matched);
+    $role = operatorNormalizeRole(array_value($config, 'operator_permissions_default_role', 'viewer'));
+    if ($known) {
+        $role = operatorNormalizeRole(array_value($matched, 'role', 'viewer'));
+        if ($operatorName === '') {
+            $operatorName = trim((string) array_value($matched, 'name', ''));
+        }
+        if ($operatorId === '') {
+            $operatorId = trim((string) array_value($matched, 'id', ''));
+        }
+        if ($operatorEmail === '') {
+            $operatorEmail = strtolower(trim((string) array_value($matched, 'email', '')));
+        }
+    } elseif (operatorPermissionsAllowRequestRole($config) && $requestedRole !== 'viewer') {
+        $role = $requestedRole;
+        $source = 'request_role';
+    }
+
+    if ($operatorName === '') {
+        if ($operatorEmail !== '') {
+            $operatorName = $operatorEmail;
+        } elseif ($operatorId !== '') {
+            $operatorName = $operatorId;
+        }
+    }
+    if ($operatorName === '') {
+        $operatorName = gmV2RequestActor($request);
+    }
+
+    return [
+        'mode' => operatorPermissionsMode($config),
+        'known' => $known,
+        'source' => $source,
+        'user_id' => $operatorId,
+        'email' => $operatorEmail,
+        'name' => truncateUtf8Text(trimOneLineText((string) $operatorName), 160),
+        'requested_role' => $requestedRole,
+        'role' => $role,
+        'rank' => operatorRoleRank($role),
+        'ip' => $ip,
+        'registry_file' => array_value($registry, 'path', ''),
+    ];
+}
+
+function operatorPermissionCommandMinRole($commandKey)
+{
+    switch (operatorPermissionNormalizeCommandAlias($commandKey)) {
+        case 'grantMallCash':
+            return 'gm_admin';
+        case 'sendSystemMessage':
+            return 'gm_supervisor';
+        case 'sendMailItem':
+        case 'sendMailGold':
+        default:
+            return 'gm_operator';
+    }
+}
+
+function operatorPermissionCommandKeysForAction(array $config, $action, array $request = [])
+{
+    $action = trimOneLineText((string) $action);
+    $keys = [];
+    $direct = operatorPermissionNormalizeCommandAlias($action);
+    if (in_array($direct, ['sendMailItem', 'sendMailGold', 'grantMallCash', 'sendSystemMessage', 'queueBroadcastMessage'], true)) {
+        $keys[] = $direct;
+    }
+
+    if ($action === 'queueBroadcastMessage') {
+        $keys[] = 'sendSystemMessage';
+    }
+
+    $requestCommandKey = trimOneLineText((string) firstArrayValue($request, ['command_key', 'commandKey', 'command'], ''));
+    if ($requestCommandKey !== '') {
+        $keys[] = operatorPermissionNormalizeCommandAlias($requestCommandKey);
+    }
+
+    if (in_array($action, ['getBulkTemplate', 'deleteBulkTemplate', 'previewBulkTemplate', 'executeBulkTemplate', 'updateBulkTemplate'], true)) {
+        $templateKey = trimOneLineText((string) firstArrayValue($request, ['template_key', 'templateKey', 'key', 'id'], ''));
+        $template = ($templateKey !== '') ? gmV2ReadTemplate($config, $templateKey) : null;
+        if (is_array($template)) {
+            $keys[] = operatorPermissionNormalizeCommandAlias(array_value($template, 'command_key', ''));
+        }
+    }
+
+    if (in_array($action, ['updateBulkCommandJob'], true)) {
+        $jobId = trimOneLineText((string) firstArrayValue($request, ['job_id', 'jobId', 'id'], ''));
+        $job = ($jobId !== '') ? gmV2ReadJob($config, $jobId) : null;
+        if (is_array($job)) {
+            $keys[] = operatorPermissionNormalizeCommandAlias(array_value($job, 'command_key', ''));
+        }
+    }
+
+    if (in_array($action, ['getBulkSchedule', 'updateBulkSchedule', 'deleteBulkSchedule'], true)) {
+        $scheduleId = trimOneLineText((string) firstArrayValue($request, ['schedule_id', 'scheduleId', 'id'], ''));
+        $schedule = ($scheduleId !== '') ? gmV2ReadSchedule($config, $scheduleId) : null;
+        if (is_array($schedule)) {
+            $keys[] = operatorPermissionNormalizeCommandAlias(array_value($schedule, 'command_key', ''));
+        }
+    }
+
+    $keys = array_values(array_unique(array_filter($keys, function ($value) {
+        return trim((string) $value) !== '';
+    })));
+
+    return $keys;
+}
+
+function operatorPermissionActionMinRole(array $config, $action, array $request = [])
+{
+    $action = trimOneLineText((string) $action);
+    switch ($action) {
+        case '':
+            return 'viewer';
+
+        case 'getRole':
+        case 'getRoleEditable':
+        case 'getRoles':
+        case 'getRolesEditable':
+        case 'getClasses':
+        case 'getClsconfig':
+        case 'getClsconfigDebug':
+        case 'getItemCatalog':
+        case 'getItemsCatalog':
+        case 'obterCatalogoDeItens':
+        case 'getGmCommandCatalog':
+        case 'getGmCommanderCatalog':
+        case 'getGmActionHistory':
+        case 'getGmCommanderHistory':
+        case 'getBulkCommandJob':
+        case 'getBulkCommandJobs':
+        case 'getBulkTemplate':
+        case 'getBulkTemplates':
+        case 'getBulkSchedule':
+        case 'getBulkSchedules':
+        case 'getMallCashBalance':
+        case 'getUserCashInfo':
+        case 'getAccountMallCash':
+        case 'getGmPermissionState':
+        case 'getGmPermissionStatus':
+        case 'getGmPermissionCatalog':
+        case 'getServiceStatus':
+        case 'getControlCenterSnapshot':
+        case 'getManageableServices':
+        case 'getManageableInstances':
+        case 'getPvpRankingLeaderboard':
+        case 'getPvpRankingRewardHistory':
+        case 'getPvpRankingRewardSchedule':
+        case 'getPvpRankingRewardSchedules':
+        case 'getServerOperationStatus':
+        case 'getServerOperationsHistory':
+        case 'getServerLogs':
+        case 'getMaintenanceMode':
+        case 'getWatchdogStatus':
+        case 'getWatchdogHistory':
+        case 'listBackups':
+        case 'getBackupContent':
+        case 'getRestorePlan':
+        case 'getRestoreHistory':
+        case 'getOperatorPermissionCatalog':
+        case 'getOperatorPermissionState':
+        case 'getQuickPunishmentCatalog':
+            return 'viewer';
+
+        case 'getOperatorRegistry':
+        case 'saveOperatorRegistryEntry':
+        case 'deleteOperatorRegistryEntry':
+            return 'super_admin';
+
+        case 'previewPvpRankingRewards':
+            return 'gm_operator';
+
+        case 'previewQuickPunishment':
+        case 'executeQuickPunishment':
+            return gmV2QuickPunishmentRequestedMinRole($config, $request);
+
+        case 'executePvpRankingRewards':
+        case 'savePvpRankingRewardSchedule':
+        case 'deletePvpRankingRewardSchedule':
+            return 'gm_admin';
+
+        case 'searchPlayerDirectory':
+        case 'getPlayerTargetProfile':
+        case 'resolveBulkTargets':
+        case 'previewBulkTargets':
+        case 'saveBulkTemplate':
+        case 'updateBulkTemplate':
+        case 'deleteBulkTemplate':
+        case 'previewBulkTemplate':
+        case 'executeBulkTemplate':
+        case 'queueBulkCommand':
+        case 'executeBulkCommandNow':
+        case 'updateBulkCommandJob':
+        case 'scheduleBulkCommand':
+        case 'updateBulkSchedule':
+        case 'deleteBulkSchedule':
+            $requiredRole = 'gm_operator';
+            foreach (operatorPermissionCommandKeysForAction($config, $action, $request) as $commandKey) {
+                $candidate = operatorPermissionCommandMinRole($commandKey);
+                if (operatorRoleRank($candidate) > operatorRoleRank($requiredRole)) {
+                    $requiredRole = $candidate;
+                }
+            }
+            return $requiredRole;
+
+        case 'runDueBulkSchedules':
+            return 'gm_admin';
+
+        case 'sendMailItem':
+        case 'sendMailGold':
+            return 'gm_operator';
+
+        case 'sendSystemMessage':
+        case 'queueBroadcastMessage':
+            return 'gm_supervisor';
+
+        case 'kickRole':
+        case 'muteRole':
+        case 'clearRolePk':
+        case 'reviveRole':
+        case 'teleportRole':
+        case 'playerTeleport':
+        case 'summonRole':
+        case 'prisonRole':
+        case 'resetRoleQuest':
+            return 'gm_supervisor';
+
+        case 'grantMallCash':
+        case 'addShopGold':
+        case 'grantCash':
+        case 'addCash':
+        case 'grantItemMallGold':
+        case 'grantGmPermission':
+        case 'setGmPermission':
+        case 'revokeGmPermission':
+        case 'removeGmPermission':
+        case 'unsetGmPermission':
+        case 'banAccount':
+        case 'unbanAccount':
+        case 'muteAccount':
+        case 'muteAcc':
+        case 'setInstanceAutoStart':
+        case 'startInstance':
+        case 'startInstances':
+        case 'stopInstance':
+        case 'stopInstances':
+        case 'restartInstance':
+        case 'restartInstances':
+        case 'setMaintenanceMode':
+        case 'saveWatchdogConfig':
+        case 'enableWatchdog':
+        case 'disableWatchdog':
+        case 'runWatchdogCheckNow':
+        case 'startServer':
+        case 'stopServer':
+        case 'restartServer':
+        case 'startService':
+        case 'stopService':
+        case 'restartService':
+        case 'backupGamedbd':
+        case 'backupNow':
+        case 'exportClsconfig':
+            return 'gm_admin';
+
+        case 'restoreNow':
+        case 'restoreBackup':
+        case 'saveRoleEditable':
+        case 'saveClsconfigTemplate':
+            return 'super_admin';
+
+        default:
+            return 'super_admin';
+    }
+}
+
+function operatorPermissionDecision(array $config, $action, array $request = [])
+{
+    $context = operatorResolveContext($config, $request);
+    $mode = operatorPermissionsMode($config);
+    $requiredRole = operatorPermissionActionMinRole($config, $action, $request);
+    $roleAllowed = operatorRoleAtLeast(array_value($context, 'role', 'viewer'), $requiredRole);
+    $knownAllowed = !operatorPermissionsRequireKnownOperator($config) || !operatorPermissionsEnabled($config) || !empty($context['known']);
+    $authorized = ($mode === 'off') ? true : ($roleAllowed && $knownAllowed);
+
+    return [
+        'authorized' => $authorized,
+        'mode' => $mode,
+        'enforced' => ($mode === 'enforce'),
+        'audit_only' => ($mode === 'audit' && !$authorized),
+        'required_role' => $requiredRole,
+        'reason' => $roleAllowed ? ($knownAllowed ? '' : 'known_operator_required') : 'insufficient_role',
+        'operator' => $context,
+    ];
+}
+
+function operatorPermissionForbiddenPayload($action, array $decision)
+{
+    return [
+        'error' => 'Forbidden',
+        'action' => trimOneLineText((string) $action),
+        'required_role' => array_value($decision, 'required_role', 'viewer'),
+        'reason' => array_value($decision, 'reason', 'insufficient_role'),
+        'operator' => array_value($decision, 'operator', []),
+        'mode' => array_value($decision, 'mode', 'enforce'),
+    ];
+}
+
+function operatorPermissionRespondIfDenied($action, array $decision)
+{
+    if (!empty($decision['authorized']) || empty($decision['enforced'])) {
+        return false;
+    }
+
+    respondJson(operatorPermissionForbiddenPayload($action, $decision), 403);
+    exit;
+}
+
+function operatorPermissionDecisionForRequiredRole(array $config, $action, array $request, $requiredRole)
+{
+    $context = operatorResolveContext($config, $request);
+    $mode = operatorPermissionsMode($config);
+    $requiredRole = operatorNormalizeRole($requiredRole);
+    $roleAllowed = operatorRoleAtLeast(array_value($context, 'role', 'viewer'), $requiredRole);
+    $knownAllowed = !operatorPermissionsRequireKnownOperator($config) || !operatorPermissionsEnabled($config) || !empty($context['known']);
+    $authorized = ($mode === 'off') ? true : ($roleAllowed && $knownAllowed);
+
+    return [
+        'authorized' => $authorized,
+        'mode' => $mode,
+        'enforced' => ($mode === 'enforce'),
+        'audit_only' => ($mode === 'audit' && !$authorized),
+        'required_role' => $requiredRole,
+        'reason' => $roleAllowed ? ($knownAllowed ? '' : 'known_operator_required') : 'insufficient_role',
+        'operator' => $context,
+    ];
+}
+
+function operatorPermissionEnforceRequiredRole(array $config, $action, array $request, $requiredRole)
+{
+    $decision = operatorPermissionDecisionForRequiredRole($config, $action, $request, $requiredRole);
+    if (empty($decision['authorized'])) {
+        operatorPermissionAuditDenied($config, $action, $decision);
+        operatorPermissionRespondIfDenied($action, $decision);
+    }
+    return $decision;
+}
+
+function operatorPermissionEnforceCommandRole(array $config, $action, array $request, $commandKey)
+{
+    $commandKey = operatorPermissionNormalizeCommandAlias($commandKey);
+    if ($commandKey === '') {
+        return operatorPermissionDecision($config, $action, $request);
+    }
+    return operatorPermissionEnforceRequiredRole($config, $action, array_merge($request, [
+        'command_key' => $commandKey,
+    ]), operatorPermissionCommandMinRole($commandKey));
+}
+
+function operatorPermissionAuditActor(array $context)
+{
+    return [
+        'name' => trim((string) array_value($context, 'name', 'api')),
+        'ip' => trim((string) array_value($context, 'ip', '')),
+        'user_id' => trim((string) array_value($context, 'user_id', '')),
+        'email' => trim((string) array_value($context, 'email', '')),
+        'role' => trim((string) array_value($context, 'role', 'viewer')),
+        'known' => !empty($context['known']),
+        'source' => trim((string) array_value($context, 'source', '')),
+    ];
+}
+
+function operatorPermissionAuditDenied(array $config, $action, array $decision)
+{
+    if (!gmV2Enabled($config)) {
+        return null;
+    }
+
+    return gmV2AppendAudit($config, 'operator_permission_denied', [
+        'action' => trimOneLineText((string) $action),
+        'mode' => array_value($decision, 'mode', 'audit'),
+        'required_role' => array_value($decision, 'required_role', 'viewer'),
+        'reason' => array_value($decision, 'reason', ''),
+        'actor' => operatorPermissionAuditActor(array_value($decision, 'operator', [])),
+    ]);
+}
+
+function operatorPermissionCatalogPayload(array $config)
+{
+    return [
+        'success' => true,
+        'mode' => operatorPermissionsMode($config),
+        'registry_file' => operatorPermissionsRegistryFile($config),
+        'allow_request_role' => operatorPermissionsAllowRequestRole($config),
+        'require_known_operator' => operatorPermissionsRequireKnownOperator($config),
+        'default_role' => operatorNormalizeRole(array_value($config, 'operator_permissions_default_role', 'viewer')),
+        'headers' => [
+            'x-operator-id',
+            'x-operator-email',
+            'x-operator-name',
+            'x-operator-role',
+        ],
+        'roles' => operatorRolesCatalog(),
+        'command_min_roles' => [
+            'sendMailItem' => operatorPermissionCommandMinRole('sendMailItem'),
+            'sendMailGold' => operatorPermissionCommandMinRole('sendMailGold'),
+            'sendSystemMessage' => operatorPermissionCommandMinRole('sendSystemMessage'),
+            'grantMallCash' => operatorPermissionCommandMinRole('grantMallCash'),
+        ],
+        'action_examples' => [
+            'read' => 'viewer',
+            'bulk_reward' => 'gm_operator',
+            'broadcast' => 'gm_supervisor',
+            'cash_and_gm_permission' => 'gm_admin',
+            'restore_and_role_edit' => 'super_admin',
+        ],
+        'management_endpoints' => [
+            'operator_registry' => '/apicls/api_cls.php?action=getOperatorRegistry',
+            'operator_registry_save' => '/apicls/api_cls.php?action=saveOperatorRegistryEntry',
+            'operator_registry_delete' => '/apicls/api_cls.php?action=deleteOperatorRegistryEntry',
+            'pvp_ranking_reward_schedule_save' => '/apicls/api_cls.php?action=savePvpRankingRewardSchedule',
+            'pvp_ranking_reward_schedule_delete' => '/apicls/api_cls.php?action=deletePvpRankingRewardSchedule',
+        ],
+        'collected_at' => gmdate('c'),
+    ];
+}
+
+function operatorPermissionStatePayload(array $config, array $request = [])
+{
+    $context = operatorResolveContext($config, $request);
+    $role = array_value($context, 'role', 'viewer');
+    $known = !empty($context['known']);
+    $requireKnown = operatorPermissionsRequireKnownOperator($config);
+    $catalog = operatorRolesCatalog();
+
+    $can = function ($requiredRole) use ($role, $known, $requireKnown) {
+        return operatorRoleAtLeast($role, $requiredRole) && (!$requireKnown || $known);
+    };
+
+    return [
+        'success' => true,
+        'mode' => operatorPermissionsMode($config),
+        'enforced' => operatorPermissionsMode($config) === 'enforce',
+        'operator' => $context,
+        'role' => [
+            'key' => $role,
+            'label' => array_value(array_value($catalog, $role, []), 'label', $role),
+            'rank' => operatorRoleRank($role),
+        ],
+        'permissions' => [
+            'read' => $can('viewer'),
+            'bulk_rewards' => $can('gm_operator'),
+            'broadcast' => $can('gm_supervisor'),
+            'cash_and_gm_permissions' => $can('gm_admin'),
+            'restore_and_role_edit' => $can('super_admin'),
+        ],
+        'checked_at' => gmdate('c'),
+    ];
+}
+
+function operatorRegistryListPayload(array $config)
+{
+    $registry = operatorReadRegistryDocument($config);
+    $operators = [];
+    foreach ((array) array_value($registry, 'operators', []) as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        try {
+            $normalized = operatorRegistryNormalizeEntry($row);
+            $normalized['role_meta'] = array_value(operatorRolesCatalog(), array_value($normalized, 'role', 'viewer'), []);
+            $operators[] = $normalized;
+        } catch (InvalidArgumentException $e) {
+            $operators[] = [
+                'invalid' => true,
+                'error' => $e->getMessage(),
+                'raw' => $row,
+            ];
+        }
+    }
+
+    return [
+        'success' => true,
+        'registry_file' => operatorPermissionsRegistryFile($config),
+        'available' => !empty($registry['available']),
+        'updated_at' => array_value($registry, 'updated_at', null),
+        'roles' => operatorRolesCatalog(),
+        'operators' => operatorRegistrySortEntries(array_values(array_filter($operators, function ($row) {
+            return is_array($row) && empty($row['invalid']);
+        }))),
+        'invalid_entries' => array_values(array_filter($operators, function ($row) {
+            return is_array($row) && !empty($row['invalid']);
+        })),
+        'collected_at' => gmdate('c'),
+    ];
+}
+
+function operatorRegistrySavePayload(array $config, array $request)
+{
+    $payload = array_value($request, 'operator', null);
+    if (!is_array($payload)) {
+        $payload = $request;
+    }
+
+    $entry = operatorRegistryNormalizeEntry((array) $payload);
+    $registry = operatorReadRegistryDocument($config);
+    $operators = [];
+    foreach ((array) array_value($registry, 'operators', []) as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        try {
+            $operators[] = operatorRegistryNormalizeEntry($row);
+        } catch (InvalidArgumentException $e) {
+            continue;
+        }
+    }
+
+    $actor = operatorResolveContext($config, $request);
+    $existingIndex = operatorRegistryFindIndex($operators, $entry);
+    operatorRegistryEnsureUniqueIdentity($operators, $entry, $existingIndex);
+    $action = ($existingIndex >= 0) ? 'updated' : 'created';
+    $before = $operators;
+    if ($existingIndex >= 0) {
+        $operators[$existingIndex] = $entry;
+    } else {
+        $operators[] = $entry;
+    }
+    operatorRegistryEnsureSuperAdminSafety($before, $operators, $actor);
+
+    $write = operatorWriteRegistryDocument($config, $operators);
+    gmV2AppendAudit($config, 'operator_registry_saved', [
+        'operator_entry' => $entry,
+        'registry_file' => array_value($write, 'path', operatorPermissionsRegistryFile($config)),
+        'change_kind' => $action,
+        'actor' => operatorPermissionAuditActor($actor),
+    ]);
+
+    return [
+        'success' => true,
+        'action' => $action,
+        'operator' => $entry,
+        'registry_file' => array_value($write, 'path', operatorPermissionsRegistryFile($config)),
+        'updated_at' => array_value(array_value($write, 'document', []), 'updated_at', gmdate('c')),
+        'operators_count' => count((array) array_value(array_value($write, 'document', []), 'operators', [])),
+    ];
+}
+
+function operatorRegistryDeletePayload(array $config, array $request)
+{
+    $target = array_value($request, 'operator', null);
+    if (!is_array($target)) {
+        $target = $request;
+    }
+
+    $targetId = truncateUtf8Text(trimOneLineText((string) firstArrayValue((array) $target, ['id', 'user_id', 'userId', 'login'], '')), 120);
+    $targetEmail = strtolower(truncateUtf8Text(trimOneLineText((string) firstArrayValue((array) $target, ['email', 'mail'], '')), 190));
+    if ($targetId === '' && $targetEmail === '') {
+        throw new InvalidArgumentException('id ou email obrigatorio para excluir operador');
+    }
+
+    $registry = operatorReadRegistryDocument($config);
+    $operators = [];
+    foreach ((array) array_value($registry, 'operators', []) as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        try {
+            $operators[] = operatorRegistryNormalizeEntry($row);
+        } catch (InvalidArgumentException $e) {
+            continue;
+        }
+    }
+
+    $index = operatorRegistryFindIndex($operators, [
+        'id' => $targetId,
+        'email' => $targetEmail,
+    ]);
+    if ($index < 0) {
+        throw new InvalidArgumentException('Operador nao encontrado no registry');
+    }
+
+    $removed = $operators[$index];
+    $before = $operators;
+    array_splice($operators, $index, 1);
+    $actor = operatorResolveContext($config, $request);
+    operatorRegistryEnsureSuperAdminSafety($before, $operators, $actor);
+
+    $write = operatorWriteRegistryDocument($config, $operators);
+    gmV2AppendAudit($config, 'operator_registry_deleted', [
+        'operator_entry' => $removed,
+        'registry_file' => array_value($write, 'path', operatorPermissionsRegistryFile($config)),
+        'actor' => operatorPermissionAuditActor($actor),
+    ]);
+
+    return [
+        'success' => true,
+        'deleted' => $removed,
+        'registry_file' => array_value($write, 'path', operatorPermissionsRegistryFile($config)),
+        'updated_at' => array_value(array_value($write, 'document', []), 'updated_at', gmdate('c')),
+        'operators_count' => count((array) array_value(array_value($write, 'document', []), 'operators', [])),
+    ];
 }
 
 function gmV2RequestActor(array $request)
@@ -4860,6 +6325,584 @@ function gmV2RequestActor(array $request)
     return containsControlChars($actor) ? 'api' : truncateUtf8Text($actor, 120);
 }
 
+function gmV2RequestActorEnvelope(array $config, array $request = [])
+{
+    $context = operatorResolveContext($config, $request);
+    return [
+        'name' => gmV2RequestActor($request),
+        'ip' => gmV2RequestIp(),
+        'user_id' => trim((string) array_value($context, 'user_id', '')),
+        'email' => trim((string) array_value($context, 'email', '')),
+        'role' => trim((string) array_value($context, 'role', 'viewer')),
+        'known' => !empty($context['known']),
+        'source' => trim((string) array_value($context, 'source', '')),
+    ];
+}
+
+function gmV2ActorAuditFields(array $actor)
+{
+    return [
+        'actor_user_id' => trim((string) array_value($actor, 'user_id', '')),
+        'actor_email' => trim((string) array_value($actor, 'email', '')),
+        'actor_role' => trim((string) array_value($actor, 'role', '')),
+        'actor_ip' => trim((string) array_value($actor, 'ip', '')),
+    ];
+}
+
+function gmV2NormalizeExecutionContext(array $request, array $existing = [])
+{
+    $base = [];
+    if (is_array(array_value($existing, 'context', null))) {
+        $base = (array) array_value($existing, 'context', []);
+    } elseif (!empty($existing)) {
+        $base = $existing;
+    }
+
+    $context = $base;
+    $candidate = array_value($request, 'context', null);
+    if (is_array($candidate)) {
+        $context = array_merge($context, $candidate);
+    }
+
+    $fieldMap = [
+        'event_id' => ['event_id', 'eventId'],
+        'event_type' => ['event_type', 'eventType'],
+        'trigger_source' => ['trigger_source', 'triggerSource'],
+    ];
+
+    foreach ($fieldMap as $targetKey => $sourceKeys) {
+        $rawValue = firstArrayValue($request, $sourceKeys, null);
+        if ($rawValue === null && is_array($candidate)) {
+            $rawValue = firstArrayValue($candidate, $sourceKeys, null);
+        }
+        if ($rawValue === null) {
+            $rawValue = array_value($context, $targetKey, null);
+        }
+
+        $value = trimOneLineText((string) $rawValue);
+        if ($value === '') {
+            unset($context[$targetKey]);
+        } else {
+            $context[$targetKey] = $value;
+        }
+    }
+
+    return $context;
+}
+
+function gmV2NormalizeBroadcastScheduleAt(array $request, array $config)
+{
+    $raw = firstArrayValue($request, ['schedule_at', 'scheduleAt', 'start_at', 'startAt'], null);
+    if ($raw === null || trim((string) $raw) === '') {
+        return [
+            'timestamp' => time(),
+            'iso' => gmdate('c'),
+            'timezone' => '',
+            'scheduled' => false,
+        ];
+    }
+
+    if (is_numeric($raw)) {
+        $timestamp = intval($raw);
+        if ($timestamp <= 0) {
+            throw new InvalidArgumentException('schedule_at invalido');
+        }
+        return [
+            'timestamp' => $timestamp,
+            'iso' => gmdate('c', $timestamp),
+            'timezone' => 'UTC',
+            'scheduled' => ($timestamp > time()),
+        ];
+    }
+
+    $timezoneName = gmV2NormalizeTimezoneName(
+        firstArrayValue($request, ['timezone', 'tz'], ''),
+        $config
+    );
+
+    try {
+        $dt = new DateTimeImmutable(trim((string) $raw), new DateTimeZone($timezoneName));
+    } catch (Exception $e) {
+        throw new InvalidArgumentException('schedule_at invalido: ' . $e->getMessage());
+    }
+
+    $timestamp = $dt->getTimestamp();
+    return [
+        'timestamp' => $timestamp,
+        'iso' => gmdate('c', $timestamp),
+        'timezone' => $timezoneName,
+        'scheduled' => ($timestamp > time()),
+    ];
+}
+
+function gmV2NormalizeBroadcastCampaignRequest(array $config, array $request)
+{
+    operatorPermissionEnforceRequiredRole(
+        $config,
+        'queueBroadcastMessage',
+        $request,
+        'gm_supervisor'
+    );
+
+    if (!truthyValue(array_value($config, 'system_message_enabled', true))) {
+        throw new Exception('Envio de mensagens globais esta desabilitado na configuracao da API');
+    }
+
+    $messagePayload = normalizeSystemMessageRequest($request, $config);
+    $repeatCount = max(1, intval(firstArrayValue($request, ['repeat_count', 'repeatCount'], 1)));
+    $repeatMax = max(1, intval(array_value($config, 'gm_v2_broadcast_repeat_max', 100)));
+    if ($repeatCount > $repeatMax) {
+        throw new InvalidArgumentException('repeat_count excede o limite de ' . $repeatMax);
+    }
+
+    $repeatInterval = max(0, intval(firstArrayValue($request, ['repeat_interval_seconds', 'repeatIntervalSeconds'], 0)));
+    $maxInterval = max(0, intval(array_value($config, 'gm_v2_broadcast_max_interval_seconds', 86400)));
+    if ($repeatInterval > $maxInterval) {
+        throw new InvalidArgumentException('repeat_interval_seconds excede o limite de ' . $maxInterval);
+    }
+    if ($repeatCount > 1 && $repeatInterval <= 0) {
+        throw new InvalidArgumentException('repeat_interval_seconds obrigatorio quando repeat_count > 1');
+    }
+
+    $scheduleMeta = gmV2NormalizeBroadcastScheduleAt($request, $config);
+    $context = gmV2NormalizeExecutionContext($request);
+    $style = trimOneLineText((string) firstArrayValue($request, ['style'], ''));
+    $warnings = [];
+    if ($style !== '') {
+        $warnings[] = 'style ainda nao altera o protocolo de broadcast nesta fase e sera mantido apenas como metadado';
+    }
+
+    $payload = [
+        'message' => array_value($messagePayload, 'message', ''),
+        'kind' => array_value($messagePayload, 'kind', 'system'),
+        'priority' => array_value($messagePayload, 'priority', 'normal'),
+        'channel' => intval(array_value($messagePayload, 'channel', 9)),
+        'dry_run' => false,
+    ];
+    if ($style !== '') {
+        $payload['style'] = $style;
+    }
+
+    return [
+        'command_key' => 'sendSystemMessage',
+        'context' => $context,
+        'command_payload' => $payload,
+        'repeat_count' => $repeatCount,
+        'repeat_interval_seconds' => $repeatInterval,
+        'schedule_at' => array_value($scheduleMeta, 'iso', gmdate('c')),
+        'schedule_timezone' => array_value($scheduleMeta, 'timezone', ''),
+        'schedule_timestamp' => intval(array_value($scheduleMeta, 'timestamp', time())),
+        'scheduled' => !empty($scheduleMeta['scheduled']),
+        'warnings' => $warnings,
+    ];
+}
+
+function gmV2CreateBroadcastMessageJobs(array $config, array $request)
+{
+    $plan = gmV2NormalizeBroadcastCampaignRequest($config, $request);
+    $actor = gmV2RequestActorEnvelope($config, $request);
+    $campaignId = buildOperationId('gmv2-broadcast');
+    $dryRun = truthyValue(array_value($request, 'dry_run', array_value($request, 'dryRun', false)));
+    $jobs = [];
+    $jobFiles = [];
+    $firstTimestamp = intval(array_value($plan, 'schedule_timestamp', time()));
+    $repeatCount = intval(array_value($plan, 'repeat_count', 1));
+    $repeatInterval = intval(array_value($plan, 'repeat_interval_seconds', 0));
+
+    for ($index = 0; $index < $repeatCount; $index++) {
+        $runTs = $firstTimestamp + ($index * $repeatInterval);
+        $notBeforeAt = gmdate('c', $runTs);
+        $jobId = buildOperationId('gmv2-job');
+        $target = [
+            'target_type' => 'global',
+            'target_key' => 'broadcast:' . $campaignId . ':' . ($index + 1),
+            'name' => 'broadcast_global',
+            'broadcast_index' => ($index + 1),
+        ];
+        $job = [
+            'type' => 'gm_v2_job',
+            'id' => $jobId,
+            'command_key' => 'sendSystemMessage',
+            'status' => 'queued',
+            'created_at' => gmdate('c'),
+            'updated_at' => gmdate('c'),
+            'actor' => $actor,
+            'context' => array_value($plan, 'context', []),
+            'selection' => [],
+            'warnings' => array_value($plan, 'warnings', []),
+            'command_payload' => array_merge((array) array_value($plan, 'command_payload', []), [
+                'campaign_id' => $campaignId,
+                'broadcast_index' => ($index + 1),
+                'broadcast_total' => $repeatCount,
+            ]),
+            'target_count' => 1,
+            'targets_pending' => [$target],
+            'targets_retry' => [],
+            'targets_completed' => [],
+            'targets_failed' => [],
+            'batch_size' => 1,
+            'retry_limit' => max(1, intval(array_value($config, 'gm_v2_queue_retry_limit', 3))),
+            'retry_backoff_seconds' => max(5, intval(array_value($config, 'gm_v2_queue_backoff_seconds', 30))),
+            'next_retry_at' => null,
+            'not_before_at' => $notBeforeAt,
+            'broadcast_campaign' => [
+                'campaign_id' => $campaignId,
+                'repeat_index' => ($index + 1),
+                'repeat_count' => $repeatCount,
+                'repeat_interval_seconds' => $repeatInterval,
+                'scheduled_for' => $notBeforeAt,
+                'style' => trimOneLineText((string) array_value(array_value($plan, 'command_payload', []), 'style', '')),
+            ],
+            'preview' => [
+                'sample_targets' => [$target],
+            ],
+        ];
+
+        if (!$dryRun) {
+            $jobFiles[] = gmV2WriteJob($config, $job);
+            gmV2AppendAudit($config, 'job_queued', [
+                'job_id' => $jobId,
+                'command_key' => 'sendSystemMessage',
+                'actor' => $actor,
+                'context' => array_value($plan, 'context', []),
+                'target_count' => 1,
+                'warnings' => array_value($plan, 'warnings', []),
+                'campaign_id' => $campaignId,
+                'not_before_at' => $notBeforeAt,
+            ]);
+        }
+
+        $jobs[] = gmV2JobSummary($job);
+    }
+
+    gmV2AppendAudit($config, 'broadcast_campaign_queued', [
+        'campaign_id' => $campaignId,
+        'command_key' => 'sendSystemMessage',
+        'actor' => $actor,
+        'context' => array_value($plan, 'context', []),
+        'repeat_count' => $repeatCount,
+        'repeat_interval_seconds' => $repeatInterval,
+        'schedule_at' => array_value($plan, 'schedule_at', null),
+        'dry_run' => $dryRun,
+        'warnings' => array_value($plan, 'warnings', []),
+    ]);
+
+    return [
+        'success' => true,
+        'dry_run' => $dryRun,
+        'campaign_id' => $campaignId,
+        'command_key' => 'sendSystemMessage',
+        'context' => array_value($plan, 'context', []),
+        'repeat_count' => $repeatCount,
+        'repeat_interval_seconds' => $repeatInterval,
+        'schedule_at' => array_value($plan, 'schedule_at', null),
+        'schedule_timezone' => array_value($plan, 'schedule_timezone', ''),
+        'warnings' => array_value($plan, 'warnings', []),
+        'jobs' => $jobs,
+        'job_files' => $jobFiles,
+        'audit_file' => gmV2AuditFile($config),
+        'queued_at' => gmdate('c'),
+    ];
+}
+
+function gmV2QuickPunishmentCatalog(array $config)
+{
+    $kickDefault = max(1, intval(array_value($config, 'security_kick_default_seconds', 10)));
+    $kickMax = max($kickDefault, intval(array_value($config, 'security_kick_max_seconds', 600)));
+    $muteDefault = max(60, intval(array_value($config, 'gm_v2_quick_mute_default_seconds', 3600)));
+    $banDefault = max(60, intval(array_value($config, 'gm_v2_quick_ban_default_seconds', 86400)));
+    $banPermanent = max(1, intval(array_value($config, 'security_ban_permanent_seconds', 2147483647)));
+
+    return [
+        'kick_role' => [
+            'key' => 'kick_role',
+            'label' => 'Kick',
+            'summary' => 'Derruba a sessao do personagem usando kickRole.',
+            'status' => 'supported',
+            'required_role' => 'gm_supervisor',
+            'underlying_action' => 'kickRole',
+            'target_scope' => 'role',
+            'duration_required' => false,
+            'default_duration_seconds' => $kickDefault,
+            'max_duration_seconds' => $kickMax,
+        ],
+        'mute_account_temporary' => [
+            'key' => 'mute_account_temporary',
+            'label' => 'Mute temporario (conta)',
+            'summary' => 'Aplica mute temporario no escopo de conta usando muteAccount.',
+            'status' => 'supported',
+            'required_role' => 'gm_admin',
+            'underlying_action' => 'muteAccount',
+            'target_scope' => 'account',
+            'duration_required' => true,
+            'default_duration_seconds' => $muteDefault,
+        ],
+        'mute_role_temporary' => [
+            'key' => 'mute_role_temporary',
+            'label' => 'Mute temporario (personagem)',
+            'summary' => 'Aplica mute temporario apenas no personagem usando muteRole.',
+            'status' => 'supported',
+            'required_role' => 'gm_supervisor',
+            'underlying_action' => 'muteRole',
+            'target_scope' => 'role',
+            'duration_required' => true,
+            'default_duration_seconds' => $muteDefault,
+        ],
+        'ban_account_temporary' => [
+            'key' => 'ban_account_temporary',
+            'label' => 'Ban temporario',
+            'summary' => 'Aplica ban temporario na conta usando banAccount.',
+            'status' => 'supported',
+            'required_role' => 'gm_admin',
+            'underlying_action' => 'banAccount',
+            'target_scope' => 'account',
+            'duration_required' => true,
+            'default_duration_seconds' => $banDefault,
+            'supports_kick_online' => true,
+        ],
+        'ban_account_permanent' => [
+            'key' => 'ban_account_permanent',
+            'label' => 'Ban permanente',
+            'summary' => 'Aplica ban permanente na conta usando banAccount.',
+            'status' => 'supported',
+            'required_role' => 'gm_admin',
+            'underlying_action' => 'banAccount',
+            'target_scope' => 'account',
+            'duration_required' => false,
+            'default_duration_seconds' => $banPermanent,
+            'permanent' => true,
+            'supports_kick_online' => true,
+        ],
+        'jail' => [
+            'key' => 'jail',
+            'label' => 'Jail',
+            'summary' => 'Ainda nao suportado. Depende da homologacao final de teleportRole e das coordenadas oficiais da prisao.',
+            'status' => 'contract_only',
+            'required_role' => 'gm_supervisor',
+            'underlying_action' => 'prisonRole',
+            'target_scope' => 'role',
+        ],
+    ];
+}
+
+function gmV2QuickPunishmentNormalizePresetKey($presetKey)
+{
+    $presetKey = strtolower(trimOneLineText((string) $presetKey));
+    $aliases = [
+        'kick' => 'kick_role',
+        'kickrole' => 'kick_role',
+        'mute' => 'mute_account_temporary',
+        'mute_account' => 'mute_account_temporary',
+        'temporary_mute' => 'mute_account_temporary',
+        'mute_temp' => 'mute_account_temporary',
+        'mute_role' => 'mute_role_temporary',
+        'temporary_role_mute' => 'mute_role_temporary',
+        'ban_temp' => 'ban_account_temporary',
+        'temporary_ban' => 'ban_account_temporary',
+        'temp_ban' => 'ban_account_temporary',
+        'ban_perm' => 'ban_account_permanent',
+        'permanent_ban' => 'ban_account_permanent',
+        'perm_ban' => 'ban_account_permanent',
+    ];
+    if (isset($aliases[$presetKey])) {
+        return $aliases[$presetKey];
+    }
+    return $presetKey;
+}
+
+function gmV2QuickPunishmentPresetDefinition(array $config, $presetKey)
+{
+    $catalog = gmV2QuickPunishmentCatalog($config);
+    $presetKey = gmV2QuickPunishmentNormalizePresetKey($presetKey);
+    if (!isset($catalog[$presetKey])) {
+        throw new InvalidArgumentException('preset_key invalido');
+    }
+    return $catalog[$presetKey];
+}
+
+function gmV2QuickPunishmentRequestedMinRole(array $config, array $request = [])
+{
+    try {
+        $preset = gmV2QuickPunishmentPresetDefinition(
+            $config,
+            firstArrayValue($request, ['preset_key', 'presetKey', 'preset'], '')
+        );
+        return operatorNormalizeRole(array_value($preset, 'required_role', 'gm_supervisor'));
+    } catch (Exception $e) {
+        return 'gm_supervisor';
+    }
+}
+
+function gmV2QuickPunishmentBuildPayload(array $config, array $request)
+{
+    $preset = gmV2QuickPunishmentPresetDefinition(
+        $config,
+        firstArrayValue($request, ['preset_key', 'presetKey', 'preset'], '')
+    );
+    if (array_value($preset, 'status', 'supported') !== 'supported') {
+        throw new InvalidArgumentException('preset_key ainda nao suportado nesta fase');
+    }
+
+    $normalized = $request;
+    if (!isset($normalized['duration_seconds']) && !isset($normalized['durationSeconds']) && !isset($normalized['duration']) && !isset($normalized['seconds']) && !isset($normalized['time'])) {
+        $defaultSeconds = intval(array_value($preset, 'default_duration_seconds', 0));
+        if ($defaultSeconds > 0) {
+            $normalized['duration_seconds'] = $defaultSeconds;
+        }
+    }
+    if (!empty($preset['permanent'])) {
+        $normalized['permanent'] = true;
+    }
+
+    $proto = new GamedProtocol();
+    $underlyingAction = array_value($preset, 'underlying_action', '');
+    switch ($underlyingAction) {
+        case 'kickRole':
+            $payload = buildKickRolePayload($normalized, $config);
+            break;
+        case 'muteAccount':
+            $payload = buildMuteAccountPayload($normalized, $config, $proto);
+            break;
+        case 'muteRole':
+            $payload = buildMuteRolePayload($normalized, $config);
+            break;
+        case 'banAccount':
+            $payload = buildBanAccountPayload($normalized, $config, $proto);
+            break;
+        default:
+            throw new InvalidArgumentException('preset_key ainda nao suportado nesta fase');
+    }
+
+    return [$preset, $payload];
+}
+
+function gmV2QuickPunishmentPlanSummary(array $preset, array $payload)
+{
+    $summary = [
+        'preset_key' => array_value($preset, 'key', ''),
+        'label' => array_value($preset, 'label', ''),
+        'required_role' => array_value($preset, 'required_role', 'gm_supervisor'),
+        'underlying_action' => array_value($payload, 'action', array_value($preset, 'underlying_action', '')),
+        'target_scope' => array_value($preset, 'target_scope', 'role'),
+        'target' => [
+            'roleid' => intval(array_value($payload, 'roleid', 0)),
+            'userid' => intval(array_value($payload, 'userid', 0)),
+        ],
+        'reason' => trim((string) array_value($payload, 'reason', '')),
+        'duration_seconds' => intval(array_value($payload, 'seconds', 0)),
+        'sid' => intval(array_value($payload, 'sid', 0)),
+        'permanent' => !empty($payload['permanent']),
+        'kick_online' => !empty($payload['kick_online']),
+        'kick_seconds' => intval(array_value($payload, 'kick_seconds', 0)),
+        'kick_reason' => trim((string) array_value($payload, 'kick_reason', '')),
+        'type_ids' => array_values(array_map('intval', (array) array_value($payload, 'type_ids', []))),
+    ];
+
+    $warnings = [];
+    if ($summary['underlying_action'] === 'kickRole') {
+        $warnings[] = 'Kick derruba apenas a sessao do personagem e nao cria bloqueio persistente.';
+    }
+    if ($summary['underlying_action'] === 'banAccount' && !$summary['kick_online']) {
+        $warnings[] = 'Ban bloqueia novos logins da conta, mas nao derruba a sessao online sem kick_online=true.';
+    }
+    if ($summary['underlying_action'] === 'muteAccount') {
+        $warnings[] = 'MuteAccount atua no escopo de conta e exige userid resolvido pelo backend.';
+    }
+    if ($summary['underlying_action'] === 'muteRole') {
+        $warnings[] = 'MuteRole atua apenas no personagem selecionado.';
+    }
+    $summary['warnings'] = $warnings;
+
+    return $summary;
+}
+
+function gmV2QuickPunishmentCatalogPayload(array $config)
+{
+    $catalog = gmV2QuickPunishmentCatalog($config);
+    $presets = [];
+    $unsupported = [];
+    foreach ($catalog as $preset) {
+        $row = [
+            'key' => array_value($preset, 'key', ''),
+            'label' => array_value($preset, 'label', ''),
+            'summary' => array_value($preset, 'summary', ''),
+            'status' => array_value($preset, 'status', 'supported'),
+            'required_role' => array_value($preset, 'required_role', 'gm_supervisor'),
+            'underlying_action' => array_value($preset, 'underlying_action', ''),
+            'target_scope' => array_value($preset, 'target_scope', 'role'),
+            'duration_required' => !empty($preset['duration_required']),
+            'default_duration_seconds' => intval(array_value($preset, 'default_duration_seconds', 0)),
+            'max_duration_seconds' => intval(array_value($preset, 'max_duration_seconds', 0)),
+            'supports_kick_online' => !empty($preset['supports_kick_online']),
+        ];
+        if (array_value($preset, 'status', 'supported') === 'supported') {
+            $presets[] = $row;
+        } else {
+            $unsupported[] = $row;
+        }
+    }
+
+    return [
+        'success' => true,
+        'presets' => $presets,
+        'unsupported_presets' => $unsupported,
+        'endpoints' => [
+            'preview' => '/apicls/api_cls.php?action=previewQuickPunishment',
+            'execute' => '/apicls/api_cls.php?action=executeQuickPunishment',
+        ],
+        'collected_at' => gmdate('c'),
+    ];
+}
+
+function gmV2PreviewQuickPunishment(array $config, array $request)
+{
+    list($preset, $payload) = gmV2QuickPunishmentBuildPayload($config, $request);
+    return [
+        'success' => true,
+        'preset' => [
+            'key' => array_value($preset, 'key', ''),
+            'label' => array_value($preset, 'label', ''),
+            'summary' => array_value($preset, 'summary', ''),
+            'required_role' => array_value($preset, 'required_role', 'gm_supervisor'),
+        ],
+        'plan' => gmV2QuickPunishmentPlanSummary($preset, $payload),
+        'previewed_at' => gmdate('c'),
+    ];
+}
+
+function gmV2ExecuteQuickPunishment(array $config, array $request)
+{
+    list($preset, $payload) = gmV2QuickPunishmentBuildPayload($config, $request);
+    $result = executeSecurityAction($config, $payload);
+    $actor = operatorResolveContext($config, $request);
+    gmV2AppendAudit($config, 'quick_punishment_executed', [
+        'preset_key' => array_value($preset, 'key', ''),
+        'underlying_action' => array_value($payload, 'action', ''),
+        'actor' => operatorPermissionAuditActor($actor),
+        'target' => [
+            'roleid' => intval(array_value($payload, 'roleid', 0)),
+            'userid' => intval(array_value($payload, 'userid', 0)),
+        ],
+        'duration_seconds' => intval(array_value($payload, 'seconds', 0)),
+        'reason' => trim((string) array_value($payload, 'reason', '')),
+        'result_success' => !empty($result['success']),
+        'warning' => trim((string) array_value($result, 'warning', '')),
+    ]);
+
+    return [
+        'success' => !empty($result['success']),
+        'preset' => [
+            'key' => array_value($preset, 'key', ''),
+            'label' => array_value($preset, 'label', ''),
+            'required_role' => array_value($preset, 'required_role', 'gm_supervisor'),
+        ],
+        'plan' => gmV2QuickPunishmentPlanSummary($preset, $payload),
+        'result' => $result,
+        'audit_file' => gmV2AuditFile($config),
+        'executed_at' => gmdate('c'),
+    ];
+}
+
 function gmV2AppendAudit(array $config, $event, array $entry = [])
 {
     gmV2EnsureEnvironment($config);
@@ -4869,6 +6912,9 @@ function gmV2AppendAudit(array $config, $event, array $entry = [])
         'created_at' => gmdate('c'),
         'ip' => gmV2RequestIp(),
     ], $entry);
+    if (is_array(array_value($payload, 'actor', null))) {
+        $payload = array_merge($payload, gmV2ActorAuditFields(array_value($payload, 'actor', [])));
+    }
     appendLogLine(gmV2AuditFile($config), safeJsonEncode($payload));
     return gmV2AuditFile($config);
 }
@@ -4918,6 +6964,763 @@ function gmV2NormalizeTextList($value)
     }
 
     return $normalized;
+}
+
+function gmV2RankingKeyDefinitions(array $config = [])
+{
+    $definitions = [
+        'pvp_points' => [
+            'label' => 'Ranking PvP',
+            'summary' => 'TOP PvP da tabela pw_ranking.pvp_ranking ordenado por points DESC, last_kill_at DESC.',
+            'backend' => 'command',
+            'command_source' => 'pvp_points',
+        ],
+        'level' => [
+            'label' => 'Level',
+            'summary' => 'TOP nivel principal do personagem.',
+            'backend' => 'gamedbd',
+        ],
+        'level2' => [
+            'label' => 'Level Espiritual',
+            'summary' => 'TOP nivel espiritual / reincarnacao salvo em status.level2.',
+            'backend' => 'gamedbd',
+        ],
+        'exp' => [
+            'label' => 'Experiencia',
+            'summary' => 'TOP experiencia acumulada salva em status.exp.',
+            'backend' => 'gamedbd',
+        ],
+        'reputation' => [
+            'label' => 'Reputacao',
+            'summary' => 'TOP reputacao salva em status.reputation.',
+            'backend' => 'gamedbd',
+        ],
+        'lastlogin_time' => [
+            'label' => 'Ultimo Login',
+            'summary' => 'TOP por ultimo login mais recente salvo em base.lastlogin_time.',
+            'backend' => 'gamedbd',
+        ],
+        'create_time' => [
+            'label' => 'Criacao',
+            'summary' => 'TOP por personagens mais antigos ou mais novos via base.create_time.',
+            'backend' => 'gamedbd',
+        ],
+    ];
+
+    $configured = array_value($config, 'gm_v2_ranking_supported_keys', []);
+    if (!is_array($configured) || empty($configured)) {
+        return $definitions;
+    }
+
+    $filtered = [];
+    foreach ($configured as $key) {
+        $key = strtolower(trim((string) $key));
+        if ($key !== '' && isset($definitions[$key])) {
+            $filtered[$key] = $definitions[$key];
+        }
+    }
+
+    return !empty($filtered) ? $filtered : $definitions;
+}
+
+function gmV2RankingKeyAliases()
+{
+    return [
+        'lvl' => 'level',
+        'level_main' => 'level',
+        'spirit' => 'level2',
+        'spiritual_level' => 'level2',
+        'rebirth' => 'level2',
+        'reincarnation' => 'level2',
+        'rep' => 'reputation',
+        'last_login' => 'lastlogin_time',
+        'last_login_time' => 'lastlogin_time',
+        'lastlogin' => 'lastlogin_time',
+        'created' => 'create_time',
+        'created_at' => 'create_time',
+        'pvp' => 'pvp_points',
+        'pvp_points_weekly' => 'pvp_points',
+    ];
+}
+
+function gmV2NormalizeRankingKey($key, array $config = [])
+{
+    $key = strtolower(trimOneLineText($key));
+    if ($key === '') {
+        return '';
+    }
+
+    $aliases = gmV2RankingKeyAliases();
+    if (isset($aliases[$key])) {
+        $key = $aliases[$key];
+    }
+
+    $definitions = gmV2RankingKeyDefinitions($config);
+    return isset($definitions[$key]) ? $key : '';
+}
+
+function gmV2RankingDumpPaths($table, array $config = [])
+{
+    $table = strtolower(trim((string) $table));
+    $configured = array_value($config, 'gm_v2_ranking_dump_paths', []);
+    $paths = [];
+    if (is_array($configured) && isset($configured[$table]) && is_array($configured[$table])) {
+        foreach ($configured[$table] as $path) {
+            $path = trim((string) $path);
+            if ($path !== '' && !in_array($path, $paths, true)) {
+                $paths[] = $path;
+            }
+        }
+    }
+
+    if (!empty($paths)) {
+        return $paths;
+    }
+
+    return [
+        '/home/gamedbd/dbdata/' . $table,
+        '/home/gamedbd/' . $table,
+        '/gamedbd/dbdata/' . $table,
+        '/gamedbd/' . $table,
+    ];
+}
+
+function gmV2RankingSourceConfigured(array $config)
+{
+    if (trim((string) array_value($config, 'gm_v2_ranking_query_command', '')) !== '') {
+        return true;
+    }
+
+    foreach (['base', 'status'] as $table) {
+        foreach (gmV2RankingDumpPaths($table, $config) as $path) {
+            if (file_exists($path) && is_readable($path)) {
+                return true;
+            }
+        }
+    }
+
+    return trim((string) array_value($config, 'gamedbd_ip', '')) !== ''
+        && intval(array_value($config, 'gamedbd_port', 0)) > 0;
+}
+
+function gmV2RankingCatalogPayload(array $config)
+{
+    $definitions = gmV2RankingKeyDefinitions($config);
+    $items = [];
+    foreach ($definitions as $key => $meta) {
+        $items[] = [
+            'key' => $key,
+            'label' => trim((string) array_value($meta, 'label', $key)),
+            'summary' => trim((string) array_value($meta, 'summary', '')),
+        ];
+    }
+
+    return $items;
+}
+
+function gmV2ResolveCommandRankingEntries(array $config, $rankingKey, $limit = 0)
+{
+    $definitions = gmV2RankingKeyDefinitions($config);
+    $meta = isset($definitions[$rankingKey]) && is_array($definitions[$rankingKey]) ? $definitions[$rankingKey] : [];
+    $command = trim((string) array_value($config, 'gm_v2_ranking_query_command', ''));
+    if ($command === '') {
+        throw new Exception('Comando de ranking nao configurado');
+    }
+    if (!function_exists('exec')) {
+        throw new Exception('exec() desabilitado no PHP');
+    }
+
+    $sourceKey = trim((string) array_value($meta, 'command_source', $rankingKey));
+    $limit = max(1, intval($limit));
+    $shell = $command
+        . ' ' . escapeshellarg($sourceKey)
+        . ' ' . escapeshellarg((string) $limit)
+        . ' ' . escapeshellarg((string) array_value($config, 'gm_v2_ranking_mysql_db_name', 'pw_ranking'));
+
+    $output = [];
+    $exitCode = 0;
+    @exec($shell . ' 2>&1', $output, $exitCode);
+    $rawOutput = trim(implode("\n", $output));
+    $parsed = parseCommandJsonOutput($rawOutput);
+
+    if ($exitCode !== 0) {
+        throw new Exception($rawOutput !== '' ? $rawOutput : ('Comando de ranking falhou com exit ' . $exitCode));
+    }
+    if (!is_array($parsed)) {
+        throw new Exception('Comando de ranking retornou JSON invalido');
+    }
+    if (array_key_exists('success', $parsed) && !truthyValue(array_value($parsed, 'success', false))) {
+        throw new Exception(trim((string) array_value($parsed, 'error', 'Falha ao consultar ranking')));
+    }
+
+    return [
+        'ranking_key' => $rankingKey,
+        'entries' => array_values((array) array_value($parsed, 'entries', [])),
+        'source' => array_value($parsed, 'source', $sourceKey),
+        'diagnostics' => [
+            'command' => $command,
+            'source_key' => $sourceKey,
+            'raw_excerpt' => excerptText($rawOutput, 1200),
+        ],
+    ];
+}
+
+function gmV2ResolveRankingEntries(array $config, GamedProtocol $proto, $rankingKey, $limit = 0)
+{
+    $rankingKey = gmV2NormalizeRankingKey($rankingKey, $config);
+    if ($rankingKey === '') {
+        throw new InvalidArgumentException('ranking_key invalido');
+    }
+
+    $definitions = gmV2RankingKeyDefinitions($config);
+    $meta = isset($definitions[$rankingKey]) && is_array($definitions[$rankingKey]) ? $definitions[$rankingKey] : [];
+    $backend = trim((string) array_value($meta, 'backend', 'gamedbd'));
+    if ($backend === 'command') {
+        return gmV2ResolveCommandRankingEntries($config, $rankingKey, $limit);
+    }
+
+    return $proto->getRankingEntries($rankingKey, $config['gamedbd_ip'], $config['gamedbd_port'], $limit);
+}
+
+function gmV2PvpRankingDefaultLimit(array $config)
+{
+    return max(1, min(20, intval(array_value($config, 'gm_v2_pvp_ranking_default_limit', 3))));
+}
+
+function gmV2NormalizePvpRankingLimit($value, array $config, $fallback = 0)
+{
+    $limit = intval($value);
+    if ($limit <= 0) {
+        $limit = intval($fallback);
+    }
+    if ($limit <= 0) {
+        $limit = gmV2PvpRankingDefaultLimit($config);
+    }
+
+    $maxLimit = max(
+        gmV2PvpRankingDefaultLimit($config),
+        min(200, max(1, intval(array_value($config, 'gm_v2_directory_limit', 200))))
+    );
+    return max(1, min($maxLimit, $limit));
+}
+
+function gmV2PvpRankingLeaderboardEntry(array $entry, $position)
+{
+    $cls = intval(array_value($entry, 'cls', 0));
+    $classInfo = class_info($cls);
+    $points = intval(firstArrayValue($entry, ['ranking_value', 'points'], 0));
+    return [
+        'position' => max(1, intval($position)),
+        'roleid' => intval(array_value($entry, 'roleid', 0)),
+        'userid' => intval(array_value($entry, 'userid', 0)),
+        'name' => trim((string) array_value($entry, 'name', '')),
+        'cls' => $cls,
+        'class_name' => trim((string) array_value($classInfo, 'name', 'Desconhecida')),
+        'level' => intval(array_value($entry, 'level', 0)),
+        'level2' => intval(array_value($entry, 'level2', 0)),
+        'exp' => intval(array_value($entry, 'exp', 0)),
+        'reputation' => intval(array_value($entry, 'reputation', 0)),
+        'lastlogin_time' => intval(array_value($entry, 'lastlogin_time', 0)),
+        'ranking_key' => 'pvp_points',
+        'ranking_label' => 'Ranking PvP',
+        'ranking_value' => $points,
+        'points' => $points,
+        'kills' => intval(array_value($entry, 'kills', 0)),
+        'deaths' => intval(array_value($entry, 'deaths', 0)),
+        'last_kill_at' => array_value($entry, 'last_kill_at', null),
+    ];
+}
+
+function gmV2GetPvpRankingLeaderboardPayload(array $config, array $request = [])
+{
+    gmV2EnsureEnvironment($config);
+    $limit = gmV2NormalizePvpRankingLimit(
+        firstArrayValue($request, ['limit', 'top', 'top_limit', 'topLimit', 'ranking_limit', 'rankingLimit'], 0),
+        $config
+    );
+
+    $proto = new GamedProtocol();
+    $rankingSnapshot = gmV2ResolveRankingEntries($config, $proto, 'pvp_points', $limit);
+    $entries = [];
+    foreach ((array) array_value($rankingSnapshot, 'entries', []) as $index => $entry) {
+        if (!is_array($entry)) {
+            continue;
+        }
+        $entries[] = gmV2PvpRankingLeaderboardEntry($entry, intval($index) + 1);
+    }
+
+    return [
+        'success' => true,
+        'ranking_key' => 'pvp_points',
+        'ranking_label' => 'Ranking PvP',
+        'source' => array_value($rankingSnapshot, 'source', 'pvp_points'),
+        'limit' => $limit,
+        'count' => count($entries),
+        'entries' => $entries,
+        'empty' => empty($entries),
+        'collected_at' => gmdate('c'),
+    ];
+}
+
+function gmV2PvpRankingDefaultRewardTitle($position)
+{
+    switch (intval($position)) {
+        case 1:
+            return 'Campeao do Ranking PvP';
+        case 2:
+            return 'Vice-Campeao do Ranking PvP';
+        case 3:
+            return 'Top 3 do Ranking PvP';
+        default:
+            return 'Premio do Ranking PvP';
+    }
+}
+
+function gmV2PvpRankingDefaultRewardMessage($position)
+{
+    switch (intval($position)) {
+        case 1:
+            return 'Parabens! Voce terminou em 1o lugar no Ranking PvP.';
+        case 2:
+            return 'Parabens! Voce terminou em 2o lugar no Ranking PvP.';
+        case 3:
+            return 'Parabens! Voce terminou em 3o lugar no Ranking PvP.';
+        default:
+            return 'Parabens pela sua colocacao no Ranking PvP.';
+    }
+}
+
+function gmV2PvpRankingRewardEntriesInput(array $request)
+{
+    foreach (['rewards', 'reward_plan', 'rewardPlan', 'positions'] as $key) {
+        $candidate = array_value($request, $key, null);
+        if (is_array($candidate)) {
+            return $candidate;
+        }
+    }
+    return [];
+}
+
+function gmV2NormalizePvpRankingRewardEntry($position, array $row)
+{
+    $position = max(1, intval(array_key_exists('position', $row) ? $row['position'] : $position));
+    $itemId = intval(firstArrayValue($row, ['item_id', 'itemId'], 0));
+    $money = max(0, intval(firstArrayValue($row, ['money', 'gold', 'coins', 'amount'], 0)));
+    if ($itemId <= 0 && $money <= 0) {
+        throw new InvalidArgumentException('A recompensa da posicao ' . $position . ' precisa ter item_id ou money');
+    }
+
+    $count = max(1, intval(firstArrayValue($row, ['count', 'item_count', 'quantity'], 1)));
+    $maxStack = intval(firstArrayValue($row, ['max_stack', 'maxStack'], $count));
+    if ($maxStack <= 0) {
+        $maxStack = $count;
+    }
+    if ($maxStack < $count) {
+        $maxStack = $count;
+    }
+
+    $dataHex = preg_replace('/[^0-9a-fA-F]/', '', (string) firstArrayValue($row, ['data_hex', 'data', 'item_data'], ''));
+    if ($dataHex !== '' && (strlen($dataHex) % 2) !== 0) {
+        throw new InvalidArgumentException('data/item hex invalido na posicao ' . $position);
+    }
+
+    $title = truncateUtf8Text(firstArrayValue($row, ['title', 'subject', 'mail_title'], gmV2PvpRankingDefaultRewardTitle($position)), 120);
+    if ($title === '') {
+        $title = gmV2PvpRankingDefaultRewardTitle($position);
+    }
+
+    $message = truncateUtf8Text(firstArrayValue($row, ['message', 'body', 'mail_msg', 'mail_message'], gmV2PvpRankingDefaultRewardMessage($position)), 1000);
+    if ($message === '') {
+        $message = gmV2PvpRankingDefaultRewardMessage($position);
+    }
+
+    return [
+        'position' => $position,
+        'item_id' => $itemId,
+        'item_name' => truncateUtf8Text(firstArrayValue($row, ['item_name', 'name'], ''), 120),
+        'count' => $count,
+        'max_stack' => $maxStack,
+        'data_hex' => strtolower($dataHex),
+        'proctype' => max(0, intval(firstArrayValue($row, ['proctype'], 0))),
+        'expire_date' => max(0, intval(firstArrayValue($row, ['expire_date', 'expire'], 0))),
+        'guid1' => max(0, intval(firstArrayValue($row, ['guid1'], 0))),
+        'guid2' => max(0, intval(firstArrayValue($row, ['guid2'], 0))),
+        'mask' => max(0, intval(firstArrayValue($row, ['mask'], 0))),
+        'money' => $money,
+        'title' => $title,
+        'message' => $message,
+        'delivery_method' => ($itemId > 0 ? 'sendMailItem' : 'sendMailGold'),
+    ];
+}
+
+function gmV2NormalizePvpRankingRewardsRequest(array $request, array $config)
+{
+    $input = gmV2PvpRankingRewardEntriesInput($request);
+    if (empty($input)) {
+        throw new InvalidArgumentException('rewards obrigatorio');
+    }
+
+    $rewards = [];
+    foreach ($input as $key => $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        $position = array_key_exists('position', $row) ? intval($row['position']) : intval($key);
+        if ($position <= 0) {
+            throw new InvalidArgumentException('position invalida em rewards');
+        }
+        $rewards[$position] = gmV2NormalizePvpRankingRewardEntry($position, $row);
+    }
+
+    if (empty($rewards)) {
+        throw new InvalidArgumentException('rewards obrigatorio');
+    }
+
+    ksort($rewards, SORT_NUMERIC);
+    $highestPosition = max(array_keys($rewards));
+    $leaderboardLimit = gmV2NormalizePvpRankingLimit(
+        firstArrayValue($request, ['leaderboard_limit', 'leaderboardLimit', 'top_limit', 'topLimit', 'ranking_limit', 'rankingLimit', 'limit'], 0),
+        $config,
+        $highestPosition
+    );
+    if ($leaderboardLimit < $highestPosition) {
+        $leaderboardLimit = $highestPosition;
+    }
+
+    return [
+        'ranking_key' => 'pvp_points',
+        'leaderboard_limit' => $leaderboardLimit,
+        'rewards' => array_values($rewards),
+        'reset_ranking' => !array_key_exists('reset_ranking', $request) && !array_key_exists('resetRanking', $request) && !array_key_exists('reset', $request)
+            ? true
+            : truthyValue(firstArrayValue($request, ['reset_ranking', 'resetRanking', 'reset'], false)),
+        'reset_only_on_full_success' => !array_key_exists('reset_only_on_full_success', $request) && !array_key_exists('resetOnlyOnFullSuccess', $request)
+            ? true
+            : truthyValue(firstArrayValue($request, ['reset_only_on_full_success', 'resetOnlyOnFullSuccess'], true)),
+    ];
+}
+
+function gmV2RenderPvpRankingTemplate($text, array $player, array $reward)
+{
+    $replacements = [
+        '{position}' => (string) intval(array_value($player, 'position', array_value($reward, 'position', 0))),
+        '{player_name}' => trim((string) array_value($player, 'name', '')),
+        '{name}' => trim((string) array_value($player, 'name', '')),
+        '{points}' => (string) intval(array_value($player, 'points', 0)),
+        '{ranking_value}' => (string) intval(array_value($player, 'ranking_value', 0)),
+        '{kills}' => (string) intval(array_value($player, 'kills', 0)),
+        '{deaths}' => (string) intval(array_value($player, 'deaths', 0)),
+    ];
+    return strtr((string) $text, $replacements);
+}
+
+function gmV2BuildPvpRankingRewardPlan(array $config, array $request)
+{
+    $normalized = gmV2NormalizePvpRankingRewardsRequest($request, $config);
+    $leaderboardPayload = gmV2GetPvpRankingLeaderboardPayload($config, [
+        'limit' => $normalized['leaderboard_limit'],
+    ]);
+    $leaderboard = (array) array_value($leaderboardPayload, 'entries', []);
+    $planEntries = [];
+    $deliverableCount = 0;
+    $missingPositions = [];
+
+    foreach ((array) array_value($normalized, 'rewards', []) as $reward) {
+        $position = intval(array_value($reward, 'position', 0));
+        $player = isset($leaderboard[$position - 1]) && is_array($leaderboard[$position - 1])
+            ? $leaderboard[$position - 1]
+            : null;
+        $title = $player ? gmV2RenderPvpRankingTemplate(array_value($reward, 'title', ''), $player, $reward) : array_value($reward, 'title', '');
+        $message = $player ? gmV2RenderPvpRankingTemplate(array_value($reward, 'message', ''), $player, $reward) : array_value($reward, 'message', '');
+        $hasTarget = is_array($player) && intval(array_value($player, 'roleid', 0)) > 0;
+        if ($hasTarget) {
+            $deliverableCount++;
+        } else {
+            $missingPositions[] = $position;
+        }
+
+        $planEntries[] = [
+            'position' => $position,
+            'player' => $player,
+            'reward' => array_merge($reward, [
+                'title' => $title,
+                'message' => $message,
+            ]),
+            'delivery_method' => array_value($reward, 'delivery_method', 'sendMailGold'),
+            'has_target' => $hasTarget,
+            'status' => ($hasTarget ? 'ready' : 'missing_target'),
+        ];
+    }
+
+    return [
+        'ranking_key' => 'pvp_points',
+        'ranking_label' => 'Ranking PvP',
+        'leaderboard_limit' => intval(array_value($normalized, 'leaderboard_limit', gmV2PvpRankingDefaultLimit($config))),
+        'leaderboard' => $leaderboard,
+        'entries' => $planEntries,
+        'reset_ranking' => !empty($normalized['reset_ranking']),
+        'reset_only_on_full_success' => !empty($normalized['reset_only_on_full_success']),
+        'deliverable_count' => $deliverableCount,
+        'missing_positions' => array_values($missingPositions),
+    ];
+}
+
+function gmV2BuildPvpRankingRewardMailPayload(array $reward, array $player, array $config, $dryRun = false)
+{
+    $request = [
+        'roleid' => intval(array_value($player, 'roleid', 0)),
+        'title' => array_value($reward, 'title', ''),
+        'message' => array_value($reward, 'message', ''),
+        'money' => max(0, intval(array_value($reward, 'money', 0))),
+        'dry_run' => !empty($dryRun),
+    ];
+
+    if (intval(array_value($reward, 'item_id', 0)) > 0) {
+        $request = array_merge($request, [
+            'item_id' => intval(array_value($reward, 'item_id', 0)),
+            'item_name' => trim((string) array_value($reward, 'item_name', '')),
+            'count' => max(1, intval(array_value($reward, 'count', 1))),
+            'max_stack' => max(1, intval(array_value($reward, 'max_stack', max(1, intval(array_value($reward, 'count', 1)))))),
+            'data_hex' => trim((string) array_value($reward, 'data_hex', '')),
+            'proctype' => max(0, intval(array_value($reward, 'proctype', 0))),
+            'expire_date' => max(0, intval(array_value($reward, 'expire_date', 0))),
+            'guid1' => max(0, intval(array_value($reward, 'guid1', 0))),
+            'guid2' => max(0, intval(array_value($reward, 'guid2', 0))),
+            'mask' => max(0, intval(array_value($reward, 'mask', 0))),
+        ]);
+        return buildSendMailItemPayload($request, $config);
+    }
+
+    return buildSendMailGoldPayload($request, $config);
+}
+
+function gmV2ResetPvpRanking(array $config)
+{
+    $command = trim((string) array_value($config, 'gm_v2_ranking_query_command', ''));
+    if ($command === '') {
+        throw new Exception('Comando de ranking nao configurado para reset');
+    }
+    if (!function_exists('exec')) {
+        throw new Exception('exec() desabilitado no PHP');
+    }
+
+    $shell = $command
+        . ' ' . escapeshellarg('pvp_ranking_reset')
+        // Usa 1 por compatibilidade com wrappers antigos que exigem limit_rows > 0.
+        . ' ' . escapeshellarg('1')
+        . ' ' . escapeshellarg((string) array_value($config, 'gm_v2_ranking_mysql_db_name', 'pw_ranking'));
+
+    $output = [];
+    $exitCode = 0;
+    @exec($shell . ' 2>&1', $output, $exitCode);
+    $rawOutput = trim(implode("\n", $output));
+    $parsed = parseCommandJsonOutput($rawOutput);
+
+    if ($exitCode !== 0) {
+        throw new Exception($rawOutput !== '' ? $rawOutput : ('Reset do ranking falhou com exit ' . $exitCode));
+    }
+    if (!is_array($parsed)) {
+        throw new Exception('Reset do ranking retornou JSON invalido');
+    }
+    if (array_key_exists('success', $parsed) && !truthyValue(array_value($parsed, 'success', false))) {
+        throw new Exception(trim((string) array_value($parsed, 'error', 'Falha ao resetar ranking PvP')));
+    }
+
+    return $parsed;
+}
+
+function gmV2AppendPvpRankingRewardHistory(array $config, array $entry)
+{
+    gmV2EnsureEnvironment($config);
+    $payload = array_merge([
+        'type' => 'gm_v2_pvp_ranking_reward',
+        'created_at' => gmdate('c'),
+    ], $entry);
+    if (is_array(array_value($payload, 'actor', null))) {
+        $payload = array_merge($payload, gmV2ActorAuditFields(array_value($payload, 'actor', [])));
+    }
+    appendLogLine(gmV2PvpRankingHistoryFile($config), safeJsonEncode($payload));
+    return gmV2PvpRankingHistoryFile($config);
+}
+
+function gmV2GetPvpRankingRewardHistoryPayload(array $config, array $request = [])
+{
+    $limit = max(1, min(100, intval(firstArrayValue($request, ['limit'], 20))));
+    return [
+        'success' => true,
+        'limit' => $limit,
+        'entries' => gmV2ReadRecentJsonLines(gmV2PvpRankingHistoryFile($config), $limit),
+        'history_file' => gmV2PvpRankingHistoryFile($config),
+        'collected_at' => gmdate('c'),
+    ];
+}
+
+function gmV2PreviewPvpRankingRewardsPayload(array $config, array $request)
+{
+    $plan = gmV2BuildPvpRankingRewardPlan($config, $request);
+    return [
+        'success' => true,
+        'ranking_key' => array_value($plan, 'ranking_key', 'pvp_points'),
+        'leaderboard_limit' => intval(array_value($plan, 'leaderboard_limit', gmV2PvpRankingDefaultLimit($config))),
+        'leaderboard' => array_slice((array) array_value($plan, 'leaderboard', []), 0, gmV2PvpRankingDefaultLimit($config)),
+        'count' => count((array) array_value($plan, 'entries', [])),
+        'deliverable_count' => intval(array_value($plan, 'deliverable_count', 0)),
+        'missing_positions' => array_value($plan, 'missing_positions', []),
+        'entries' => array_value($plan, 'entries', []),
+        'reset_ranking' => !empty($plan['reset_ranking']),
+        'reset_only_on_full_success' => !empty($plan['reset_only_on_full_success']),
+        'previewed_at' => gmdate('c'),
+    ];
+}
+
+function gmV2ExecutePvpRankingRewardsPayload(array $config, array $request, array $options = [])
+{
+    gmV2EnsureEnvironment($config);
+    $dryRun = truthyValue(firstArrayValue($request, ['dry_run', 'dryRun'], false));
+    $actor = gmV2RequestActorEnvelope($config, $request);
+    $plan = gmV2BuildPvpRankingRewardPlan($config, $request);
+    $executionId = buildOperationId('gmv2-pvp-reward');
+    $scheduleId = trim((string) firstArrayValue($request, ['schedule_id', 'scheduleId'], array_value($options, 'schedule_id', '')));
+    $results = [];
+    $completedCount = 0;
+    $failedCount = 0;
+    $skippedCount = 0;
+
+    foreach ((array) array_value($plan, 'entries', []) as $planEntry) {
+        $player = is_array(array_value($planEntry, 'player', null)) ? array_value($planEntry, 'player', []) : null;
+        $reward = is_array(array_value($planEntry, 'reward', null)) ? array_value($planEntry, 'reward', []) : [];
+        $baseResult = [
+            'position' => intval(array_value($planEntry, 'position', 0)),
+            'player' => $player,
+            'reward' => $reward,
+            'delivery_method' => array_value($planEntry, 'delivery_method', ''),
+            'executed_at' => gmdate('c'),
+        ];
+
+        if (!is_array($player) || intval(array_value($player, 'roleid', 0)) <= 0) {
+            $skippedCount++;
+            $results[] = array_merge($baseResult, [
+                'success' => false,
+                'status' => 'skipped',
+                'error' => 'Posicao sem personagem elegivel no ranking atual',
+            ]);
+            continue;
+        }
+
+        try {
+            $mailPayload = gmV2BuildPvpRankingRewardMailPayload($reward, $player, $config, $dryRun);
+            $mailResult = $dryRun ? [
+                'success' => true,
+                'dry_run' => true,
+                'message' => 'Entrega simulada com sucesso',
+            ] : executeMailSendCommand($config, $mailPayload);
+            $completedCount++;
+            $results[] = array_merge($baseResult, [
+                'success' => true,
+                'status' => ($dryRun ? 'dry_run' : 'completed'),
+                'mail_payload' => $mailPayload,
+                'result' => $mailResult,
+            ]);
+        } catch (Exception $e) {
+            $failedCount++;
+            $results[] = array_merge($baseResult, [
+                'success' => false,
+                'status' => 'failed',
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    $resetRequested = !empty($plan['reset_ranking']);
+    $resetPerformed = false;
+    $resetResult = null;
+    $resetSkippedReason = null;
+    if ($dryRun) {
+        $resetSkippedReason = 'dry_run';
+    } elseif (!$resetRequested) {
+        $resetSkippedReason = 'reset_disabled';
+    } elseif ($completedCount <= 0) {
+        $resetSkippedReason = 'no_successful_deliveries';
+    } elseif ($failedCount > 0 && !empty($plan['reset_only_on_full_success'])) {
+        $resetSkippedReason = 'delivery_failures_present';
+    } else {
+        try {
+            $resetResult = gmV2ResetPvpRanking($config);
+            $resetPerformed = true;
+        } catch (Exception $e) {
+            $resetResult = [
+                'success' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    $status = 'completed';
+    if ($dryRun) {
+        $status = 'dry_run';
+    } elseif ($failedCount > 0 || (!empty($resetRequested) && !$resetPerformed)) {
+        $status = 'completed_with_errors';
+    } elseif ($completedCount <= 0) {
+        $status = 'skipped';
+    }
+
+    $historyEntry = [
+        'event' => 'pvp_ranking_rewards_execution',
+        'execution_id' => $executionId,
+        'schedule_id' => $scheduleId,
+        'source' => trim((string) array_value($options, 'source', 'manual')),
+        'status' => $status,
+        'actor' => $actor,
+        'dry_run' => $dryRun,
+        'reset_requested' => $resetRequested,
+        'reset_performed' => $resetPerformed,
+        'reset_result' => $resetResult,
+        'reset_skipped_reason' => $resetSkippedReason,
+        'leaderboard' => array_value($plan, 'leaderboard', []),
+        'results' => $results,
+        'summary' => [
+            'completed_count' => $completedCount,
+            'failed_count' => $failedCount,
+            'skipped_count' => $skippedCount,
+            'deliverable_count' => intval(array_value($plan, 'deliverable_count', 0)),
+        ],
+    ];
+    $historyFile = gmV2AppendPvpRankingRewardHistory($config, $historyEntry);
+    gmV2AppendAudit($config, 'pvp_ranking_rewards_executed', [
+        'execution_id' => $executionId,
+        'schedule_id' => $scheduleId,
+        'status' => $status,
+        'completed_count' => $completedCount,
+        'failed_count' => $failedCount,
+        'skipped_count' => $skippedCount,
+        'reset_requested' => $resetRequested,
+        'reset_performed' => $resetPerformed,
+        'reset_skipped_reason' => $resetSkippedReason,
+        'history_file' => $historyFile,
+        'actor' => $actor,
+    ]);
+
+    return [
+        'success' => true,
+        'execution_id' => $executionId,
+        'schedule_id' => $scheduleId,
+        'status' => $status,
+        'dry_run' => $dryRun,
+        'ranking_key' => array_value($plan, 'ranking_key', 'pvp_points'),
+        'leaderboard' => array_value($plan, 'leaderboard', []),
+        'results' => $results,
+        'completed_count' => $completedCount,
+        'failed_count' => $failedCount,
+        'skipped_count' => $skippedCount,
+        'deliverable_count' => intval(array_value($plan, 'deliverable_count', 0)),
+        'missing_positions' => array_value($plan, 'missing_positions', []),
+        'reset_requested' => $resetRequested,
+        'reset_performed' => $resetPerformed,
+        'reset_result' => $resetResult,
+        'reset_skipped_reason' => $resetSkippedReason,
+        'history_file' => $historyFile,
+        'executed_at' => gmdate('c'),
+    ];
 }
 
 function gmV2SelectionHasExplicitTargets(array $selection)
@@ -4973,10 +7776,17 @@ function gmV2NormalizeSelection(array $request, array $config)
     $levelMax = max(0, intval(firstArrayValue($source, ['level_max', 'max_level', 'maxLevel'], 0)));
     $allOnline = truthyValue(firstArrayValue($source, ['all_online', 'allOnline', 'everyone_online'], false));
     $onlineOnly = $allOnline || truthyValue(firstArrayValue($source, ['online_only', 'onlineOnly', 'online'], false));
-    $rankingKey = trimOneLineText(firstArrayValue($source, ['ranking_key', 'rankingKey'], ''));
+    $rankingKeyRaw = trimOneLineText(firstArrayValue($source, ['ranking_key', 'rankingKey'], ''));
+    $rankingKey = gmV2NormalizeRankingKey($rankingKeyRaw, $config);
+    if ($rankingKeyRaw !== '' && $rankingKey === '') {
+        throw new InvalidArgumentException('ranking_key invalido');
+    }
     $rankingLimit = max(0, intval(firstArrayValue($source, ['ranking_limit', 'rankingLimit'], 0)));
     $limit = max(1, intval(firstArrayValue($source, ['limit', 'directory_limit'], array_value($config, 'gm_v2_directory_limit', 200))));
     $limit = min($limit, max(1, intval(array_value($config, 'gm_v2_directory_limit', 200))));
+    if ($rankingLimit > 0) {
+        $rankingLimit = min($rankingLimit, max(1, intval(array_value($config, 'gm_v2_directory_limit', 200))));
+    }
 
     return [
         'roleids' => $roleids,
@@ -5049,6 +7859,13 @@ function gmV2NormalizeWeekdayToken($value)
     return isset($map[$token]) ? intval($map[$token]) : 0;
 }
 
+function gmV2WeekdaysRepresentEveryDay(array $weekdays)
+{
+    $normalized = array_values(array_unique(array_map('intval', $weekdays)));
+    sort($normalized, SORT_NUMERIC);
+    return $normalized === [1, 2, 3, 4, 5, 6, 7];
+}
+
 function gmV2NormalizeWeekdayList($value)
 {
     $items = [];
@@ -5058,6 +7875,14 @@ function gmV2NormalizeWeekdayList($value)
         $items = preg_split('/[\s,;|]+/', trim($value));
     } elseif ($value !== null && $value !== '') {
         $items = [$value];
+    }
+
+    $specialEveryday = ['*', 'all', 'all_days', 'all-days', 'every_day', 'everyday', 'daily', 'todos_os_dias', 'todos-os-dias', 'todos', 'semana_toda', 'semana-toda'];
+    foreach ((array) $items as $item) {
+        $token = strtolower(trim((string) $item));
+        if ($token !== '' && in_array($token, $specialEveryday, true)) {
+            return [1, 2, 3, 4, 5, 6, 7];
+        }
     }
 
     $normalized = [];
@@ -5187,6 +8012,41 @@ function gmV2RoleProfileSort(array &$profiles)
     });
 }
 
+function gmV2RankingProfileSort(array &$profiles, $rankingKey)
+{
+    $rankingKey = gmV2NormalizeRankingKey($rankingKey, $GLOBALS['CONFIG']);
+    usort($profiles, function ($a, $b) use ($rankingKey) {
+        $valueA = intval(array_value($a, 'ranking_value', array_value($a, $rankingKey, 0)));
+        $valueB = intval(array_value($b, 'ranking_value', array_value($b, $rankingKey, 0)));
+        $rankCmp = $valueB <=> $valueA;
+        if ($rankCmp !== 0) {
+            return $rankCmp;
+        }
+
+        $onlineCmp = intval(!empty($b['online'])) <=> intval(!empty($a['online']));
+        if ($onlineCmp !== 0) {
+            return $onlineCmp;
+        }
+
+        $levelCmp = intval(array_value($b, 'level', 0)) <=> intval(array_value($a, 'level', 0));
+        if ($levelCmp !== 0) {
+            return $levelCmp;
+        }
+
+        $level2Cmp = intval(array_value($b, 'level2', 0)) <=> intval(array_value($a, 'level2', 0));
+        if ($level2Cmp !== 0) {
+            return $level2Cmp;
+        }
+
+        $nameCmp = strnatcasecmp((string) array_value($a, 'name', ''), (string) array_value($b, 'name', ''));
+        if ($nameCmp !== 0) {
+            return $nameCmp;
+        }
+
+        return intval(array_value($a, 'roleid', 0)) <=> intval(array_value($b, 'roleid', 0));
+    });
+}
+
 function gmV2RoleProfileKey(array $profile)
 {
     $roleid = intval(array_value($profile, 'roleid', 0));
@@ -5220,34 +8080,24 @@ function gmV2BuildAccountOnlyProfile($userid)
     ];
 }
 
-function gmV2HydrateRoleProfile(array $config, GamedProtocol $proto, $roleid, array $onlineLookup = [], $includeGuild = false)
+function gmV2BuildRoleProfileFromState($roleid, array $base, array $status, array $onlineRow = [])
 {
-    $roleid = intval($roleid);
-    if ($roleid <= 0) {
-        throw new InvalidArgumentException('roleid invalido para perfil de alvo');
-    }
-
-    $role = $proto->getEditableRole($roleid, $config['gamedbd_ip'], $config['gamedbd_port']);
-    if (!is_array($role)) {
-        throw new Exception('Nao foi possivel carregar o roleid ' . $roleid);
-    }
-
-    $base = is_array(array_value($role, 'base', null)) ? array_value($role, 'base', []) : [];
-    $status = is_array(array_value($role, 'status', null)) ? array_value($role, 'status', []) : [];
-    $name = trim((string) array_value($base, 'name', array_value($role, 'name', '')));
-    $cls = intval(array_value($base, 'cls', array_value($role, 'cls', 0)));
-    $level = intval(array_value($status, 'level', array_value($role, 'level', 0)));
-    $userid = intval(array_value($base, 'userid', array_value($role, 'userid', 0)));
-    $onlineRow = isset($onlineLookup[$roleid]) && is_array($onlineLookup[$roleid]) ? $onlineLookup[$roleid] : [];
+    $roleid = intval($roleid > 0 ? $roleid : array_value($base, 'id', 0));
+    $cls = intval(array_value($base, 'cls', 0));
     $classInfo = class_info($cls);
 
-    $profile = [
+    return [
         'roleid' => $roleid,
-        'userid' => $userid,
-        'name' => $name,
+        'userid' => intval(array_value($base, 'userid', 0)),
+        'name' => trim((string) array_value($base, 'name', '')),
         'cls' => $cls,
         'class_name' => trim((string) array_value($classInfo, 'name', '')),
-        'level' => $level,
+        'level' => intval(array_value($status, 'level', 0)),
+        'level2' => intval(array_value($status, 'level2', 0)),
+        'exp' => intval(array_value($status, 'exp', 0)),
+        'reputation' => intval(array_value($status, 'reputation', 0)),
+        'create_time' => intval(array_value($base, 'create_time', 0)),
+        'lastlogin_time' => intval(array_value($base, 'lastlogin_time', 0)),
         'guild' => '',
         'guild_id' => 0,
         'online' => !empty($onlineRow),
@@ -5256,24 +8106,57 @@ function gmV2HydrateRoleProfile(array $config, GamedProtocol $proto, $roleid, ar
         'gsid' => intval(array_value($onlineRow, 'gsid', 0)),
         'target_scope' => 'role',
     ];
+}
+
+function gmV2AttachGuildToProfile(array $config, GamedProtocol $proto, array $profile)
+{
+    $roleid = intval(array_value($profile, 'roleid', 0));
+    if ($roleid <= 0) {
+        return $profile;
+    }
+
+    try {
+        $faction = $proto->getUserFaction($roleid, $config['gamedbd_ip'], $config['gamedbd_port']);
+        $value = is_array(array_value($faction, 'value', null)) ? array_value($faction, 'value', []) : [];
+        $guildId = intval(array_value($value, 'fid', 0));
+        $guildName = trim((string) array_value($value, 'name_text', ''));
+        if ($guildId > 0) {
+            try {
+                $detail = $proto->getFactionDetail($guildId, $config['gamedbd_ip'], $config['gamedbd_port']);
+                $guildName = trim((string) array_value($detail, 'name_text', $guildName));
+            } catch (Exception $ignored) {
+            }
+        }
+        $profile['guild_id'] = $guildId;
+        $profile['guild'] = $guildName;
+    } catch (Exception $ignored) {
+    }
+
+    return $profile;
+}
+
+function gmV2HydrateRoleProfile(array $config, GamedProtocol $proto, $roleid, array $onlineLookup = [], $includeGuild = false)
+{
+    $roleid = intval($roleid);
+    if ($roleid <= 0) {
+        throw new InvalidArgumentException('roleid invalido para perfil de alvo');
+    }
+
+    $base = $proto->getRoleBase($roleid, $config['gamedbd_ip'], $config['gamedbd_port']);
+    if (!is_array($base)) {
+        throw new Exception('Nao foi possivel carregar o roleid ' . $roleid);
+    }
+
+    $status = $proto->getRoleStatus($roleid, $config['gamedbd_ip'], $config['gamedbd_port']);
+    if (!is_array($status)) {
+        $status = [];
+    }
+
+    $onlineRow = isset($onlineLookup[$roleid]) && is_array($onlineLookup[$roleid]) ? $onlineLookup[$roleid] : [];
+    $profile = gmV2BuildRoleProfileFromState($roleid, $base, $status, $onlineRow);
 
     if ($includeGuild) {
-        try {
-            $faction = $proto->getUserFaction($roleid, $config['gamedbd_ip'], $config['gamedbd_port']);
-            $value = is_array(array_value($faction, 'value', null)) ? array_value($faction, 'value', []) : [];
-            $guildId = intval(array_value($value, 'fid', 0));
-            $guildName = trim((string) array_value($value, 'name_text', ''));
-            if ($guildId > 0) {
-                try {
-                    $detail = $proto->getFactionDetail($guildId, $config['gamedbd_ip'], $config['gamedbd_port']);
-                    $guildName = trim((string) array_value($detail, 'name_text', $guildName));
-                } catch (Exception $ignored) {
-                }
-            }
-            $profile['guild_id'] = $guildId;
-            $profile['guild'] = $guildName;
-        } catch (Exception $ignored) {
-        }
+        $profile = gmV2AttachGuildToProfile($config, $proto, $profile);
     }
 
     return $profile;
@@ -5309,14 +8192,23 @@ function gmV2ApplyProfileFilters(array $profiles, array $selection)
     $query = strtolower((string) array_value($selection, 'query', ''));
     $guild = strtolower((string) array_value($selection, 'guild', ''));
     $guildIds = (array) array_value($selection, 'guild_ids', []);
+    $roleids = (array) array_value($selection, 'roleids', []);
+    $names = array_values(array_filter(array_map('trim', (array) array_value($selection, 'names', [])), function ($value) {
+        return $value !== '';
+    }));
     $classIds = (array) array_value($selection, 'class_ids', []);
     $levelMin = intval(array_value($selection, 'level_min', 0));
     $levelMax = intval(array_value($selection, 'level_max', 0));
     $onlineOnly = !empty($selection['online_only']);
     $userids = (array) array_value($selection, 'userids', []);
+    $rankingKey = trim((string) array_value($selection, 'ranking_key', ''));
 
     foreach ($profiles as $profile) {
         if (!is_array($profile)) {
+            continue;
+        }
+
+        if ($rankingKey !== '' && !empty($roleids) && !in_array(intval(array_value($profile, 'roleid', 0)), $roleids, true)) {
             continue;
         }
 
@@ -5354,6 +8246,19 @@ function gmV2ApplyProfileFilters(array $profiles, array $selection)
         if ($query !== '') {
             $haystack = strtolower(trim((string) array_value($profile, 'name', '') . ' ' . array_value($profile, 'guild', '')));
             if ($haystack === '' || strpos($haystack, $query) === false) {
+                continue;
+            }
+        }
+
+        if ($rankingKey !== '' && !empty($names)) {
+            $matchedName = false;
+            foreach ($names as $name) {
+                if (strcasecmp((string) array_value($profile, 'name', ''), $name) === 0) {
+                    $matchedName = true;
+                    break;
+                }
+            }
+            if (!$matchedName) {
                 continue;
             }
         }
@@ -5467,43 +8372,105 @@ function gmV2ResolveProfiles(array $config, array $request, $commandKey = '')
         $profileMap[gmV2RoleProfileKey($profile)] = $profile;
     };
 
-    foreach ((array) array_value($selection, 'guild_ids', []) as $guildId) {
+    if ($selection['ranking_key'] !== '') {
+        $rankingCandidateLimit = max(
+            intval(array_value($selection, 'limit', array_value($config, 'gm_v2_directory_limit', 200))),
+            intval(array_value($selection, 'ranking_limit', 0)),
+            intval(array_value($config, 'gm_v2_directory_limit', 200))
+        );
+        $rankingDefinitions = gmV2RankingKeyDefinitions($config);
+        $rankingMeta = isset($rankingDefinitions[$selection['ranking_key']]) && is_array($rankingDefinitions[$selection['ranking_key']])
+            ? $rankingDefinitions[$selection['ranking_key']]
+            : [];
+
         try {
-            $guildMembers = gmV2ResolveGuildMembers($config, $proto, $guildId);
-            foreach ((array) array_value($guildMembers, 'roleids', []) as $memberRoleId) {
-                $appendProfile(gmV2HydrateRoleProfile($config, $proto, $memberRoleId, $onlineLookup, true));
+            $rankingSnapshot = gmV2ResolveRankingEntries(
+                $config,
+                $proto,
+                $selection['ranking_key'],
+                $rankingCandidateLimit
+            );
+
+            foreach ((array) array_value($rankingSnapshot, 'entries', []) as $index => $entry) {
+                $roleid = intval(array_value($entry, 'roleid', 0));
+                if ($roleid <= 0) {
+                    continue;
+                }
+
+                $onlineRow = isset($onlineLookup[$roleid]) && is_array($onlineLookup[$roleid]) ? $onlineLookup[$roleid] : [];
+                $profile = gmV2BuildRoleProfileFromState(
+                    $roleid,
+                    [
+                        'id' => $roleid,
+                        'userid' => intval(array_value($entry, 'userid', 0)),
+                        'name' => trim((string) array_value($entry, 'name', '')),
+                        'cls' => intval(array_value($entry, 'cls', 0)),
+                        'create_time' => intval(array_value($entry, 'create_time', 0)),
+                        'lastlogin_time' => intval(array_value($entry, 'lastlogin_time', 0)),
+                    ],
+                    [
+                        'level' => intval(array_value($entry, 'level', 0)),
+                        'level2' => intval(array_value($entry, 'level2', 0)),
+                        'exp' => intval(array_value($entry, 'exp', 0)),
+                        'reputation' => intval(array_value($entry, 'reputation', 0)),
+                    ],
+                    $onlineRow
+                );
+                $profile['ranking_key'] = $selection['ranking_key'];
+                $profile['ranking_label'] = trim((string) array_value($rankingMeta, 'label', $selection['ranking_key']));
+                $profile['ranking_value'] = intval(array_value($entry, 'ranking_value', 0));
+                $profile['ranking_position'] = intval($index) + 1;
+
+                if ($needsGuild) {
+                    $profile = gmV2AttachGuildToProfile($config, $proto, $profile);
+                }
+
+                $appendProfile($profile);
             }
         } catch (Exception $e) {
-            $warnings[] = 'Falha ao resolver guild_id ' . intval($guildId) . ': ' . $e->getMessage();
+            $warnings[] = 'Falha ao resolver ranking ' . $selection['ranking_key'] . ': ' . $e->getMessage();
         }
     }
 
-    foreach ((array) array_value($selection, 'roleids', []) as $roleid) {
-        try {
-            $appendProfile(gmV2HydrateRoleProfile($config, $proto, $roleid, $onlineLookup, $needsGuild));
-        } catch (Exception $e) {
-            $warnings[] = 'Falha ao resolver roleid ' . intval($roleid) . ': ' . $e->getMessage();
-        }
-    }
-
-    foreach ((array) array_value($selection, 'names', []) as $name) {
-        try {
-            $match = gmV2ResolveRoleIdByName($config, $proto, $name, $onlineLookup);
-            if (empty($match['found'])) {
-                $warnings[] = 'Nome nao encontrado: ' . $name;
-                continue;
+    if ($selection['ranking_key'] === '') {
+        foreach ((array) array_value($selection, 'guild_ids', []) as $guildId) {
+            try {
+                $guildMembers = gmV2ResolveGuildMembers($config, $proto, $guildId);
+                foreach ((array) array_value($guildMembers, 'roleids', []) as $memberRoleId) {
+                    $appendProfile(gmV2HydrateRoleProfile($config, $proto, $memberRoleId, $onlineLookup, true));
+                }
+            } catch (Exception $e) {
+                $warnings[] = 'Falha ao resolver guild_id ' . intval($guildId) . ': ' . $e->getMessage();
             }
-            $appendProfile(gmV2HydrateRoleProfile($config, $proto, intval(array_value($match, 'roleid', 0)), $onlineLookup, $needsGuild));
-        } catch (Exception $e) {
-            $warnings[] = 'Falha ao resolver nome ' . $name . ': ' . $e->getMessage();
+        }
+
+        foreach ((array) array_value($selection, 'roleids', []) as $roleid) {
+            try {
+                $appendProfile(gmV2HydrateRoleProfile($config, $proto, $roleid, $onlineLookup, $needsGuild));
+            } catch (Exception $e) {
+                $warnings[] = 'Falha ao resolver roleid ' . intval($roleid) . ': ' . $e->getMessage();
+            }
+        }
+
+        foreach ((array) array_value($selection, 'names', []) as $name) {
+            try {
+                $match = gmV2ResolveRoleIdByName($config, $proto, $name, $onlineLookup);
+                if (empty($match['found'])) {
+                    $warnings[] = 'Nome nao encontrado: ' . $name;
+                    continue;
+                }
+                $appendProfile(gmV2HydrateRoleProfile($config, $proto, intval(array_value($match, 'roleid', 0)), $onlineLookup, $needsGuild));
+            } catch (Exception $e) {
+                $warnings[] = 'Falha ao resolver nome ' . $name . ': ' . $e->getMessage();
+            }
+        }
+
+        foreach ((array) array_value($selection, 'userids', []) as $userid) {
+            $appendProfile(gmV2BuildAccountOnlyProfile($userid));
         }
     }
 
-    foreach ((array) array_value($selection, 'userids', []) as $userid) {
-        $appendProfile(gmV2BuildAccountOnlyProfile($userid));
-    }
-
-    if ($selection['all_online'] || (!gmV2SelectionHasExplicitTargets($selection) && !empty($onlineLookup))) {
+    if ($selection['ranking_key'] === '' && ($selection['all_online'] || (!gmV2SelectionHasExplicitTargets($selection) && !empty($onlineLookup)))) {
         foreach (array_keys($onlineLookup) as $roleid) {
             try {
                 $appendProfile(gmV2HydrateRoleProfile($config, $proto, $roleid, $onlineLookup, $needsGuild));
@@ -5515,18 +8482,23 @@ function gmV2ResolveProfiles(array $config, array $request, $commandKey = '')
 
     $profiles = array_values($profileMap);
     $profiles = gmV2ApplyProfileFilters($profiles, $selection);
-    gmV2RoleProfileSort($profiles);
+    if ($selection['ranking_key'] !== '') {
+        gmV2RankingProfileSort($profiles, $selection['ranking_key']);
+        $rankingLimit = max(0, intval(array_value($selection, 'ranking_limit', 0)));
+        if ($rankingLimit > 0 && count($profiles) > $rankingLimit) {
+            $warnings[] = 'Ranking limitado aos primeiros ' . $rankingLimit . ' alvos';
+            $profiles = array_slice($profiles, 0, $rankingLimit);
+        }
+    } else {
+        gmV2RoleProfileSort($profiles);
+    }
     $limit = max(1, intval(array_value($selection, 'limit', array_value($config, 'gm_v2_directory_limit', 200))));
     if (count($profiles) > $limit) {
         $warnings[] = 'Resultado limitado aos primeiros ' . $limit . ' alvos';
         $profiles = array_slice($profiles, 0, $limit);
     }
 
-    if ($selection['ranking_key'] !== '') {
-        $warnings[] = 'Selecao por ranking ainda depende de fonte de ranking configurada nesta VPS';
-    }
-
-    if (!empty($selection['userids'])) {
+    if ($selection['ranking_key'] === '' && !empty($selection['userids'])) {
         $warnings[] = 'Neste legado, userid sem roleid retorna alvo de conta sem rolelist detalhada';
     }
 
@@ -5726,6 +8698,7 @@ function gmV2PreviewBulkTargetsPayload(array $config, array $request)
     $commandKey = trim((string) array_value($resolved, 'command_key', ''));
     $commandPayload = gmV2CommandPayloadFromRequest($commandKey, $request);
     $confirmation = gmV2BulkCommandConfirmationMeta($commandKey, $commandPayload);
+    $context = gmV2NormalizeExecutionContext($request);
 
     return [
         'success' => true,
@@ -5735,6 +8708,7 @@ function gmV2PreviewBulkTargetsPayload(array $config, array $request)
         'sample_targets' => $sample,
         'selection' => array_value($resolved, 'selection', []),
         'warnings' => array_value($resolved, 'warnings', []),
+        'context' => $context,
         'command_payload_preview' => [
             'item_id' => intval(firstArrayValue($commandPayload, ['item_id', 'itemId'], 0)),
             'count' => intval(firstArrayValue($commandPayload, ['count', 'quantity'], 0)),
@@ -5776,7 +8750,8 @@ function gmV2SearchPlayerDirectoryPayload(array $config, array $request)
             'guild_filter' => true,
             'class_filter' => true,
             'account_scope_limited' => true,
-            'ranking_source_configured' => false,
+            'ranking_source_configured' => gmV2RankingSourceConfigured($config),
+            'ranking_keys' => gmV2RankingCatalogPayload($config),
         ],
         'searched_at' => gmdate('c'),
     ];
@@ -5830,6 +8805,42 @@ function gmV2GetQueueJobPayload(array $config, $jobId)
     ];
 }
 
+function gmV2JobStatusSeverity(array $job)
+{
+    $status = trim((string) array_value($job, 'status', 'queued'));
+    $failedCount = count((array) array_value($job, 'targets_failed', []));
+    if (in_array($status, ['failed'], true)) {
+        return 'error';
+    }
+    if ($status === 'completed_with_errors' || $failedCount > 0) {
+        return 'warning';
+    }
+    if ($status === 'paused') {
+        return 'warning';
+    }
+    if ($status === 'cancelled') {
+        return 'muted';
+    }
+    if (in_array($status, ['retry_wait'], true)) {
+        return 'warning';
+    }
+    if (in_array($status, ['queued', 'processing'], true)) {
+        return 'info';
+    }
+    return 'success';
+}
+
+function gmV2JobProgressPercent(array $job)
+{
+    $targetCount = max(0, intval(array_value($job, 'target_count', 0)));
+    $completedCount = count((array) array_value($job, 'targets_completed', []));
+    $failedCount = count((array) array_value($job, 'targets_failed', []));
+    if ($targetCount <= 0) {
+        return 100.0;
+    }
+    return max(0.0, min(100.0, round((($completedCount + $failedCount) / $targetCount) * 100, 2)));
+}
+
 function gmV2QueueJobPath(array $config, $jobId)
 {
     return rtrim(gmV2QueueJobsDir($config), '/\\') . DIRECTORY_SEPARATOR . trim((string) $jobId) . '.json';
@@ -5867,18 +8878,42 @@ function gmV2WriteJob(array $config, array $job)
 
 function gmV2JobSummary(array $job)
 {
+    $failedTargets = array_values((array) array_value($job, 'targets_failed', []));
+    $failedCount = count($failedTargets);
+    $firstFailure = ($failedCount > 0 && is_array($failedTargets[0])) ? $failedTargets[0] : [];
+    $targetCount = max(0, intval(array_value($job, 'target_count', 0)));
+    $completedCount = count((array) array_value($job, 'targets_completed', []));
+    $processedCount = $completedCount + $failedCount;
+    $jobId = trim((string) array_value($job, 'id', ''));
     return [
-        'id' => trim((string) array_value($job, 'id', '')),
+        'id' => $jobId,
+        'job_id' => $jobId,
         'command_key' => trim((string) array_value($job, 'command_key', '')),
         'status' => trim((string) array_value($job, 'status', 'queued')),
+        'status_severity' => gmV2JobStatusSeverity($job),
         'created_at' => array_value($job, 'created_at', null),
+        'queued_at' => array_value($job, 'created_at', null),
+        'started_at' => array_value($job, 'started_at', null),
+        'completed_at' => array_value($job, 'completed_at', null),
+        'paused_at' => array_value($job, 'paused_at', null),
+        'cancelled_at' => array_value($job, 'cancelled_at', null),
+        'not_before_at' => array_value($job, 'not_before_at', null),
         'updated_at' => array_value($job, 'updated_at', null),
         'actor' => array_value($job, 'actor', []),
-        'target_count' => intval(array_value($job, 'target_count', 0)),
+        'context' => array_value($job, 'context', []),
+        'broadcast_campaign' => array_value($job, 'broadcast_campaign', []),
+        'target_count' => $targetCount,
+        'total_targets' => $targetCount,
         'pending_count' => count((array) array_value($job, 'targets_pending', [])),
         'retry_count' => count((array) array_value($job, 'targets_retry', [])),
-        'completed_count' => count((array) array_value($job, 'targets_completed', [])),
-        'failed_count' => count((array) array_value($job, 'targets_failed', [])),
+        'completed_count' => $completedCount,
+        'failed_count' => $failedCount,
+        'processed_targets' => $processedCount,
+        'success_count' => $completedCount,
+        'error_count' => $failedCount,
+        'progress_percent' => gmV2JobProgressPercent($job),
+        'has_failures' => ($failedCount > 0),
+        'last_error_excerpt' => excerptText(trim((string) array_value($firstFailure, 'error', '')), 240),
         'warnings' => array_value($job, 'warnings', []),
         'next_retry_at' => array_value($job, 'next_retry_at', null),
     ];
@@ -5913,6 +8948,12 @@ function gmV2CreateQueuedJob(array $config, array $request)
 {
     $resolved = gmV2ResolveBulkTargetsPayload($config, $request);
     $commandKey = trim((string) array_value($resolved, 'command_key', ''));
+    operatorPermissionEnforceRequiredRole(
+        $config,
+        'queueBulkCommand',
+        $request,
+        operatorPermissionCommandMinRole($commandKey)
+    );
     $targets = array_values((array) array_value($resolved, 'targets', []));
     $commandPayload = gmV2CommandPayloadFromRequest($commandKey, $request);
     gmV2ValidateBulkCommandTemplate($commandKey, $commandPayload, true);
@@ -5922,6 +8963,8 @@ function gmV2CreateQueuedJob(array $config, array $request)
     }
 
     $jobId = buildOperationId('gmv2-job');
+    $actor = gmV2RequestActorEnvelope($config, $request);
+    $context = gmV2NormalizeExecutionContext($request);
     $job = [
         'type' => 'gm_v2_job',
         'id' => $jobId,
@@ -5929,10 +8972,8 @@ function gmV2CreateQueuedJob(array $config, array $request)
         'status' => 'queued',
         'created_at' => gmdate('c'),
         'updated_at' => gmdate('c'),
-        'actor' => [
-            'name' => gmV2RequestActor($request),
-            'ip' => gmV2RequestIp(),
-        ],
+        'actor' => $actor,
+        'context' => $context,
         'selection' => array_value($resolved, 'selection', []),
         'warnings' => array_value($resolved, 'warnings', []),
         'command_payload' => $commandPayload,
@@ -5954,7 +8995,8 @@ function gmV2CreateQueuedJob(array $config, array $request)
     gmV2AppendAudit($config, 'job_queued', [
         'job_id' => $jobId,
         'command_key' => $commandKey,
-        'actor' => array_value($job, 'actor', []),
+        'actor' => $actor,
+        'context' => $context,
         'target_count' => count($targets),
         'warnings' => array_value($resolved, 'warnings', []),
     ]);
@@ -5963,6 +9005,186 @@ function gmV2CreateQueuedJob(array $config, array $request)
         'success' => true,
         'job' => gmV2JobSummary($job),
         'job_file' => $jobFile,
+        'audit_file' => gmV2AuditFile($config),
+    ];
+}
+
+function gmV2ExecuteQueuedJobNow(array $config, array $request)
+{
+    $resolved = gmV2ResolveBulkTargetsPayload($config, $request);
+    $commandKey = trim((string) array_value($resolved, 'command_key', ''));
+    operatorPermissionEnforceRequiredRole(
+        $config,
+        'executeBulkCommandNow',
+        $request,
+        operatorPermissionCommandMinRole($commandKey)
+    );
+
+    $targetCount = max(0, intval(array_value($resolved, 'count', 0)));
+    $maxTargets = max(1, intval(array_value($config, 'gm_v2_execute_now_max_targets', 100)));
+    if ($targetCount > $maxTargets) {
+        throw new InvalidArgumentException(
+            'executeBulkCommandNow aceita no maximo ' . $maxTargets . ' alvos por requisicao. Use queueBulkCommand para volumes maiores'
+        );
+    }
+
+    $queued = gmV2CreateQueuedJob($config, $request);
+    $jobId = trim((string) array_value(array_value($queued, 'job', []), 'id', ''));
+    $job = gmV2ReadJob($config, $jobId);
+    if (!is_array($job)) {
+        throw new Exception('Nao foi possivel carregar o job criado para execucao imediata');
+    }
+
+    $job['batch_size'] = max(1, min(max(1, $targetCount), $maxTargets));
+    $job['execution_mode'] = 'immediate';
+    $job['next_retry_at'] = null;
+    gmV2WriteJob($config, $job);
+
+    $retryLimit = max(1, intval(array_value($job, 'retry_limit', array_value($config, 'gm_v2_queue_retry_limit', 3))));
+    $iterationLimit = max(1, (max(1, $targetCount) * ($retryLimit + 1)));
+    $iterations = 0;
+
+    while ($iterations < $iterationLimit) {
+        $status = trim((string) array_value($job, 'status', 'queued'));
+        if (in_array($status, ['completed', 'completed_with_errors', 'failed'], true)) {
+            break;
+        }
+
+        if ($status === 'retry_wait' || (empty($job['targets_pending']) && !empty($job['targets_retry']))) {
+            $job['next_retry_at'] = null;
+        }
+
+        $job = gmV2ProcessQueueJob($config, $job);
+        $iterations++;
+    }
+
+    $finalJob = gmV2ReadJob($config, $jobId);
+    if (is_array($finalJob)) {
+        $job = $finalJob;
+    }
+
+    $finalStatus = trim((string) array_value($job, 'status', 'queued'));
+    $completedSync = in_array($finalStatus, ['completed', 'completed_with_errors', 'failed'], true);
+    $warning = '';
+    if (!$completedSync) {
+        $warning = 'Execucao imediata encerrou com job em status ' . $finalStatus . '. Verifique o worker da fila para continuar o processamento.';
+    }
+
+    gmV2AppendAudit($config, 'job_execute_now', [
+        'job_id' => $jobId,
+        'command_key' => $commandKey,
+        'target_count' => $targetCount,
+        'iterations' => $iterations,
+        'status' => $finalStatus,
+        'completed_sync' => $completedSync,
+        'actor' => array_value($job, 'actor', []),
+        'context' => array_value($job, 'context', []),
+        'warning' => $warning,
+    ]);
+
+    return [
+        'success' => true,
+        'execution_mode' => 'now',
+        'completed_sync' => $completedSync,
+        'iterations' => $iterations,
+        'job' => gmV2JobSummary($job),
+        'job_detail' => $job,
+        'job_file' => gmV2QueueJobPath($config, $jobId),
+        'audit_file' => gmV2AuditFile($config),
+        'warning' => $warning,
+    ];
+}
+
+function gmV2UpdateQueueJobControl(array $config, $jobId, $operation, array $request = [])
+{
+    $jobId = trim((string) $jobId);
+    if ($jobId === '') {
+        throw new InvalidArgumentException('job_id obrigatorio');
+    }
+
+    $job = gmV2ReadJob($config, $jobId);
+    if (!is_array($job)) {
+        throw new InvalidArgumentException('Job nao encontrado');
+    }
+
+    $commandKey = trim((string) array_value($job, 'command_key', ''));
+    operatorPermissionEnforceRequiredRole(
+        $config,
+        'updateBulkCommandJob',
+        array_merge($request, [
+            'job_id' => $jobId,
+            'command_key' => $commandKey,
+        ]),
+        operatorPermissionCommandMinRole($commandKey)
+    );
+
+    $operation = strtolower(trim((string) $operation));
+    if (!in_array($operation, ['pause', 'resume', 'cancel'], true)) {
+        throw new InvalidArgumentException('operation invalida. Use: pause, resume ou cancel');
+    }
+
+    $status = trim((string) array_value($job, 'status', 'queued'));
+    $terminalStatuses = ['completed', 'completed_with_errors', 'failed', 'cancelled'];
+    $actor = gmV2RequestActorEnvelope($config, $request);
+
+    if ($operation === 'pause') {
+        if (in_array($status, $terminalStatuses, true)) {
+            throw new InvalidArgumentException('Nao e possivel pausar job em status terminal');
+        }
+        if ($status === 'paused') {
+            throw new InvalidArgumentException('Job ja esta pausado');
+        }
+        if ($status === 'processing') {
+            throw new InvalidArgumentException('Nao e seguro pausar job em processamento ativo. Aguarde o lote atual concluir.');
+        }
+
+        $job['status'] = 'paused';
+        $job['paused_at'] = gmdate('c');
+        $job['paused_by'] = $actor;
+        $job['pause_reason'] = trim((string) firstArrayValue($request, ['reason', 'message', 'note'], ''));
+        $job['next_retry_at'] = null;
+    } elseif ($operation === 'resume') {
+        if ($status !== 'paused') {
+            throw new InvalidArgumentException('Apenas jobs pausados podem ser retomados');
+        }
+
+        $job['status'] = 'queued';
+        $job['resumed_at'] = gmdate('c');
+        $job['resumed_by'] = $actor;
+        $job['next_retry_at'] = null;
+    } else {
+        if (in_array($status, $terminalStatuses, true)) {
+            throw new InvalidArgumentException('Nao e possivel cancelar job em status terminal');
+        }
+        if ($status === 'processing') {
+            throw new InvalidArgumentException('Nao e seguro cancelar job em processamento ativo. Aguarde o lote atual concluir.');
+        }
+
+        $job['status'] = 'cancelled';
+        $job['cancelled_at'] = gmdate('c');
+        $job['cancelled_by'] = $actor;
+        $job['cancel_reason'] = trim((string) firstArrayValue($request, ['reason', 'message', 'note'], ''));
+        $job['completed_at'] = array_value($job, 'completed_at', gmdate('c'));
+        $job['next_retry_at'] = null;
+    }
+
+    gmV2WriteJob($config, $job);
+    gmV2AppendAudit($config, 'job_control', [
+        'job_id' => $jobId,
+        'command_key' => $commandKey,
+        'operation' => $operation,
+        'status' => array_value($job, 'status', ''),
+        'actor' => $actor,
+        'context' => array_value($job, 'context', []),
+        'reason' => trim((string) firstArrayValue($request, ['reason', 'message', 'note'], '')),
+    ]);
+
+    return [
+        'success' => true,
+        'operation' => $operation,
+        'job' => gmV2JobSummary($job),
+        'job_detail' => $job,
+        'job_file' => gmV2QueueJobPath($config, $jobId),
         'audit_file' => gmV2AuditFile($config),
     ];
 }
@@ -6035,7 +9257,7 @@ function gmV2ProcessQueueJob(array $config, array $job)
     }
 
     $status = trim((string) array_value($job, 'status', 'queued'));
-    if (in_array($status, ['completed', 'completed_with_errors', 'failed'], true)) {
+    if (in_array($status, ['completed', 'completed_with_errors', 'failed', 'paused', 'cancelled'], true)) {
         return $job;
     }
 
@@ -6149,6 +9371,7 @@ function gmV2ProcessQueueJob(array $config, array $job)
     gmV2AppendAudit($config, 'job_progress', [
         'job_id' => $jobId,
         'status' => array_value($job, 'status', 'queued'),
+        'context' => array_value($job, 'context', []),
         'completed_count' => count((array) array_value($job, 'targets_completed', [])),
         'failed_count' => count((array) array_value($job, 'targets_failed', [])),
         'pending_count' => count((array) array_value($job, 'targets_pending', [])),
@@ -6193,7 +9416,8 @@ function gmV2RunQueueWorker(array $config, array $options = [])
         });
 
         $scanLimit = max(1, intval(array_value($config, 'gm_v2_queue_scan_limit', 20)));
-        foreach (array_slice($files, 0, $scanLimit) as $file) {
+        $candidateJobs = [];
+        foreach ($files as $file) {
             $raw = @file_get_contents($file);
             $job = json_decode((string) $raw, true);
             if (!is_array($job)) {
@@ -6205,11 +9429,20 @@ function gmV2RunQueueWorker(array $config, array $options = [])
                 continue;
             }
 
+            $notBeforeAt = trim((string) array_value($job, 'not_before_at', ''));
+            if ($status === 'queued' && $notBeforeAt !== '' && strtotime($notBeforeAt) > time()) {
+                continue;
+            }
+
             $due = trim((string) array_value($job, 'next_retry_at', ''));
             if ($due !== '' && strtotime($due) > time() && $status === 'retry_wait') {
                 continue;
             }
 
+            $candidateJobs[] = $job;
+        }
+
+        foreach (array_slice($candidateJobs, 0, $scanLimit) as $job) {
             $processedJob = gmV2ProcessQueueJob($config, $job);
             $result['processed_jobs'][] = gmV2JobSummary($processedJob);
         }
@@ -6218,6 +9451,590 @@ function gmV2RunQueueWorker(array $config, array $options = [])
         @fclose($lockHandle);
     }
 
+    return $result;
+}
+
+function gmV2NormalizeTemplateCategory($value, array $config)
+{
+    $category = strtolower(trimOneLineText((string) $value));
+    if ($category === '') {
+        $category = 'recompensa';
+    }
+
+    if (!in_array($category, gmV2TemplateCategories($config), true)) {
+        throw new InvalidArgumentException('category invalida. Use: ' . implode(', ', gmV2TemplateCategories($config)));
+    }
+
+    return $category;
+}
+
+function gmV2NormalizeTemplateKey($value, $fallback = '')
+{
+    $candidate = trimOneLineText((string) ($value !== '' ? $value : $fallback));
+    $candidate = strtolower($candidate);
+    $candidate = preg_replace('/[^a-z0-9_-]+/', '-', $candidate);
+    $candidate = trim((string) $candidate, '-_.');
+    $candidate = substr((string) $candidate, 0, 80);
+    if ($candidate === '') {
+        throw new InvalidArgumentException('template_key invalido');
+    }
+
+    return $candidate;
+}
+
+function gmV2TemplatePath(array $config, $templateKey)
+{
+    return rtrim(gmV2TemplatesDir($config), '/\\') . DIRECTORY_SEPARATOR . trim((string) $templateKey) . '.json';
+}
+
+function gmV2ReadTemplate(array $config, $templateKey)
+{
+    $path = gmV2TemplatePath($config, $templateKey);
+    if (!is_file($path) || !is_readable($path)) {
+        return null;
+    }
+
+    $raw = @file_get_contents($path);
+    if (!is_string($raw) || trim($raw) === '') {
+        return null;
+    }
+
+    $decoded = json_decode($raw, true);
+    return (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) ? $decoded : null;
+}
+
+function gmV2WriteTemplate(array $config, array $template)
+{
+    gmV2EnsureEnvironment($config);
+    $template['updated_at'] = gmdate('c');
+    $path = gmV2TemplatePath($config, array_value($template, 'template_key', array_value($template, 'id', '')));
+    writeAtomicFile($path, safeJsonEncode($template));
+    return $path;
+}
+
+function gmV2TemplatePayloadSummary(array $payload)
+{
+    return [
+        'item_id' => intval(firstArrayValue($payload, ['item_id', 'itemId'], 0)),
+        'count' => intval(firstArrayValue($payload, ['count', 'quantity'], 0)),
+        'money' => intval(firstArrayValue($payload, ['money'], 0)),
+        'amount' => firstArrayValue($payload, ['amount', 'gold', 'cash_units'], null),
+        'title' => trim((string) firstArrayValue($payload, ['title'], '')),
+        'message' => trim((string) firstArrayValue($payload, ['message'], '')),
+        'reason' => trim((string) firstArrayValue($payload, ['reason'], '')),
+        'confirm' => trim((string) firstArrayValue($payload, ['confirm', 'confirmation', 'confirm_token'], '')),
+    ];
+}
+
+function gmV2TemplateSummary(array $template)
+{
+    return [
+        'id' => trim((string) array_value($template, 'id', array_value($template, 'template_key', ''))),
+        'template_key' => trim((string) array_value($template, 'template_key', array_value($template, 'id', ''))),
+        'label' => trim((string) array_value($template, 'label', '')),
+        'category' => trim((string) array_value($template, 'category', '')),
+        'command_key' => trim((string) array_value($template, 'command_key', '')),
+        'requires_preview' => !empty($template['requires_preview']),
+        'requires_confirmation' => !empty($template['requires_confirmation']),
+        'confirmation_token' => trim((string) array_value($template, 'confirmation_token', '')),
+        'created_at' => array_value($template, 'created_at', null),
+        'updated_at' => array_value($template, 'updated_at', null),
+        'created_by' => array_value($template, 'created_by', []),
+        'updated_by' => array_value($template, 'updated_by', []),
+        'context' => array_value($template, 'context', []),
+        'selection' => array_value($template, 'selection', []),
+        'default_payload' => gmV2TemplatePayloadSummary((array) array_value($template, 'default_payload', [])),
+        'preview_count' => intval(array_value(array_value($template, 'preview', []), 'count', 0)),
+        'preview_warnings' => array_value(array_value($template, 'preview', []), 'warnings', []),
+        'can_queue' => in_array(trim((string) array_value($template, 'command_key', '')), gmV2AllowedBulkCommands($GLOBALS['CONFIG']), true),
+        'can_schedule' => in_array(trim((string) array_value($template, 'command_key', '')), gmV2AllowedScheduleCommands($GLOBALS['CONFIG']), true),
+    ];
+}
+
+function gmV2ListTemplates(array $config, $limit = 50, array $filters = [])
+{
+    gmV2EnsureEnvironment($config);
+    $files = glob(rtrim(gmV2TemplatesDir($config), '/\\') . DIRECTORY_SEPARATOR . '*.json');
+    if (!is_array($files)) {
+        return [];
+    }
+
+    $categoryFilter = strtolower(trimOneLineText((string) array_value($filters, 'category', '')));
+    $commandFilter = trimOneLineText((string) array_value($filters, 'command_key', ''));
+
+    usort($files, function ($a, $b) {
+        return intval(@filemtime($b)) <=> intval(@filemtime($a));
+    });
+
+    $limit = max(1, min(200, intval($limit)));
+    $items = [];
+    foreach ($files as $file) {
+        if (count($items) >= $limit) {
+            break;
+        }
+
+        $raw = @file_get_contents($file);
+        $decoded = json_decode((string) $raw, true);
+        if (!is_array($decoded)) {
+            continue;
+        }
+
+        if ($categoryFilter !== '' && strtolower((string) array_value($decoded, 'category', '')) !== $categoryFilter) {
+            continue;
+        }
+
+        if ($commandFilter !== '' && trim((string) array_value($decoded, 'command_key', '')) !== $commandFilter) {
+            continue;
+        }
+
+        $items[] = gmV2TemplateSummary($decoded);
+    }
+
+    return $items;
+}
+
+function gmV2NormalizeTemplateRequest(array $config, array $request, array $existing = [])
+{
+    gmV2EnsureEnvironment($config);
+
+    $commandKey = gmV2NormalizeCommandKey(
+        $config,
+        firstArrayValue($request, ['command_key', 'commandKey', 'command'], array_value($existing, 'command_key', '')),
+        true
+    );
+    if (!in_array($commandKey, gmV2AllowedTemplateCommands($config), true)) {
+        throw new InvalidArgumentException('command_key nao esta liberado para templates nesta fase');
+    }
+
+    $label = trimOneLineText((string) firstArrayValue($request, ['label', 'template_label', 'name'], array_value($existing, 'label', '')));
+    if ($label === '') {
+        $label = 'Template ' . $commandKey;
+    }
+
+    $existingKey = trim((string) array_value($existing, 'template_key', array_value($existing, 'id', '')));
+    $templateKey = gmV2NormalizeTemplateKey(
+        firstArrayValue($request, ['template_key', 'templateKey', 'key', 'slug', 'id'], $existingKey),
+        $label
+    );
+    if ($existingKey !== '' && $templateKey !== $existingKey) {
+        throw new InvalidArgumentException('template_key nao pode ser alterado');
+    }
+
+      $category = gmV2NormalizeTemplateCategory(
+          firstArrayValue($request, ['category', 'group'], array_value($existing, 'category', 'recompensa')),
+          $config
+      );
+      $context = gmV2NormalizeExecutionContext($request, (array) array_value($existing, 'context', []));
+
+    $selectionOverrides = [];
+    foreach (['default_selection', 'target_selection', 'template_selection'] as $field) {
+        $candidate = array_value($request, $field, null);
+        if (is_array($candidate)) {
+            $selectionOverrides = array_merge($selectionOverrides, $candidate);
+        }
+    }
+    $selectionSource = $request;
+    $selectionSource['selection'] = array_merge(
+        (array) array_value($existing, 'selection', []),
+        $selectionOverrides,
+        is_array(array_value($request, 'selection', null)) ? array_value($request, 'selection', []) : []
+    );
+    unset(
+        $selectionSource['name'],
+        $selectionSource['label'],
+        $selectionSource['template_label'],
+        $selectionSource['template_key'],
+        $selectionSource['templateKey'],
+        $selectionSource['key'],
+        $selectionSource['slug'],
+        $selectionSource['id'],
+        $selectionSource['category'],
+        $selectionSource['group'],
+        $selectionSource['requires_preview'],
+        $selectionSource['requires_confirmation'],
+        $selectionSource['default_payload'],
+        $selectionSource['default_selection'],
+        $selectionSource['target_selection'],
+        $selectionSource['template_selection'],
+        $selectionSource['mode'],
+        $selectionSource['execution_mode'],
+        $selectionSource['weekdays'],
+        $selectionSource['days_of_week'],
+        $selectionSource['day_of_week'],
+        $selectionSource['weekday'],
+        $selectionSource['dow'],
+        $selectionSource['time_of_day'],
+        $selectionSource['time'],
+        $selectionSource['run_time'],
+        $selectionSource['run_at_time'],
+          $selectionSource['timezone'],
+          $selectionSource['tz'],
+          $selectionSource['enabled'],
+          $selectionSource['active'],
+          $selectionSource['paused'],
+          $selectionSource['context'],
+          $selectionSource['event_id'],
+          $selectionSource['eventId'],
+          $selectionSource['event_type'],
+          $selectionSource['eventType'],
+          $selectionSource['trigger_source'],
+          $selectionSource['triggerSource']
+      );
+    $selection = gmV2NormalizeSelection($selectionSource, $config);
+
+    $commandSource = array_merge((array) array_value($existing, 'default_payload', []), $request);
+    foreach (['default_payload', 'payload', 'mail', 'broadcast', 'grant', 'cash', 'reward'] as $field) {
+        $candidate = array_value($request, $field, null);
+        if (is_array($candidate)) {
+            $commandSource = array_merge($commandSource, $candidate);
+        }
+    }
+    unset(
+        $commandSource['name'],
+        $commandSource['label'],
+        $commandSource['template_label'],
+        $commandSource['template_key'],
+        $commandSource['templateKey'],
+        $commandSource['key'],
+        $commandSource['slug'],
+        $commandSource['id'],
+        $commandSource['category'],
+        $commandSource['group'],
+        $commandSource['requires_preview'],
+        $commandSource['requires_confirmation'],
+        $commandSource['default_payload'],
+        $commandSource['default_selection'],
+        $commandSource['target_selection'],
+        $commandSource['template_selection'],
+        $commandSource['mode'],
+        $commandSource['execution_mode'],
+        $commandSource['weekdays'],
+        $commandSource['days_of_week'],
+        $commandSource['day_of_week'],
+        $commandSource['weekday'],
+        $commandSource['dow'],
+        $commandSource['every_day'],
+        $commandSource['everyday'],
+        $commandSource['all_days'],
+        $commandSource['allDays'],
+        $commandSource['daily'],
+        $commandSource['time_of_day'],
+        $commandSource['time'],
+        $commandSource['run_time'],
+        $commandSource['run_at_time'],
+          $commandSource['timezone'],
+          $commandSource['tz'],
+          $commandSource['enabled'],
+          $commandSource['active'],
+          $commandSource['paused'],
+          $commandSource['context'],
+          $commandSource['event_id'],
+          $commandSource['eventId'],
+          $commandSource['event_type'],
+          $commandSource['eventType'],
+          $commandSource['trigger_source'],
+          $commandSource['triggerSource']
+      );
+    $commandPayload = gmV2CommandPayloadFromRequest($commandKey, $commandSource);
+    gmV2ValidateBulkCommandTemplate($commandKey, $commandPayload, true);
+
+    $confirmation = gmV2BulkCommandConfirmationMeta($commandKey, $commandPayload);
+    $requiresPreview = array_key_exists('requires_preview', $request)
+        ? truthyValue($request['requires_preview'])
+        : (array_key_exists('requires_preview', $existing) ? !empty($existing['requires_preview']) : true);
+    $requiresConfirmation = array_key_exists('requires_confirmation', $request)
+        ? truthyValue($request['requires_confirmation'])
+        : !empty($existing['requires_confirmation']);
+    if (!empty($confirmation['required'])) {
+        $requiresConfirmation = true;
+    }
+
+    $preview = gmV2BuildSchedulePreviewSnapshot($config, array_merge($commandPayload, [
+        'command_key' => $commandKey,
+        'selection' => $selection,
+    ]));
+
+    return [
+        'template_key' => $templateKey,
+        'label' => $label,
+          'category' => $category,
+          'command_key' => $commandKey,
+          'context' => $context,
+          'selection' => $selection,
+        'default_payload' => $commandPayload,
+        'requires_preview' => $requiresPreview,
+        'requires_confirmation' => $requiresConfirmation,
+        'confirmation_token' => trim((string) array_value($confirmation, 'token', '')),
+        'preview' => $preview,
+    ];
+}
+
+function gmV2CreateBulkTemplate(array $config, array $request)
+{
+    gmV2EnsureEnvironment($config);
+    $payload = gmV2NormalizeTemplateRequest($config, $request);
+    operatorPermissionEnforceRequiredRole(
+        $config,
+        'saveBulkTemplate',
+        $request,
+        operatorPermissionCommandMinRole(array_value($payload, 'command_key', ''))
+    );
+    $templateKey = trim((string) array_value($payload, 'template_key', ''));
+    if (is_array(gmV2ReadTemplate($config, $templateKey))) {
+        throw new InvalidArgumentException('Template ja existe');
+    }
+
+    $actor = gmV2RequestActorEnvelope($config, $request);
+    $template = array_merge([
+        'type' => 'gm_v2_template',
+        'id' => $templateKey,
+        'created_at' => gmdate('c'),
+        'created_by' => $actor,
+        'updated_by' => $actor,
+    ], $payload);
+
+    $templateFile = gmV2WriteTemplate($config, $template);
+      gmV2AppendAudit($config, 'template_created', [
+          'template_key' => $templateKey,
+          'command_key' => array_value($template, 'command_key', ''),
+          'category' => array_value($template, 'category', ''),
+          'actor' => $actor,
+          'context' => array_value($template, 'context', []),
+      ]);
+
+    return [
+        'success' => true,
+        'template' => gmV2TemplateSummary($template),
+        'template_file' => $templateFile,
+        'audit_file' => gmV2AuditFile($config),
+    ];
+}
+
+function gmV2UpdateBulkTemplate(array $config, $templateKey, array $request)
+{
+    $existing = gmV2ReadTemplate($config, $templateKey);
+    if (!is_array($existing)) {
+        throw new InvalidArgumentException('Template nao encontrado');
+    }
+
+    $payload = gmV2NormalizeTemplateRequest($config, $request, $existing);
+    operatorPermissionEnforceRequiredRole(
+        $config,
+        'updateBulkTemplate',
+        $request,
+        operatorPermissionCommandMinRole(array_value($payload, 'command_key', array_value($existing, 'command_key', '')))
+    );
+    $updatedBy = gmV2RequestActorEnvelope($config, $request);
+
+    $template = array_merge($existing, $payload, [
+        'id' => array_value($existing, 'id', trim((string) $templateKey)),
+        'template_key' => array_value($existing, 'template_key', trim((string) $templateKey)),
+        'type' => 'gm_v2_template',
+        'updated_by' => $updatedBy,
+    ]);
+
+    $templateFile = gmV2WriteTemplate($config, $template);
+      gmV2AppendAudit($config, 'template_updated', [
+          'template_key' => trim((string) $templateKey),
+          'command_key' => array_value($template, 'command_key', ''),
+          'category' => array_value($template, 'category', ''),
+          'actor' => $updatedBy,
+          'context' => array_value($template, 'context', []),
+      ]);
+
+    return [
+        'success' => true,
+        'template' => gmV2TemplateSummary($template),
+        'template_file' => $templateFile,
+        'audit_file' => gmV2AuditFile($config),
+    ];
+}
+
+function gmV2DeleteBulkTemplate(array $config, $templateKey, array $request = [])
+{
+    $template = gmV2ReadTemplate($config, $templateKey);
+    if (!is_array($template)) {
+        throw new InvalidArgumentException('Template nao encontrado');
+    }
+    operatorPermissionEnforceRequiredRole(
+        $config,
+        'deleteBulkTemplate',
+        $request,
+        operatorPermissionCommandMinRole(array_value($template, 'command_key', ''))
+    );
+
+    $path = gmV2TemplatePath($config, $templateKey);
+    if (is_file($path)) {
+        @unlink($path);
+    }
+
+    $actor = gmV2RequestActorEnvelope($config, $request);
+    gmV2AppendAudit($config, 'template_deleted', [
+        'template_key' => trim((string) $templateKey),
+        'command_key' => array_value($template, 'command_key', ''),
+        'category' => array_value($template, 'category', ''),
+        'actor' => $actor,
+        'context' => array_value($template, 'context', []),
+    ]);
+
+    return [
+        'success' => true,
+        'deleted' => true,
+        'template_key' => trim((string) $templateKey),
+        'audit_file' => gmV2AuditFile($config),
+    ];
+}
+
+function gmV2GetBulkTemplatePayload(array $config, $templateKey)
+{
+    $template = gmV2ReadTemplate($config, $templateKey);
+    if (!is_array($template)) {
+        throw new InvalidArgumentException('Template nao encontrado');
+    }
+
+    return [
+        'success' => true,
+        'template' => $template,
+        'summary' => gmV2TemplateSummary($template),
+        'template_file' => gmV2TemplatePath($config, $templateKey),
+    ];
+}
+
+function gmV2GetBulkTemplatesPayload(array $config, $limit = 50, array $filters = [])
+{
+    return [
+        'success' => true,
+        'templates' => gmV2ListTemplates($config, $limit, $filters),
+        'limit' => max(1, min(200, intval($limit))),
+        'allowed_categories' => gmV2TemplateCategories($config),
+        'allowed_commands' => gmV2AllowedTemplateCommands($config),
+        'collected_at' => gmdate('c'),
+    ];
+}
+
+function gmV2BuildTemplateExecutionRequest(array $config, array $template, array $request, $mode = 'queue')
+{
+    $base = array_merge(
+        (array) array_value($template, 'default_payload', []),
+        [
+            'command_key' => array_value($template, 'command_key', ''),
+            'selection' => (array) array_value($template, 'selection', []),
+            'context' => (array) array_value($template, 'context', []),
+        ]
+    );
+    $merged = array_merge($base, $request);
+    if (is_array(array_value($request, 'selection', null))) {
+        $merged['selection'] = array_merge((array) array_value($template, 'selection', []), (array) array_value($request, 'selection', []));
+    }
+    foreach (['default_payload', 'default_selection', 'target_selection', 'template_selection'] as $field) {
+        $candidate = array_value($request, $field, null);
+        if (is_array($candidate)) {
+            if (substr($field, -10) === '_selection') {
+                $merged['selection'] = array_merge((array) array_value($merged, 'selection', []), $candidate);
+            } else {
+                $merged = array_merge($merged, $candidate);
+            }
+        }
+    }
+
+    unset(
+        $merged['default_payload'],
+        $merged['template_key'],
+        $merged['templateKey'],
+        $merged['key'],
+        $merged['slug'],
+        $merged['id'],
+        $merged['mode'],
+        $merged['execution_mode'],
+        $merged['label'],
+        $merged['category'],
+        $merged['requires_preview'],
+        $merged['requires_confirmation'],
+        $merged['confirmation_token'],
+        $merged['preview_only']
+    );
+    if ($mode !== 'schedule') {
+        unset(
+            $merged['name'],
+            $merged['weekdays'],
+            $merged['days_of_week'],
+            $merged['day_of_week'],
+            $merged['weekday'],
+            $merged['dow'],
+            $merged['time_of_day'],
+            $merged['time'],
+            $merged['run_time'],
+            $merged['run_at_time'],
+            $merged['timezone'],
+            $merged['tz'],
+            $merged['enabled'],
+            $merged['active'],
+            $merged['paused']
+        );
+    }
+
+    return $merged;
+}
+
+function gmV2PreviewBulkTemplatePayload(array $config, $templateKey, array $request = [])
+{
+    $template = gmV2ReadTemplate($config, $templateKey);
+    if (!is_array($template)) {
+        throw new InvalidArgumentException('Template nao encontrado');
+    }
+
+    $executionRequest = gmV2BuildTemplateExecutionRequest($config, $template, $request, 'preview');
+    $preview = gmV2PreviewBulkTargetsPayload($config, $executionRequest);
+    $preview['template'] = gmV2TemplateSummary($template);
+    $preview['template_key'] = trim((string) $templateKey);
+    return $preview;
+}
+
+function gmV2ExecuteBulkTemplatePayload(array $config, $templateKey, array $request = [])
+{
+    $template = gmV2ReadTemplate($config, $templateKey);
+    if (!is_array($template)) {
+        throw new InvalidArgumentException('Template nao encontrado');
+    }
+    operatorPermissionEnforceRequiredRole(
+        $config,
+        'executeBulkTemplate',
+        $request,
+        operatorPermissionCommandMinRole(array_value($template, 'command_key', ''))
+    );
+
+    $mode = strtolower(trimOneLineText((string) firstArrayValue($request, ['mode', 'execution_mode', 'run_mode'], 'queue')));
+    if (!in_array($mode, ['queue', 'schedule'], true)) {
+        throw new InvalidArgumentException('mode invalido. Use: queue ou schedule');
+    }
+
+    $actor = gmV2RequestActorEnvelope($config, $request);
+    $executionRequest = gmV2BuildTemplateExecutionRequest($config, $template, $request, $mode);
+        if ($mode === 'schedule') {
+            $result = gmV2CreateBulkSchedule($config, $executionRequest);
+            gmV2AppendAudit($config, 'template_executed', [
+                'template_key' => trim((string) $templateKey),
+                'mode' => 'schedule',
+                'schedule_id' => array_value(array_value($result, 'schedule', []), 'id', ''),
+                'command_key' => array_value($template, 'command_key', ''),
+                'actor' => $actor,
+                'context' => gmV2NormalizeExecutionContext($executionRequest, (array) array_value($template, 'context', [])),
+            ]);
+        } else {
+            $result = gmV2CreateQueuedJob($config, $executionRequest);
+            gmV2AppendAudit($config, 'template_executed', [
+                'template_key' => trim((string) $templateKey),
+                'mode' => 'queue',
+                'job_id' => array_value(array_value($result, 'job', []), 'id', ''),
+                'command_key' => array_value($template, 'command_key', ''),
+                'actor' => $actor,
+                'context' => gmV2NormalizeExecutionContext($executionRequest, (array) array_value($template, 'context', [])),
+            ]);
+        }
+
+    $result['template'] = gmV2TemplateSummary($template);
+    $result['template_key'] = trim((string) $templateKey);
+    $result['execution_mode'] = $mode;
     return $result;
 }
 
@@ -6251,29 +10068,73 @@ function gmV2WriteSchedule(array $config, array $schedule)
     return $path;
 }
 
+function gmV2ScheduleDerivedState(array $schedule, $nowTs = null)
+{
+    if (empty($schedule['enabled'])) {
+        return 'disabled';
+    }
+
+    $nowTs = ($nowTs === null) ? time() : intval($nowTs);
+    $nextRetryAt = trim((string) array_value($schedule, 'next_retry_at', ''));
+    if ($nextRetryAt !== '' && strtotime($nextRetryAt) > $nowTs) {
+        return 'retry_wait';
+    }
+
+    if (gmV2IsScheduleDue($schedule, $nowTs)) {
+        return 'due';
+    }
+
+    $lastResult = trim((string) array_value($schedule, 'last_result', ''));
+    if ($lastResult === 'error') {
+        return 'error';
+    }
+
+    $nextRunAt = trim((string) array_value($schedule, 'next_run_at', ''));
+    if ($nextRunAt === '') {
+        return 'idle';
+    }
+
+    return 'scheduled';
+}
+
 function gmV2ScheduleSummary(array $schedule)
 {
+    $weekdays = array_values((array) array_value($schedule, 'weekdays', []));
+    $nowTs = time();
+    $nextRunAt = trim((string) array_value($schedule, 'next_run_at', ''));
+    $nextRetryAt = trim((string) array_value($schedule, 'next_retry_at', ''));
+    $nextRunTs = ($nextRunAt !== '') ? strtotime($nextRunAt) : false;
+    $nextRetryTs = ($nextRetryAt !== '') ? strtotime($nextRetryAt) : false;
+    $derivedState = gmV2ScheduleDerivedState($schedule, $nowTs);
     return [
         'id' => trim((string) array_value($schedule, 'id', '')),
         'name' => trim((string) array_value($schedule, 'name', '')),
         'command_key' => trim((string) array_value($schedule, 'command_key', '')),
         'enabled' => !empty($schedule['enabled']),
-        'weekdays' => array_values((array) array_value($schedule, 'weekdays', [])),
+        'derived_state' => $derivedState,
+        'status_severity' => ($derivedState === 'error' ? 'error' : (in_array($derivedState, ['due', 'retry_wait'], true) ? 'warning' : (!empty($schedule['enabled']) ? 'success' : 'muted'))),
+        'weekdays' => $weekdays,
+        'every_day' => gmV2WeekdaysRepresentEveryDay($weekdays),
         'time_of_day' => trim((string) array_value($schedule, 'time_of_day', '')),
         'timezone' => trim((string) array_value($schedule, 'timezone', '')),
         'created_at' => array_value($schedule, 'created_at', null),
         'updated_at' => array_value($schedule, 'updated_at', null),
         'actor' => array_value($schedule, 'actor', []),
         'updated_by' => array_value($schedule, 'updated_by', []),
+        'context' => array_value($schedule, 'context', []),
         'selection' => array_value($schedule, 'selection', []),
         'preview_count' => intval(array_value(array_value($schedule, 'preview', []), 'count', 0)),
         'preview_warnings' => array_value(array_value($schedule, 'preview', []), 'warnings', []),
         'next_run_at' => array_value($schedule, 'next_run_at', null),
         'next_retry_at' => array_value($schedule, 'next_retry_at', null),
+        'is_due_now' => ($derivedState === 'due'),
+        'seconds_until_next_run' => ($nextRunTs !== false ? ($nextRunTs - $nowTs) : null),
+        'seconds_until_next_retry' => ($nextRetryTs !== false ? ($nextRetryTs - $nowTs) : null),
         'last_run_at' => array_value($schedule, 'last_run_at', null),
         'last_job_id' => array_value($schedule, 'last_job_id', null),
         'last_result' => array_value($schedule, 'last_result', null),
         'last_error' => array_value($schedule, 'last_error', null),
+        'last_error_excerpt' => excerptText(trim((string) array_value($schedule, 'last_error', '')), 240),
         'last_error_at' => array_value($schedule, 'last_error_at', null),
     ];
 }
@@ -6303,6 +10164,255 @@ function gmV2ListSchedules(array $config, $limit = 50)
     return $items;
 }
 
+function gmV2ReadRecentJsonLines($path, $limit = 20)
+{
+    $limit = max(1, min(500, intval($limit)));
+    $path = trim((string) $path);
+    if ($path === '' || !is_file($path) || !is_readable($path)) {
+        return [];
+    }
+
+    $lines = @file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if (!is_array($lines) || empty($lines)) {
+        return [];
+    }
+
+    $entries = [];
+    foreach (array_reverse(array_slice($lines, -$limit)) as $line) {
+        $decoded = json_decode((string) $line, true);
+        if (is_array($decoded)) {
+            $entries[] = $decoded;
+        }
+    }
+
+    return $entries;
+}
+
+function gmV2ReadAuditEntries(array $config, $limit = 20)
+{
+    return gmV2ReadRecentJsonLines(gmV2AuditFile($config), $limit);
+}
+
+function gmV2JobsObservabilitySummary(array $jobs)
+{
+    $summary = [
+        'total' => count($jobs),
+        'queued' => 0,
+        'processing' => 0,
+        'retry_wait' => 0,
+        'paused' => 0,
+        'cancelled' => 0,
+        'completed' => 0,
+        'completed_with_errors' => 0,
+        'failed' => 0,
+        'active' => 0,
+        'with_failures' => 0,
+    ];
+    $recentFailures = [];
+
+    foreach ($jobs as $job) {
+        if (!is_array($job)) {
+            continue;
+        }
+        $status = trim((string) array_value($job, 'status', 'queued'));
+        if (array_key_exists($status, $summary)) {
+            $summary[$status]++;
+        }
+        if (in_array($status, ['queued', 'processing', 'retry_wait'], true)) {
+            $summary['active']++;
+        }
+        if (!empty($job['has_failures']) || intval(array_value($job, 'failed_count', 0)) > 0 || in_array($status, ['failed', 'completed_with_errors'], true)) {
+            $summary['with_failures']++;
+            if (count($recentFailures) < 5) {
+                $recentFailures[] = [
+                    'id' => trim((string) array_value($job, 'id', '')),
+                    'command_key' => trim((string) array_value($job, 'command_key', '')),
+                    'status' => $status,
+                    'failed_count' => intval(array_value($job, 'failed_count', 0)),
+                    'last_error_excerpt' => trim((string) array_value($job, 'last_error_excerpt', '')),
+                    'updated_at' => array_value($job, 'updated_at', null),
+                ];
+            }
+        }
+    }
+
+    $summary['recent_failures'] = $recentFailures;
+    return $summary;
+}
+
+function gmV2SchedulesObservabilitySummary(array $schedules)
+{
+    $summary = [
+        'total' => count($schedules),
+        'enabled' => 0,
+        'disabled' => 0,
+        'due' => 0,
+        'retry_wait' => 0,
+        'error' => 0,
+        'scheduled' => 0,
+        'idle' => 0,
+        'next_due_at' => null,
+        'recent_errors' => [],
+    ];
+
+    foreach ($schedules as $schedule) {
+        if (!is_array($schedule)) {
+            continue;
+        }
+        if (!empty($schedule['enabled'])) {
+            $summary['enabled']++;
+        } else {
+            $summary['disabled']++;
+        }
+
+        $state = trim((string) array_value($schedule, 'derived_state', 'idle'));
+        if (array_key_exists($state, $summary)) {
+            $summary[$state]++;
+        }
+
+        $nextRunAt = trim((string) array_value($schedule, 'next_run_at', ''));
+        if ($nextRunAt !== '') {
+            if ($summary['next_due_at'] === null || strtotime($nextRunAt) < strtotime((string) $summary['next_due_at'])) {
+                $summary['next_due_at'] = $nextRunAt;
+            }
+        }
+
+        if ($state === 'error' && count($summary['recent_errors']) < 5) {
+            $summary['recent_errors'][] = [
+                'id' => trim((string) array_value($schedule, 'id', '')),
+                'name' => trim((string) array_value($schedule, 'name', '')),
+                'command_key' => trim((string) array_value($schedule, 'command_key', '')),
+                'last_error_excerpt' => trim((string) array_value($schedule, 'last_error_excerpt', '')),
+                'last_error_at' => array_value($schedule, 'last_error_at', null),
+            ];
+        }
+    }
+
+    return $summary;
+}
+
+function gmV2AuditEventCounts(array $entries)
+{
+    $counts = [];
+    foreach ($entries as $entry) {
+        if (!is_array($entry)) {
+            continue;
+        }
+        $event = trim((string) array_value($entry, 'event', ''));
+        if ($event === '') {
+            continue;
+        }
+        if (!isset($counts[$event])) {
+            $counts[$event] = 0;
+        }
+        $counts[$event]++;
+    }
+    ksort($counts);
+    return $counts;
+}
+
+function gmV2CommanderObservabilityAlerts(array $jobSummary, array $scheduleSummary, array $auditCounts)
+{
+    $alerts = [];
+
+    if (intval(array_value($scheduleSummary, 'due', 0)) > 0) {
+        $alerts[] = [
+            'severity' => 'warning',
+            'type' => 'gmv2_due_schedules',
+            'scope' => 'gm_commander',
+            'key' => 'due_schedules',
+            'message' => intval(array_value($scheduleSummary, 'due', 0)) . ' agendamento(s) estao vencidos aguardando worker',
+        ];
+    }
+
+    if (intval(array_value($scheduleSummary, 'error', 0)) > 0) {
+        $alerts[] = [
+            'severity' => 'error',
+            'type' => 'gmv2_schedule_errors',
+            'scope' => 'gm_commander',
+            'key' => 'schedule_errors',
+            'message' => intval(array_value($scheduleSummary, 'error', 0)) . ' agendamento(s) com erro recente',
+        ];
+    }
+
+    if (intval(array_value($jobSummary, 'with_failures', 0)) > 0) {
+        $alerts[] = [
+            'severity' => 'warning',
+            'type' => 'gmv2_job_failures',
+            'scope' => 'gm_commander',
+            'key' => 'job_failures',
+            'message' => intval(array_value($jobSummary, 'with_failures', 0)) . ' job(ns) recente(s) com falhas ou warnings',
+        ];
+    }
+
+    if (intval(array_value($jobSummary, 'retry_wait', 0)) > 0) {
+        $alerts[] = [
+            'severity' => 'warning',
+            'type' => 'gmv2_retry_wait',
+            'scope' => 'gm_commander',
+            'key' => 'retry_wait',
+            'message' => intval(array_value($jobSummary, 'retry_wait', 0)) . ' job(ns) aguardando retry',
+        ];
+    }
+
+    if (intval(array_value($auditCounts, 'operator_permission_denied', 0)) > 0) {
+        $alerts[] = [
+            'severity' => 'info',
+            'type' => 'gmv2_permission_denied',
+            'scope' => 'gm_commander',
+            'key' => 'permission_denied',
+            'message' => intval(array_value($auditCounts, 'operator_permission_denied', 0)) . ' tentativa(s) recente(s) negadas por permissao',
+        ];
+    }
+
+    return $alerts;
+}
+
+function getGmCommanderSnapshot(array $config, array $request = [])
+{
+    $jobLimit = max(1, min(50, intval(firstArrayValue($request, ['job_limit', 'jobLimit', 'jobs_limit'], 10))));
+    $scheduleLimit = max(1, min(50, intval(firstArrayValue($request, ['schedule_limit', 'scheduleLimit', 'schedules_limit'], 10))));
+    $auditLimit = max(1, min(100, intval(firstArrayValue($request, ['audit_limit', 'auditLimit', 'history_limit'], 20))));
+
+    $jobs = gmV2ListJobs($config, $jobLimit);
+    $schedules = gmV2ListSchedules($config, $scheduleLimit);
+    $auditEntries = gmV2ReadAuditEntries($config, $auditLimit);
+    $jobSummary = gmV2JobsObservabilitySummary($jobs);
+    $scheduleSummary = gmV2SchedulesObservabilitySummary($schedules);
+    $auditCounts = gmV2AuditEventCounts($auditEntries);
+    $alerts = gmV2CommanderObservabilityAlerts($jobSummary, $scheduleSummary, $auditCounts);
+
+    return [
+        'success' => true,
+        'snapshot' => [
+            'jobs' => [
+                'summary' => $jobSummary,
+                'recent' => $jobs,
+                'collected_at' => gmdate('c'),
+            ],
+            'schedules' => [
+                'summary' => $scheduleSummary,
+                'recent' => $schedules,
+                'collected_at' => gmdate('c'),
+            ],
+            'audit' => [
+                'recent' => $auditEntries,
+                'event_counts' => $auditCounts,
+                'audit_file' => gmV2AuditFile($config),
+                'collected_at' => gmdate('c'),
+            ],
+            'alerts' => $alerts,
+            'files' => [
+                'jobs_dir' => gmV2QueueJobsDir($config),
+                'schedules_dir' => gmV2SchedulesDir($config),
+                'templates_dir' => gmV2TemplatesDir($config),
+                'audit_file' => gmV2AuditFile($config),
+            ],
+            'collected_at' => gmdate('c'),
+        ],
+    ];
+}
+
 function gmV2BuildSchedulePreviewSnapshot(array $config, array $request)
 {
     try {
@@ -6329,11 +10439,12 @@ function gmV2BuildSchedulePreviewSnapshot(array $config, array $request)
 function gmV2NormalizeScheduleRequest(array $config, array $request, array $existing = [])
 {
     $base = [];
-    if (!empty($existing)) {
-        $base = array_merge((array) array_value($existing, 'command_payload', []), [
-            'command_key' => array_value($existing, 'command_key', ''),
-            'selection' => array_value($existing, 'selection', []),
-            'name' => array_value($existing, 'name', ''),
+      if (!empty($existing)) {
+          $base = array_merge((array) array_value($existing, 'command_payload', []), [
+              'command_key' => array_value($existing, 'command_key', ''),
+              'context' => array_value($existing, 'context', []),
+              'selection' => array_value($existing, 'selection', []),
+              'name' => array_value($existing, 'name', ''),
             'weekdays' => array_value($existing, 'weekdays', []),
             'time_of_day' => array_value($existing, 'time_of_day', ''),
             'timezone' => array_value($existing, 'timezone', array_value($config, 'gm_v2_schedule_default_timezone', 'America/Sao_Paulo')),
@@ -6348,9 +10459,10 @@ function gmV2NormalizeScheduleRequest(array $config, array $request, array $exis
         } else {
             $merged[$key] = $value;
         }
-    }
+      }
+      $context = gmV2NormalizeExecutionContext($merged, (array) array_value($existing, 'context', []));
 
-    $commandKey = gmV2NormalizeScheduleCommandKey($config, firstArrayValue($merged, ['command_key', 'commandKey', 'command'], ''));
+      $commandKey = gmV2NormalizeScheduleCommandKey($config, firstArrayValue($merged, ['command_key', 'commandKey', 'command'], ''));
     $selectionSource = $merged;
     unset(
         $selectionSource['name'],
@@ -6367,19 +10479,29 @@ function gmV2NormalizeScheduleRequest(array $config, array $request, array $exis
         $selectionSource['run_at_time'],
         $selectionSource['timezone'],
         $selectionSource['tz'],
-        $selectionSource['enabled'],
-        $selectionSource['active'],
-        $selectionSource['paused'],
-        $selectionSource['schedule_id'],
-        $selectionSource['scheduleId'],
-        $selectionSource['id']
+          $selectionSource['enabled'],
+          $selectionSource['active'],
+          $selectionSource['paused'],
+          $selectionSource['context'],
+          $selectionSource['event_id'],
+          $selectionSource['eventId'],
+          $selectionSource['event_type'],
+          $selectionSource['eventType'],
+          $selectionSource['trigger_source'],
+          $selectionSource['triggerSource'],
+          $selectionSource['schedule_id'],
+          $selectionSource['scheduleId'],
+          $selectionSource['id']
     );
     $selection = gmV2NormalizeSelection($selectionSource, $config);
-    if (!gmV2SelectionHasAnyCriteria($selection)) {
+    if (!gmV2SelectionHasAnyCriteria($selection) && $commandKey !== 'sendSystemMessage') {
         throw new InvalidArgumentException('Selecao obrigatoria para schedule bulk');
     }
 
-    $weekdays = gmV2NormalizeWeekdayList(firstArrayValue($merged, ['weekdays', 'days_of_week', 'day_of_week', 'weekday', 'dow'], []));
+    $everyDay = truthyValue(firstArrayValue($merged, ['every_day', 'everyday', 'all_days', 'allDays', 'daily'], false));
+    $weekdays = $everyDay
+        ? [1, 2, 3, 4, 5, 6, 7]
+        : gmV2NormalizeWeekdayList(firstArrayValue($merged, ['weekdays', 'days_of_week', 'day_of_week', 'weekday', 'dow'], []));
     if (empty($weekdays)) {
         throw new InvalidArgumentException('weekdays obrigatorio');
     }
@@ -6419,14 +10541,21 @@ function gmV2NormalizeScheduleRequest(array $config, array $request, array $exis
         $commandSource['time'],
         $commandSource['run_time'],
         $commandSource['run_at_time'],
-        $commandSource['timezone'],
-        $commandSource['tz'],
-        $commandSource['enabled'],
-        $commandSource['active'],
-        $commandSource['paused'],
-        $commandSource['schedule_id'],
-        $commandSource['scheduleId'],
-        $commandSource['id']
+          $commandSource['timezone'],
+          $commandSource['tz'],
+          $commandSource['enabled'],
+          $commandSource['active'],
+          $commandSource['paused'],
+          $commandSource['context'],
+          $commandSource['event_id'],
+          $commandSource['eventId'],
+          $commandSource['event_type'],
+          $commandSource['eventType'],
+          $commandSource['trigger_source'],
+          $commandSource['triggerSource'],
+          $commandSource['schedule_id'],
+          $commandSource['scheduleId'],
+          $commandSource['id']
     );
     $commandPayload = gmV2CommandPayloadFromRequest($commandKey, $commandSource);
     gmV2ValidateBulkCommandTemplate($commandKey, $commandPayload, true);
@@ -6441,9 +10570,10 @@ function gmV2NormalizeScheduleRequest(array $config, array $request, array $exis
     }
 
     return [
-        'name' => $name,
-        'command_key' => $commandKey,
-        'selection' => $selection,
+          'name' => $name,
+          'command_key' => $commandKey,
+          'context' => $context,
+          'selection' => $selection,
         'command_payload' => $commandPayload,
         'weekdays' => $weekdays,
         'time_of_day' => $timeOfDay,
@@ -6459,11 +10589,14 @@ function gmV2CreateBulkSchedule(array $config, array $request)
 {
     gmV2EnsureEnvironment($config);
     $payload = gmV2NormalizeScheduleRequest($config, $request);
+    operatorPermissionEnforceRequiredRole(
+        $config,
+        'scheduleBulkCommand',
+        $request,
+        operatorPermissionCommandMinRole(array_value($payload, 'command_key', ''))
+    );
     $scheduleId = buildOperationId('gmv2-schedule');
-    $actor = [
-        'name' => gmV2RequestActor($request),
-        'ip' => gmV2RequestIp(),
-    ];
+    $actor = gmV2RequestActorEnvelope($config, $request);
 
     $schedule = array_merge([
         'type' => 'gm_v2_schedule',
@@ -6481,13 +10614,14 @@ function gmV2CreateBulkSchedule(array $config, array $request)
     ], $payload);
 
     $scheduleFile = gmV2WriteSchedule($config, $schedule);
-    gmV2AppendAudit($config, 'schedule_created', [
-        'schedule_id' => $scheduleId,
-        'command_key' => array_value($schedule, 'command_key', ''),
-        'actor' => $actor,
-        'selection' => array_value($schedule, 'selection', []),
-        'next_run_at' => array_value($schedule, 'next_run_at', null),
-    ]);
+      gmV2AppendAudit($config, 'schedule_created', [
+          'schedule_id' => $scheduleId,
+          'command_key' => array_value($schedule, 'command_key', ''),
+          'actor' => $actor,
+          'context' => array_value($schedule, 'context', []),
+          'selection' => array_value($schedule, 'selection', []),
+          'next_run_at' => array_value($schedule, 'next_run_at', null),
+      ]);
 
     return [
         'success' => true,
@@ -6505,10 +10639,13 @@ function gmV2UpdateBulkSchedule(array $config, $scheduleId, array $request)
     }
 
     $payload = gmV2NormalizeScheduleRequest($config, $request, $existing);
-    $updatedBy = [
-        'name' => gmV2RequestActor($request),
-        'ip' => gmV2RequestIp(),
-    ];
+    operatorPermissionEnforceRequiredRole(
+        $config,
+        'updateBulkSchedule',
+        $request,
+        operatorPermissionCommandMinRole(array_value($payload, 'command_key', array_value($existing, 'command_key', '')))
+    );
+    $updatedBy = gmV2RequestActorEnvelope($config, $request);
 
     $schedule = array_merge($existing, $payload, [
         'id' => array_value($existing, 'id', trim((string) $scheduleId)),
@@ -6519,13 +10656,14 @@ function gmV2UpdateBulkSchedule(array $config, $scheduleId, array $request)
     ]);
 
     $scheduleFile = gmV2WriteSchedule($config, $schedule);
-    gmV2AppendAudit($config, 'schedule_updated', [
-        'schedule_id' => array_value($schedule, 'id', ''),
-        'command_key' => array_value($schedule, 'command_key', ''),
-        'actor' => $updatedBy,
-        'selection' => array_value($schedule, 'selection', []),
-        'next_run_at' => array_value($schedule, 'next_run_at', null),
-    ]);
+      gmV2AppendAudit($config, 'schedule_updated', [
+          'schedule_id' => array_value($schedule, 'id', ''),
+          'command_key' => array_value($schedule, 'command_key', ''),
+          'actor' => $updatedBy,
+          'context' => array_value($schedule, 'context', []),
+          'selection' => array_value($schedule, 'selection', []),
+          'next_run_at' => array_value($schedule, 'next_run_at', null),
+      ]);
 
     return [
         'success' => true,
@@ -6541,19 +10679,24 @@ function gmV2DeleteBulkSchedule(array $config, $scheduleId, array $request = [])
     if (!is_array($schedule)) {
         throw new InvalidArgumentException('Schedule nao encontrado');
     }
+    operatorPermissionEnforceRequiredRole(
+        $config,
+        'deleteBulkSchedule',
+        $request,
+        operatorPermissionCommandMinRole(array_value($schedule, 'command_key', ''))
+    );
 
     $path = gmV2SchedulePath($config, $scheduleId);
     if (is_file($path)) {
         @unlink($path);
     }
 
+    $actor = gmV2RequestActorEnvelope($config, $request);
     gmV2AppendAudit($config, 'schedule_deleted', [
         'schedule_id' => trim((string) $scheduleId),
         'command_key' => array_value($schedule, 'command_key', ''),
-        'actor' => [
-            'name' => gmV2RequestActor($request),
-            'ip' => gmV2RequestIp(),
-        ],
+        'actor' => $actor,
+        'context' => array_value($schedule, 'context', []),
     ]);
 
     return [
@@ -6584,6 +10727,327 @@ function gmV2GetBulkSchedulesPayload(array $config, $limit = 50)
     return [
         'success' => true,
         'schedules' => gmV2ListSchedules($config, $limit),
+        'limit' => max(1, min(200, intval($limit))),
+        'collected_at' => gmdate('c'),
+    ];
+}
+
+function gmV2PvpRankingRewardSchedulePath(array $config, $scheduleId)
+{
+    return rtrim(gmV2PvpRankingSchedulesDir($config), '/\\') . DIRECTORY_SEPARATOR . trim((string) $scheduleId) . '.json';
+}
+
+function gmV2ReadPvpRankingRewardSchedule(array $config, $scheduleId)
+{
+    $path = gmV2PvpRankingRewardSchedulePath($config, $scheduleId);
+    if (!is_file($path) || !is_readable($path)) {
+        return null;
+    }
+
+    $raw = @file_get_contents($path);
+    if (!is_string($raw) || trim($raw) === '') {
+        return null;
+    }
+
+    $decoded = json_decode($raw, true);
+    return (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) ? $decoded : null;
+}
+
+function gmV2WritePvpRankingRewardSchedule(array $config, array $schedule)
+{
+    gmV2EnsureEnvironment($config);
+    $schedule['updated_at'] = gmdate('c');
+    $path = gmV2PvpRankingRewardSchedulePath($config, array_value($schedule, 'id', ''));
+    writeAtomicFile($path, safeJsonEncode($schedule));
+    return $path;
+}
+
+function gmV2PvpRankingRewardScheduleSummary(array $schedule)
+{
+    $weekdays = array_values((array) array_value($schedule, 'weekdays', []));
+    $nowTs = time();
+    $nextRunAt = trim((string) array_value($schedule, 'next_run_at', ''));
+    $nextRetryAt = trim((string) array_value($schedule, 'next_retry_at', ''));
+    $nextRunTs = ($nextRunAt !== '') ? strtotime($nextRunAt) : false;
+    $nextRetryTs = ($nextRetryAt !== '') ? strtotime($nextRetryAt) : false;
+    $derivedState = gmV2ScheduleDerivedState($schedule, $nowTs);
+    $rewards = (array) array_value($schedule, 'rewards', []);
+    $positions = [];
+    foreach ($rewards as $reward) {
+        if (!is_array($reward)) {
+            continue;
+        }
+        $position = intval(array_value($reward, 'position', 0));
+        if ($position > 0) {
+            $positions[] = $position;
+        }
+    }
+
+    return [
+        'id' => trim((string) array_value($schedule, 'id', '')),
+        'name' => trim((string) array_value($schedule, 'name', '')),
+        'command_key' => 'pvpRankingRewards',
+        'ranking_key' => 'pvp_points',
+        'enabled' => !empty($schedule['enabled']),
+        'derived_state' => $derivedState,
+        'status_severity' => ($derivedState === 'error' ? 'error' : (in_array($derivedState, ['due', 'retry_wait'], true) ? 'warning' : (!empty($schedule['enabled']) ? 'success' : 'muted'))),
+        'weekdays' => $weekdays,
+        'every_day' => gmV2WeekdaysRepresentEveryDay($weekdays),
+        'time_of_day' => trim((string) array_value($schedule, 'time_of_day', '')),
+        'timezone' => trim((string) array_value($schedule, 'timezone', '')),
+        'leaderboard_limit' => intval(array_value($schedule, 'leaderboard_limit', 3)),
+        'reward_positions' => $positions,
+        'reset_ranking' => !empty($schedule['reset_ranking']),
+        'reset_only_on_full_success' => !empty($schedule['reset_only_on_full_success']),
+        'created_at' => array_value($schedule, 'created_at', null),
+        'updated_at' => array_value($schedule, 'updated_at', null),
+        'actor' => array_value($schedule, 'actor', []),
+        'updated_by' => array_value($schedule, 'updated_by', []),
+        'preview' => array_value($schedule, 'preview', []),
+        'next_run_at' => array_value($schedule, 'next_run_at', null),
+        'next_retry_at' => array_value($schedule, 'next_retry_at', null),
+        'is_due_now' => ($derivedState === 'due'),
+        'seconds_until_next_run' => ($nextRunTs !== false ? ($nextRunTs - $nowTs) : null),
+        'seconds_until_next_retry' => ($nextRetryTs !== false ? ($nextRetryTs - $nowTs) : null),
+        'last_run_at' => array_value($schedule, 'last_run_at', null),
+        'last_execution_id' => array_value($schedule, 'last_execution_id', null),
+        'last_result' => array_value($schedule, 'last_result', null),
+        'last_error' => array_value($schedule, 'last_error', null),
+        'last_error_excerpt' => excerptText(trim((string) array_value($schedule, 'last_error', '')), 240),
+        'last_error_at' => array_value($schedule, 'last_error_at', null),
+    ];
+}
+
+function gmV2BuildPvpRankingRewardSchedulePreview(array $config, array $request)
+{
+    try {
+        $preview = gmV2PreviewPvpRankingRewardsPayload($config, $request);
+        return [
+            'available' => true,
+            'count' => intval(array_value($preview, 'count', 0)),
+            'deliverable_count' => intval(array_value($preview, 'deliverable_count', 0)),
+            'missing_positions' => array_value($preview, 'missing_positions', []),
+            'leaderboard' => array_slice((array) array_value($preview, 'leaderboard', []), 0, gmV2PvpRankingDefaultLimit($config)),
+            'sample_entries' => array_slice((array) array_value($preview, 'entries', []), 0, gmV2PvpRankingDefaultLimit($config)),
+            'previewed_at' => array_value($preview, 'previewed_at', gmdate('c')),
+        ];
+    } catch (Exception $e) {
+        return [
+            'available' => false,
+            'count' => 0,
+            'deliverable_count' => 0,
+            'missing_positions' => [],
+            'leaderboard' => [],
+            'sample_entries' => [],
+            'error' => $e->getMessage(),
+            'previewed_at' => gmdate('c'),
+        ];
+    }
+}
+
+function gmV2NormalizePvpRankingRewardScheduleRequest(array $config, array $request, array $existing = [])
+{
+    $base = [];
+    if (!empty($existing)) {
+        $base = [
+            'name' => array_value($existing, 'name', ''),
+            'weekdays' => array_value($existing, 'weekdays', []),
+            'time_of_day' => array_value($existing, 'time_of_day', ''),
+            'timezone' => array_value($existing, 'timezone', array_value($config, 'gm_v2_schedule_default_timezone', 'America/Sao_Paulo')),
+            'enabled' => !empty($existing['enabled']),
+            'leaderboard_limit' => array_value($existing, 'leaderboard_limit', gmV2PvpRankingDefaultLimit($config)),
+            'rewards' => array_value($existing, 'rewards', []),
+            'reset_ranking' => !empty($existing['reset_ranking']),
+            'reset_only_on_full_success' => !empty($existing['reset_only_on_full_success']),
+        ];
+    }
+
+    $merged = $base;
+    foreach ($request as $key => $value) {
+        $merged[$key] = $value;
+    }
+
+    $name = truncateUtf8Text(trimOneLineText((string) firstArrayValue($merged, ['name', 'label', 'schedule_name'], 'Ranking PvP TOP 3')), 120);
+    if ($name === '') {
+        $name = 'Ranking PvP TOP 3';
+    }
+
+    $everyDay = truthyValue(firstArrayValue($merged, ['every_day', 'everyday', 'all_days', 'allDays', 'daily'], false));
+    $weekdays = $everyDay
+        ? [1, 2, 3, 4, 5, 6, 7]
+        : gmV2NormalizeWeekdayList(firstArrayValue($merged, ['weekdays', 'days_of_week', 'day_of_week', 'weekday', 'dow'], []));
+    if (empty($weekdays)) {
+        throw new InvalidArgumentException('weekdays obrigatorio');
+    }
+
+    $timeOfDay = gmV2NormalizeTimeOfDay(firstArrayValue($merged, ['time_of_day', 'time', 'run_time', 'run_at_time'], ''));
+    if ($timeOfDay === '') {
+        throw new InvalidArgumentException('time_of_day invalido');
+    }
+
+    $timezone = gmV2NormalizeTimezoneName(firstArrayValue($merged, ['timezone', 'tz'], ''), $config);
+    $enabledValue = firstArrayValue($merged, ['enabled', 'active'], null);
+    $pausedValue = firstArrayValue($merged, ['paused'], null);
+    if ($enabledValue === null && $pausedValue === null) {
+        $enabled = array_key_exists('enabled', $existing) ? !empty($existing['enabled']) : true;
+    } elseif ($enabledValue !== null) {
+        $enabled = truthyValue($enabledValue);
+    } else {
+        $enabled = !truthyValue($pausedValue);
+    }
+
+    $rewardPlan = gmV2NormalizePvpRankingRewardsRequest($merged, $config);
+    $previewRequest = [
+        'rewards' => array_value($rewardPlan, 'rewards', []),
+        'leaderboard_limit' => array_value($rewardPlan, 'leaderboard_limit', gmV2PvpRankingDefaultLimit($config)),
+        'reset_ranking' => !empty($rewardPlan['reset_ranking']),
+        'reset_only_on_full_success' => !empty($rewardPlan['reset_only_on_full_success']),
+    ];
+    $preview = gmV2BuildPvpRankingRewardSchedulePreview($config, $previewRequest);
+    $nextRunAt = gmV2ComputeNextScheduleRunAt($weekdays, $timeOfDay, $timezone);
+
+    return [
+        'name' => $name,
+        'command_key' => 'pvpRankingRewards',
+        'ranking_key' => 'pvp_points',
+        'leaderboard_limit' => intval(array_value($rewardPlan, 'leaderboard_limit', gmV2PvpRankingDefaultLimit($config))),
+        'rewards' => array_value($rewardPlan, 'rewards', []),
+        'reset_ranking' => !empty($rewardPlan['reset_ranking']),
+        'reset_only_on_full_success' => !empty($rewardPlan['reset_only_on_full_success']),
+        'weekdays' => $weekdays,
+        'time_of_day' => $timeOfDay,
+        'timezone' => $timezone,
+        'enabled' => $enabled,
+        'preview' => $preview,
+        'next_run_at' => $nextRunAt,
+        'next_retry_at' => null,
+    ];
+}
+
+function gmV2SavePvpRankingRewardSchedule(array $config, array $request)
+{
+    gmV2EnsureEnvironment($config);
+    $scheduleId = trim((string) firstArrayValue($request, ['schedule_id', 'scheduleId', 'id'], ''));
+    $existing = ($scheduleId !== '') ? gmV2ReadPvpRankingRewardSchedule($config, $scheduleId) : null;
+    $payload = gmV2NormalizePvpRankingRewardScheduleRequest($config, $request, is_array($existing) ? $existing : []);
+    $actor = gmV2RequestActorEnvelope($config, $request);
+    $changeKind = is_array($existing) ? 'updated' : 'created';
+
+    if (!is_array($existing)) {
+        $scheduleId = buildOperationId('gmv2-pvp-schedule');
+        $schedule = array_merge([
+            'type' => 'gm_v2_pvp_ranking_schedule',
+            'id' => $scheduleId,
+            'created_at' => gmdate('c'),
+            'updated_at' => gmdate('c'),
+            'actor' => $actor,
+            'updated_by' => $actor,
+            'last_run_at' => null,
+            'last_execution_id' => null,
+            'last_result' => null,
+            'last_error' => null,
+            'last_error_at' => null,
+        ], $payload);
+    } else {
+        $schedule = array_merge($existing, $payload, [
+            'id' => array_value($existing, 'id', $scheduleId),
+            'type' => 'gm_v2_pvp_ranking_schedule',
+            'updated_by' => $actor,
+            'last_error' => null,
+            'last_error_at' => null,
+        ]);
+    }
+
+    $scheduleFile = gmV2WritePvpRankingRewardSchedule($config, $schedule);
+    gmV2AppendAudit($config, 'pvp_ranking_schedule_saved', [
+        'schedule_id' => array_value($schedule, 'id', ''),
+        'change_kind' => $changeKind,
+        'ranking_key' => 'pvp_points',
+        'actor' => $actor,
+        'next_run_at' => array_value($schedule, 'next_run_at', null),
+    ]);
+
+    return [
+        'success' => true,
+        'action' => $changeKind,
+        'schedule' => gmV2PvpRankingRewardScheduleSummary($schedule),
+        'schedule_file' => $scheduleFile,
+        'audit_file' => gmV2AuditFile($config),
+    ];
+}
+
+function gmV2DeletePvpRankingRewardSchedule(array $config, $scheduleId, array $request = [])
+{
+    $schedule = gmV2ReadPvpRankingRewardSchedule($config, $scheduleId);
+    if (!is_array($schedule)) {
+        throw new InvalidArgumentException('Schedule nao encontrado');
+    }
+
+    $path = gmV2PvpRankingRewardSchedulePath($config, $scheduleId);
+    if (is_file($path)) {
+        @unlink($path);
+    }
+
+    $actor = gmV2RequestActorEnvelope($config, $request);
+    gmV2AppendAudit($config, 'pvp_ranking_schedule_deleted', [
+        'schedule_id' => trim((string) $scheduleId),
+        'ranking_key' => 'pvp_points',
+        'actor' => $actor,
+    ]);
+
+    return [
+        'success' => true,
+        'deleted' => true,
+        'schedule_id' => trim((string) $scheduleId),
+        'audit_file' => gmV2AuditFile($config),
+    ];
+}
+
+function gmV2GetPvpRankingRewardSchedulePayload(array $config, $scheduleId)
+{
+    $schedule = gmV2ReadPvpRankingRewardSchedule($config, $scheduleId);
+    if (!is_array($schedule)) {
+        throw new InvalidArgumentException('Schedule nao encontrado');
+    }
+
+    return [
+        'success' => true,
+        'schedule' => $schedule,
+        'summary' => gmV2PvpRankingRewardScheduleSummary($schedule),
+        'schedule_file' => gmV2PvpRankingRewardSchedulePath($config, $scheduleId),
+    ];
+}
+
+function gmV2ListPvpRankingRewardSchedules(array $config, $limit = 50)
+{
+    gmV2EnsureEnvironment($config);
+    $files = glob(rtrim(gmV2PvpRankingSchedulesDir($config), '/\\') . DIRECTORY_SEPARATOR . '*.json');
+    if (!is_array($files)) {
+        return [];
+    }
+
+    usort($files, function ($a, $b) {
+        return intval(@filemtime($b)) <=> intval(@filemtime($a));
+    });
+
+    $limit = max(1, min(200, intval($limit)));
+    $items = [];
+    foreach (array_slice($files, 0, $limit) as $file) {
+        $raw = @file_get_contents($file);
+        $decoded = json_decode((string) $raw, true);
+        if (is_array($decoded)) {
+            $items[] = gmV2PvpRankingRewardScheduleSummary($decoded);
+        }
+    }
+
+    return $items;
+}
+
+function gmV2GetPvpRankingRewardSchedulesPayload(array $config, $limit = 50)
+{
+    return [
+        'success' => true,
+        'schedules' => gmV2ListPvpRankingRewardSchedules($config, $limit),
         'limit' => max(1, min(200, intval($limit))),
         'collected_at' => gmdate('c'),
     ];
@@ -6625,10 +11089,22 @@ function gmV2ProcessDueSchedule(array $config, array $schedule)
         return $schedule;
     }
 
-    $request = array_merge((array) array_value($schedule, 'command_payload', []), [
-        'command_key' => array_value($schedule, 'command_key', ''),
-        'selection' => array_value($schedule, 'selection', []),
-        'actor' => trim((string) array_value(array_value($schedule, 'actor', []), 'name', 'schedule')),
+      $scheduleActor = is_array(array_value($schedule, 'updated_by', null))
+          ? array_value($schedule, 'updated_by', [])
+          : (is_array(array_value($schedule, 'actor', null)) ? array_value($schedule, 'actor', []) : []);
+      $context = (array) array_value($schedule, 'context', []);
+      if (trim((string) array_value($context, 'trigger_source', '')) === '') {
+          $context['trigger_source'] = 'schedule_worker';
+      }
+      $request = array_merge((array) array_value($schedule, 'command_payload', []), [
+          'command_key' => array_value($schedule, 'command_key', ''),
+          'context' => $context,
+          'selection' => array_value($schedule, 'selection', []),
+          'actor' => trim((string) array_value($scheduleActor, 'name', 'schedule')),
+          'operator_id' => trim((string) array_value($scheduleActor, 'user_id', '')),
+        'operator_email' => trim((string) array_value($scheduleActor, 'email', '')),
+        'operator_name' => trim((string) array_value($scheduleActor, 'name', '')),
+        'operator_role' => trim((string) array_value($scheduleActor, 'role', 'viewer')),
         'schedule_id' => $scheduleId,
     ]);
 
@@ -6652,24 +11128,113 @@ function gmV2ProcessDueSchedule(array $config, array $schedule)
         );
 
         gmV2WriteSchedule($config, $schedule);
-        gmV2AppendAudit($config, 'schedule_triggered', [
-            'schedule_id' => $scheduleId,
-            'job_id' => $jobId,
-            'command_key' => array_value($schedule, 'command_key', ''),
-            'selection' => array_value($schedule, 'selection', []),
-            'next_run_at' => array_value($schedule, 'next_run_at', null),
-        ]);
+          gmV2AppendAudit($config, 'schedule_triggered', [
+              'schedule_id' => $scheduleId,
+              'job_id' => $jobId,
+              'command_key' => array_value($schedule, 'command_key', ''),
+              'context' => $context,
+              'selection' => array_value($schedule, 'selection', []),
+              'next_run_at' => array_value($schedule, 'next_run_at', null),
+          ]);
     } catch (Exception $e) {
         $schedule['last_result'] = 'error';
         $schedule['last_error'] = $e->getMessage();
         $schedule['last_error_at'] = gmdate('c');
         $schedule['next_retry_at'] = gmdate('c', time() + max(60, intval(array_value($config, 'gm_v2_schedule_retry_backoff_seconds', 300))));
         gmV2WriteSchedule($config, $schedule);
-        gmV2AppendAudit($config, 'schedule_error', [
+          gmV2AppendAudit($config, 'schedule_error', [
+              'schedule_id' => $scheduleId,
+              'command_key' => array_value($schedule, 'command_key', ''),
+              'context' => $context,
+              'error' => $e->getMessage(),
+              'next_retry_at' => array_value($schedule, 'next_retry_at', null),
+          ]);
+    }
+
+    return $schedule;
+}
+
+function gmV2ProcessDuePvpRankingRewardSchedule(array $config, array $schedule)
+{
+    $scheduleId = trim((string) array_value($schedule, 'id', ''));
+    if ($scheduleId === '') {
+        throw new InvalidArgumentException('Schedule PvP invalido sem id');
+    }
+
+    if (empty($schedule['enabled'])) {
+        return $schedule;
+    }
+
+    if (!gmV2IsScheduleDue($schedule)) {
+        return $schedule;
+    }
+
+    $scheduleActor = is_array(array_value($schedule, 'updated_by', null))
+        ? array_value($schedule, 'updated_by', [])
+        : (is_array(array_value($schedule, 'actor', null)) ? array_value($schedule, 'actor', []) : []);
+    $request = [
+        'rewards' => array_value($schedule, 'rewards', []),
+        'leaderboard_limit' => intval(array_value($schedule, 'leaderboard_limit', gmV2PvpRankingDefaultLimit($config))),
+        'reset_ranking' => !empty($schedule['reset_ranking']),
+        'reset_only_on_full_success' => !empty($schedule['reset_only_on_full_success']),
+        'actor' => trim((string) array_value($scheduleActor, 'name', 'schedule')),
+        'operator_id' => trim((string) array_value($scheduleActor, 'user_id', '')),
+        'operator_email' => trim((string) array_value($scheduleActor, 'email', '')),
+        'operator_name' => trim((string) array_value($scheduleActor, 'name', '')),
+        'operator_role' => trim((string) array_value($scheduleActor, 'role', 'viewer')),
+        'schedule_id' => $scheduleId,
+    ];
+
+    try {
+        $execution = gmV2ExecutePvpRankingRewardsPayload($config, $request, [
+            'source' => 'schedule_worker',
+        ]);
+        $executionId = trim((string) array_value($execution, 'execution_id', ''));
+        $from = new DateTimeImmutable(trim((string) array_value($schedule, 'next_run_at', 'now')));
+
+        $schedule['last_run_at'] = gmdate('c');
+        $schedule['last_execution_id'] = $executionId;
+        $schedule['last_result'] = trim((string) array_value($execution, 'status', 'completed'));
+        $schedule['last_error'] = null;
+        $schedule['last_error_at'] = null;
+        if (intval(array_value($execution, 'failed_count', 0)) > 0) {
+            $schedule['last_error'] = intval(array_value($execution, 'failed_count', 0)) . ' entrega(s) falharam';
+            $schedule['last_error_at'] = gmdate('c');
+        } elseif (!empty($schedule['reset_ranking']) && empty($execution['reset_performed'])) {
+            $resetError = trim((string) array_value((array) array_value($execution, 'reset_result', []), 'error', array_value($execution, 'reset_skipped_reason', '')));
+            $schedule['last_error'] = 'Reset do ranking nao executado' . ($resetError !== '' ? ': ' . $resetError : '');
+            $schedule['last_error_at'] = gmdate('c');
+        }
+        $schedule['next_retry_at'] = null;
+        $schedule['next_run_at'] = gmV2ComputeNextScheduleRunAt(
+            (array) array_value($schedule, 'weekdays', []),
+            array_value($schedule, 'time_of_day', ''),
+            array_value($schedule, 'timezone', array_value($config, 'gm_v2_schedule_default_timezone', 'America/Sao_Paulo')),
+            $from->modify('+1 second')
+        );
+
+        gmV2WritePvpRankingRewardSchedule($config, $schedule);
+        gmV2AppendAudit($config, 'pvp_ranking_schedule_triggered', [
             'schedule_id' => $scheduleId,
-            'command_key' => array_value($schedule, 'command_key', ''),
+            'execution_id' => $executionId,
+            'status' => array_value($execution, 'status', ''),
+            'failed_count' => intval(array_value($execution, 'failed_count', 0)),
+            'reset_performed' => !empty($execution['reset_performed']),
+            'next_run_at' => array_value($schedule, 'next_run_at', null),
+            'actor' => $scheduleActor,
+        ]);
+    } catch (Exception $e) {
+        $schedule['last_result'] = 'error';
+        $schedule['last_error'] = $e->getMessage();
+        $schedule['last_error_at'] = gmdate('c');
+        $schedule['next_retry_at'] = gmdate('c', time() + max(60, intval(array_value($config, 'gm_v2_schedule_retry_backoff_seconds', 300))));
+        gmV2WritePvpRankingRewardSchedule($config, $schedule);
+        gmV2AppendAudit($config, 'pvp_ranking_schedule_error', [
+            'schedule_id' => $scheduleId,
+            'ranking_key' => 'pvp_points',
             'error' => $e->getMessage(),
             'next_retry_at' => array_value($schedule, 'next_retry_at', null),
+            'actor' => $scheduleActor,
         ]);
     }
 
@@ -6701,23 +11266,42 @@ function gmV2RunScheduleWorker(array $config, array $options = [])
     ];
 
     try {
-        $files = glob(rtrim(gmV2SchedulesDir($config), '/\\') . DIRECTORY_SEPARATOR . '*.json');
-        if (!is_array($files)) {
-            $files = [];
+        $standardFiles = glob(rtrim(gmV2SchedulesDir($config), '/\\') . DIRECTORY_SEPARATOR . '*.json');
+        $pvpRankingFiles = glob(rtrim(gmV2PvpRankingSchedulesDir($config), '/\\') . DIRECTORY_SEPARATOR . '*.json');
+        if (!is_array($standardFiles)) {
+            $standardFiles = [];
+        }
+        if (!is_array($pvpRankingFiles)) {
+            $pvpRankingFiles = [];
         }
 
-        usort($files, function ($a, $b) {
-            return intval(@filemtime($a)) <=> intval(@filemtime($b));
+        $scheduleFiles = [];
+        foreach ($standardFiles as $file) {
+            $scheduleFiles[] = ['kind' => 'bulk', 'path' => $file];
+        }
+        foreach ($pvpRankingFiles as $file) {
+            $scheduleFiles[] = ['kind' => 'pvp_ranking', 'path' => $file];
+        }
+
+        usort($scheduleFiles, function ($a, $b) {
+            return intval(@filemtime(array_value($a, 'path', ''))) <=> intval(@filemtime(array_value($b, 'path', '')));
         });
 
         $scanLimit = max(1, intval(array_value($config, 'gm_v2_schedule_scan_limit', 50)));
-        foreach (array_slice($files, 0, $scanLimit) as $file) {
+        $candidateSchedules = [];
+        foreach ($scheduleFiles as $descriptor) {
+            $file = trim((string) array_value($descriptor, 'path', ''));
+            if ($file === '') {
+                continue;
+            }
+
             $raw = @file_get_contents($file);
             $schedule = json_decode((string) $raw, true);
             if (!is_array($schedule) || empty($schedule['enabled'])) {
                 continue;
             }
 
+            $kind = trim((string) array_value($descriptor, 'kind', 'bulk'));
             $nextRunAt = trim((string) array_value($schedule, 'next_run_at', ''));
             if ($nextRunAt === '') {
                 $schedule['next_run_at'] = gmV2ComputeNextScheduleRunAt(
@@ -6725,15 +11309,33 @@ function gmV2RunScheduleWorker(array $config, array $options = [])
                     array_value($schedule, 'time_of_day', ''),
                     array_value($schedule, 'timezone', array_value($config, 'gm_v2_schedule_default_timezone', 'America/Sao_Paulo'))
                 );
-                gmV2WriteSchedule($config, $schedule);
+                if ($kind === 'pvp_ranking') {
+                    gmV2WritePvpRankingRewardSchedule($config, $schedule);
+                } else {
+                    gmV2WriteSchedule($config, $schedule);
+                }
             }
 
             if (!gmV2IsScheduleDue($schedule)) {
                 continue;
             }
 
-            $processed = gmV2ProcessDueSchedule($config, $schedule);
-            $result['processed_schedules'][] = gmV2ScheduleSummary($processed);
+            $candidateSchedules[] = [
+                'kind' => $kind,
+                'schedule' => $schedule,
+            ];
+        }
+
+        foreach (array_slice($candidateSchedules, 0, $scanLimit) as $candidate) {
+            $kind = trim((string) array_value($candidate, 'kind', 'bulk'));
+            $schedule = (array) array_value($candidate, 'schedule', []);
+            if ($kind === 'pvp_ranking' || trim((string) array_value($schedule, 'type', '')) === 'gm_v2_pvp_ranking_schedule') {
+                $processed = gmV2ProcessDuePvpRankingRewardSchedule($config, $schedule);
+                $result['processed_schedules'][] = gmV2PvpRankingRewardScheduleSummary($processed);
+            } else {
+                $processed = gmV2ProcessDueSchedule($config, $schedule);
+                $result['processed_schedules'][] = gmV2ScheduleSummary($processed);
+            }
         }
     } finally {
         @flock($lockHandle, LOCK_UN);
@@ -10068,7 +14670,7 @@ function gmCommanderFeatureMatrix(array $config)
         'teleportRole' => 0,
     ];
 
-    if (in_array($version, ['101', '155'], true)) {
+    if (in_array($version, ['101', '155', '178'], true)) {
         $supported['muteAccount'] = true;
         $supported['muteRole'] = true;
         $supported['clearRolePk'] = true;
@@ -10455,12 +15057,18 @@ function gmHistoryEntryBase(array $config, $commandKey, array $entry = [])
 {
     $definition = gmCommandDefinition($config, $commandKey);
     $canonicalKey = is_array($definition) ? array_value($definition, 'key', trim((string) $commandKey)) : trim((string) $commandKey);
+    $operator = operatorResolveContext($config);
     return array_merge([
         'type' => 'gm_action',
         'command_key' => $canonicalKey,
         'label' => is_array($definition) ? array_value($definition, 'label', $canonicalKey) : $canonicalKey,
         'category' => is_array($definition) ? array_value($definition, 'category', 'general') : 'general',
         'created_at' => gmdate('c'),
+        'actor' => trim((string) array_value($operator, 'name', 'api')),
+        'actor_user_id' => trim((string) array_value($operator, 'user_id', '')),
+        'actor_email' => trim((string) array_value($operator, 'email', '')),
+        'actor_role' => trim((string) array_value($operator, 'role', 'viewer')),
+        'actor_ip' => trim((string) array_value($operator, 'ip', '')),
     ], $entry);
 }
 
@@ -10537,13 +15145,40 @@ function gmCommandCatalogPayload(array $config)
             'mall_cash_balance' => '/apicls/api_cls.php?action=getMallCashBalance',
             'gm_permission_catalog' => '/apicls/api_cls.php?action=getGmPermissionCatalog',
             'gm_permission_state' => '/apicls/api_cls.php?action=getGmPermissionState',
+            'operator_permission_catalog' => '/apicls/api_cls.php?action=getOperatorPermissionCatalog',
+            'operator_permission_state' => '/apicls/api_cls.php?action=getOperatorPermissionState',
+            'operator_registry' => '/apicls/api_cls.php?action=getOperatorRegistry',
+            'operator_registry_save' => '/apicls/api_cls.php?action=saveOperatorRegistryEntry',
+            'operator_registry_delete' => '/apicls/api_cls.php?action=deleteOperatorRegistryEntry',
             'player_directory' => '/apicls/api_cls.php?action=searchPlayerDirectory',
             'player_profile' => '/apicls/api_cls.php?action=getPlayerTargetProfile',
+            'quick_punishment_catalog' => '/apicls/api_cls.php?action=getQuickPunishmentCatalog',
+            'quick_punishment_preview' => '/apicls/api_cls.php?action=previewQuickPunishment',
+            'quick_punishment_execute' => '/apicls/api_cls.php?action=executeQuickPunishment',
+            'pvp_ranking_leaderboard' => '/apicls/api_cls.php?action=getPvpRankingLeaderboard',
+            'pvp_ranking_rewards_preview' => '/apicls/api_cls.php?action=previewPvpRankingRewards',
+            'pvp_ranking_rewards_execute' => '/apicls/api_cls.php?action=executePvpRankingRewards',
+            'pvp_ranking_rewards_history' => '/apicls/api_cls.php?action=getPvpRankingRewardHistory',
+            'pvp_ranking_reward_schedule' => '/apicls/api_cls.php?action=getPvpRankingRewardSchedule',
+            'pvp_ranking_reward_schedules' => '/apicls/api_cls.php?action=getPvpRankingRewardSchedules',
+            'pvp_ranking_reward_schedule_save' => '/apicls/api_cls.php?action=savePvpRankingRewardSchedule',
+            'pvp_ranking_reward_schedule_delete' => '/apicls/api_cls.php?action=deletePvpRankingRewardSchedule',
+            'meridian_title_gateway' => '/apicls/api_cls_meridian_titles.php?action=getMeridianTitlePresetCatalog',
             'bulk_targets_preview' => '/apicls/api_cls.php?action=previewBulkTargets',
             'bulk_targets_resolve' => '/apicls/api_cls.php?action=resolveBulkTargets',
             'bulk_queue' => '/apicls/api_cls.php?action=queueBulkCommand',
+            'bulk_execute_now' => '/apicls/api_cls.php?action=executeBulkCommandNow',
             'bulk_job' => '/apicls/api_cls.php?action=getBulkCommandJob',
             'bulk_jobs' => '/apicls/api_cls.php?action=getBulkCommandJobs',
+            'bulk_job_update' => '/apicls/api_cls.php?action=updateBulkCommandJob',
+            'broadcast_queue' => '/apicls/api_cls.php?action=queueBroadcastMessage',
+            'bulk_template_create' => '/apicls/api_cls.php?action=saveBulkTemplate',
+            'bulk_template' => '/apicls/api_cls.php?action=getBulkTemplate',
+            'bulk_templates' => '/apicls/api_cls.php?action=getBulkTemplates',
+            'bulk_template_update' => '/apicls/api_cls.php?action=updateBulkTemplate',
+            'bulk_template_delete' => '/apicls/api_cls.php?action=deleteBulkTemplate',
+            'bulk_template_preview' => '/apicls/api_cls.php?action=previewBulkTemplate',
+            'bulk_template_execute' => '/apicls/api_cls.php?action=executeBulkTemplate',
             'bulk_schedule_create' => '/apicls/api_cls.php?action=scheduleBulkCommand',
             'bulk_schedule' => '/apicls/api_cls.php?action=getBulkSchedule',
             'bulk_schedules' => '/apicls/api_cls.php?action=getBulkSchedules',
@@ -14282,6 +18917,39 @@ function ensureWritableDirectory($dir, $mode = 0750)
     return $dir;
 }
 
+function filesystemOwnershipReference($path)
+{
+    $path = trim((string) $path);
+    if ($path === '') {
+        return ['uid' => null, 'gid' => null];
+    }
+
+    clearstatcache(true, $path);
+    $uid = @fileowner($path);
+    $gid = @filegroup($path);
+
+    return [
+        'uid' => ($uid === false ? null : intval($uid)),
+        'gid' => ($gid === false ? null : intval($gid)),
+    ];
+}
+
+function applyFilesystemOwnership($path, array $owner)
+{
+    $path = trim((string) $path);
+    if ($path === '') {
+        return;
+    }
+
+    if (array_key_exists('uid', $owner) && $owner['uid'] !== null) {
+        @chown($path, intval($owner['uid']));
+    }
+
+    if (array_key_exists('gid', $owner) && $owner['gid'] !== null) {
+        @chgrp($path, intval($owner['gid']));
+    }
+}
+
 function writeAtomicFile($path, $contents)
 {
     $path = trim((string) $path);
@@ -14291,6 +18959,7 @@ function writeAtomicFile($path, $contents)
 
     $dir = dirname($path);
     ensureWritableDirectory($dir);
+    $ownerRef = is_file($path) ? filesystemOwnershipReference($path) : filesystemOwnershipReference($dir);
     $tmp = tempnam($dir, 'apicls_');
     if ($tmp === false || $tmp === '') {
         throw new Exception('Nao foi possivel criar arquivo temporario em ' . $dir);
@@ -14307,6 +18976,7 @@ function writeAtomicFile($path, $contents)
     }
 
     @chmod($path, 0640);
+    applyFilesystemOwnership($path, $ownerRef);
 }
 
 function appendLogLine($path, $line)
@@ -14316,11 +18986,14 @@ function appendLogLine($path, $line)
         throw new Exception('Arquivo de log nao configurado');
     }
 
-    ensureWritableDirectory(dirname($path));
+    $dir = dirname($path);
+    ensureWritableDirectory($dir);
+    $ownerRef = is_file($path) ? filesystemOwnershipReference($path) : filesystemOwnershipReference($dir);
     if (@file_put_contents($path, $line . PHP_EOL, FILE_APPEND | LOCK_EX) === false) {
         throw new Exception('Falha ao gravar log em ' . $path);
     }
     @chmod($path, 0640);
+    applyFilesystemOwnership($path, $ownerRef);
 }
 
 function containsControlChars($text)
@@ -14433,13 +19106,19 @@ function normalizeSystemMessageRequest(array $request, array $config)
         throw new InvalidArgumentException('priority invalida. Use: low, normal ou high');
     }
 
+    $defaultChannel = intval(array_value($kinds[$kind], 'channel', array_value($config, 'system_message_default_channel', 9)));
+    $channel = intval(array_value($request, 'channel', $defaultChannel));
+    if ($channel <= 0 || $channel > 255) {
+        throw new InvalidArgumentException('channel invalido. Use um inteiro entre 1 e 255');
+    }
+
     $dryRun = truthyValue(array_value($request, 'dry_run', array_value($request, 'dryRun', false)));
 
     return [
         'message' => $message,
         'kind' => $kind,
         'priority' => $priority,
-        'channel' => intval(array_value($kinds[$kind], 'channel', array_value($config, 'system_message_default_channel', 9))),
+        'channel' => $channel,
         'host' => trim((string) array_value($config, 'gacd_ip', '127.0.0.1')),
         'port' => max(1, intval(array_value($config, 'gacd_port', 29300))),
         'dry_run' => $dryRun,
@@ -14502,7 +19181,13 @@ function handleSendSystemMessageRequest(array $config, array $request)
 
     if (!empty($payload['dry_run'])) {
         $entry['result'] = 'validated';
-        $logFile = logSystemMessage($config, $entry);
+        $logFile = null;
+        $logWarning = '';
+        try {
+            $logFile = logSystemMessage($config, $entry);
+        } catch (Exception $e) {
+            $logWarning = $e->getMessage();
+        }
         $response = [
             'success' => true,
             'dry_run' => true,
@@ -14512,8 +19197,13 @@ function handleSendSystemMessageRequest(array $config, array $request)
                 'priority' => $payload['priority'],
                 'channel' => intval($payload['channel']),
             ],
-            'log_file' => $logFile,
         ];
+        if ($logFile !== null) {
+            $response['log_file'] = $logFile;
+        }
+        if ($logWarning !== '') {
+            $response['log_warning'] = $logWarning;
+        }
         $gmHistoryWarning = '';
         $gmEntry = gmHistoryEntryBase($config, 'sendSystemMessage', [
             'status' => 'dry_run',
@@ -14537,14 +19227,25 @@ function handleSendSystemMessageRequest(array $config, array $request)
     $delivery = dispatchSystemMessage($payload);
     $entry['result'] = 'sent';
     $entry['delivery'] = $delivery;
-    $logFile = logSystemMessage($config, $entry);
+    $logFile = null;
+    $logWarning = '';
+    try {
+        $logFile = logSystemMessage($config, $entry);
+    } catch (Exception $e) {
+        $logWarning = $e->getMessage();
+    }
 
     $response = [
         'success' => true,
         'message' => 'Broadcast enviado com sucesso',
         'delivery' => $delivery,
-        'log_file' => $logFile,
     ];
+    if ($logFile !== null) {
+        $response['log_file'] = $logFile;
+    }
+    if ($logWarning !== '') {
+        $response['log_warning'] = $logWarning;
+    }
     $gmHistoryWarning = '';
     $gmEntry = gmHistoryEntryBase($config, 'sendSystemMessage', [
         'status' => 'success',
@@ -16699,7 +21400,9 @@ function respondJson($payload, $status = 200)
     echo safeJsonEncode($payload);
 }
 
-if (php_sapi_name() !== 'cli' || isset($_GET['action'])) {
+$APICLS_LIBRARY_MODE = defined('APICLS_LIBRARY_MODE') && APICLS_LIBRARY_MODE;
+
+if (!$APICLS_LIBRARY_MODE && (php_sapi_name() !== 'cli' || isset($_GET['action']))) {
     header('Content-Type: application/json; charset=utf-8');
 
     $secret = isset($_SERVER['HTTP_X_SYNC_SECRET']) ? $_SERVER['HTTP_X_SYNC_SECRET'] : (isset($_GET['secret']) ? $_GET['secret'] : '');
@@ -16709,6 +21412,15 @@ if (php_sapi_name() !== 'cli' || isset($_GET['action'])) {
     }
 
     $action = isset($_GET['action']) ? $_GET['action'] : (isset($_POST['action']) ? $_POST['action'] : '');
+    if ($action !== '') {
+        $permissionRequest = ($_SERVER['REQUEST_METHOD'] === 'POST') ? readRequestPayload() : $_GET;
+        $permissionRequest = is_array($permissionRequest) ? $permissionRequest : [];
+        $permissionDecision = operatorPermissionDecision($CONFIG, $action, $permissionRequest);
+        if (empty($permissionDecision['authorized'])) {
+            operatorPermissionAuditDenied($CONFIG, $action, $permissionDecision);
+            operatorPermissionRespondIfDenied($action, $permissionDecision);
+        }
+    }
 
     switch ($action) {
         case 'getRole':
@@ -16895,6 +21607,151 @@ if (php_sapi_name() !== 'cli' || isset($_GET['action'])) {
             }
             break;
 
+        case 'getPvpRankingLeaderboard':
+            $request = ($_SERVER['REQUEST_METHOD'] === 'POST') ? readRequestPayload() : $_GET;
+            if (isset($request['__json_error'])) {
+                respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
+                exit;
+            }
+
+            try {
+                respondJson(gmV2GetPvpRankingLeaderboardPayload($CONFIG, is_array($request) ? $request : []));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'previewPvpRankingRewards':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                respondJson(['error' => 'Use POST para previewPvpRankingRewards'], 405);
+                exit;
+            }
+
+            $request = readRequestPayload();
+            if (isset($request['__json_error'])) {
+                respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
+                exit;
+            }
+
+            try {
+                respondJson(gmV2PreviewPvpRankingRewardsPayload($CONFIG, $request));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'executePvpRankingRewards':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                respondJson(['error' => 'Use POST para executePvpRankingRewards'], 405);
+                exit;
+            }
+
+            $request = readRequestPayload();
+            if (isset($request['__json_error'])) {
+                respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
+                exit;
+            }
+
+            try {
+                respondJson(gmV2ExecutePvpRankingRewardsPayload($CONFIG, $request));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'getPvpRankingRewardHistory':
+            $request = ($_SERVER['REQUEST_METHOD'] === 'POST') ? readRequestPayload() : $_GET;
+            if (isset($request['__json_error'])) {
+                respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
+                exit;
+            }
+
+            try {
+                respondJson(gmV2GetPvpRankingRewardHistoryPayload($CONFIG, is_array($request) ? $request : []));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'getPvpRankingRewardSchedule':
+            try {
+                $scheduleId = trim((string) firstArrayValue($_GET, ['schedule_id', 'scheduleId', 'id'], ''));
+                if ($scheduleId === '') {
+                    throw new InvalidArgumentException('schedule_id obrigatorio');
+                }
+                respondJson(gmV2GetPvpRankingRewardSchedulePayload($CONFIG, $scheduleId));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'getPvpRankingRewardSchedules':
+            try {
+                $limit = max(1, min(200, intval(firstArrayValue($_GET, ['limit'], 20))));
+                respondJson(gmV2GetPvpRankingRewardSchedulesPayload($CONFIG, $limit));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'savePvpRankingRewardSchedule':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                respondJson(['error' => 'Use POST para savePvpRankingRewardSchedule'], 405);
+                exit;
+            }
+
+            $request = readRequestPayload();
+            if (isset($request['__json_error'])) {
+                respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
+                exit;
+            }
+
+            try {
+                respondJson(gmV2SavePvpRankingRewardSchedule($CONFIG, $request));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'deletePvpRankingRewardSchedule':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                respondJson(['error' => 'Use POST para deletePvpRankingRewardSchedule'], 405);
+                exit;
+            }
+
+            $request = readRequestPayload();
+            if (isset($request['__json_error'])) {
+                respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
+                exit;
+            }
+
+            try {
+                $scheduleId = trim((string) firstArrayValue($request, ['schedule_id', 'scheduleId', 'id'], ''));
+                if ($scheduleId === '') {
+                    throw new InvalidArgumentException('schedule_id obrigatorio');
+                }
+                respondJson(gmV2DeletePvpRankingRewardSchedule($CONFIG, $scheduleId, $request));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
         case 'resolveBulkTargets':
             if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                 respondJson(['error' => 'Use POST para resolveBulkTargets'], 405);
@@ -16948,9 +21805,122 @@ if (php_sapi_name() !== 'cli' || isset($_GET['action'])) {
                 respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
                 exit;
             }
+            operatorPermissionEnforceCommandRole(
+                $CONFIG,
+                'queueBulkCommand',
+                $request,
+                firstArrayValue($request, ['command_key', 'commandKey', 'command'], '')
+            );
 
             try {
                 respondJson(gmV2CreateQueuedJob($CONFIG, $request));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'executeBulkCommandNow':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                respondJson(['error' => 'Use POST para executeBulkCommandNow'], 405);
+                exit;
+            }
+
+            $request = readRequestPayload();
+            if (isset($request['__json_error'])) {
+                respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
+                exit;
+            }
+            operatorPermissionEnforceCommandRole(
+                $CONFIG,
+                'executeBulkCommandNow',
+                $request,
+                firstArrayValue($request, ['command_key', 'commandKey', 'command'], '')
+            );
+
+            try {
+                respondJson(gmV2ExecuteQueuedJobNow($CONFIG, $request));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'queueBroadcastMessage':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                respondJson(['error' => 'Use POST para queueBroadcastMessage'], 405);
+                exit;
+            }
+
+            $request = readRequestPayload();
+            if (isset($request['__json_error'])) {
+                respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
+                exit;
+            }
+
+            try {
+                respondJson(gmV2CreateBroadcastMessageJobs($CONFIG, $request));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'getQuickPunishmentCatalog':
+            operatorPermissionEnforceRequiredRole($CONFIG, 'getQuickPunishmentCatalog', is_array($request) ? $request : [], 'viewer');
+            respondJson(gmV2QuickPunishmentCatalogPayload($CONFIG));
+            break;
+
+        case 'previewQuickPunishment':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                respondJson(['error' => 'Use POST para previewQuickPunishment'], 405);
+                exit;
+            }
+
+            $request = readRequestPayload();
+            if (isset($request['__json_error'])) {
+                respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
+                exit;
+            }
+            operatorPermissionEnforceRequiredRole(
+                $CONFIG,
+                'previewQuickPunishment',
+                $request,
+                gmV2QuickPunishmentRequestedMinRole($CONFIG, $request)
+            );
+
+            try {
+                respondJson(gmV2PreviewQuickPunishment($CONFIG, $request));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'executeQuickPunishment':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                respondJson(['error' => 'Use POST para executeQuickPunishment'], 405);
+                exit;
+            }
+
+            $request = readRequestPayload();
+            if (isset($request['__json_error'])) {
+                respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
+                exit;
+            }
+            operatorPermissionEnforceRequiredRole(
+                $CONFIG,
+                'executeQuickPunishment',
+                $request,
+                gmV2QuickPunishmentRequestedMinRole($CONFIG, $request)
+            );
+
+            try {
+                respondJson(gmV2ExecuteQuickPunishment($CONFIG, $request));
             } catch (InvalidArgumentException $e) {
                 respondJson(['error' => $e->getMessage()], 400);
             } catch (Exception $e) {
@@ -16988,6 +21958,213 @@ if (php_sapi_name() !== 'cli' || isset($_GET['action'])) {
             }
             break;
 
+        case 'updateBulkCommandJob':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                respondJson(['error' => 'Use POST para updateBulkCommandJob'], 405);
+                exit;
+            }
+
+            $request = readRequestPayload();
+            if (isset($request['__json_error'])) {
+                respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
+                exit;
+            }
+
+            try {
+                $jobId = trim((string) firstArrayValue($request, ['job_id', 'jobId', 'id'], ''));
+                $operation = trim((string) firstArrayValue($request, ['operation', 'action_mode', 'job_action', 'status_action'], ''));
+                respondJson(gmV2UpdateQueueJobControl($CONFIG, $jobId, $operation, $request));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'saveBulkTemplate':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                respondJson(['error' => 'Use POST para saveBulkTemplate'], 405);
+                exit;
+            }
+
+            $request = readRequestPayload();
+            if (isset($request['__json_error'])) {
+                respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
+                exit;
+            }
+            operatorPermissionEnforceCommandRole(
+                $CONFIG,
+                'saveBulkTemplate',
+                $request,
+                firstArrayValue($request, ['command_key', 'commandKey', 'command'], '')
+            );
+
+            try {
+                respondJson(gmV2CreateBulkTemplate($CONFIG, $request));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'getBulkTemplate':
+            try {
+                $templateKey = trim((string) firstArrayValue($_GET, ['template_key', 'templateKey', 'key', 'id'], ''));
+                if ($templateKey === '') {
+                    throw new InvalidArgumentException('template_key obrigatorio');
+                }
+                respondJson(gmV2GetBulkTemplatePayload($CONFIG, $templateKey));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'getBulkTemplates':
+            try {
+                $limit = max(1, min(200, intval(firstArrayValue($_GET, ['limit'], 50))));
+                $filters = [
+                    'category' => firstArrayValue($_GET, ['category'], ''),
+                    'command_key' => firstArrayValue($_GET, ['command_key', 'commandKey'], ''),
+                ];
+                respondJson(gmV2GetBulkTemplatesPayload($CONFIG, $limit, $filters));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'updateBulkTemplate':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                respondJson(['error' => 'Use POST para updateBulkTemplate'], 405);
+                exit;
+            }
+
+            $request = readRequestPayload();
+            if (isset($request['__json_error'])) {
+                respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
+                exit;
+            }
+
+            try {
+                $templateKey = trim((string) firstArrayValue($request, ['template_key', 'templateKey', 'key', 'id'], ''));
+                if ($templateKey === '') {
+                    throw new InvalidArgumentException('template_key obrigatorio');
+                }
+                $existingTemplate = gmV2ReadTemplate($CONFIG, $templateKey);
+                operatorPermissionEnforceCommandRole(
+                    $CONFIG,
+                    'updateBulkTemplate',
+                    $request,
+                    firstArrayValue($request, ['command_key', 'commandKey', 'command'], is_array($existingTemplate) ? array_value($existingTemplate, 'command_key', '') : '')
+                );
+                respondJson(gmV2UpdateBulkTemplate($CONFIG, $templateKey, $request));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'deleteBulkTemplate':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                respondJson(['error' => 'Use POST para deleteBulkTemplate'], 405);
+                exit;
+            }
+
+            $request = readRequestPayload();
+            if (isset($request['__json_error'])) {
+                respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
+                exit;
+            }
+
+            try {
+                $templateKey = trim((string) firstArrayValue($request, ['template_key', 'templateKey', 'key', 'id'], ''));
+                if ($templateKey === '') {
+                    throw new InvalidArgumentException('template_key obrigatorio');
+                }
+                $existingTemplate = gmV2ReadTemplate($CONFIG, $templateKey);
+                operatorPermissionEnforceCommandRole(
+                    $CONFIG,
+                    'deleteBulkTemplate',
+                    $request,
+                    is_array($existingTemplate) ? array_value($existingTemplate, 'command_key', '') : ''
+                );
+                respondJson(gmV2DeleteBulkTemplate($CONFIG, $templateKey, $request));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'previewBulkTemplate':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                respondJson(['error' => 'Use POST para previewBulkTemplate'], 405);
+                exit;
+            }
+
+            $request = readRequestPayload();
+            if (isset($request['__json_error'])) {
+                respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
+                exit;
+            }
+
+            try {
+                $templateKey = trim((string) firstArrayValue($request, ['template_key', 'templateKey', 'key', 'id'], ''));
+                if ($templateKey === '') {
+                    throw new InvalidArgumentException('template_key obrigatorio');
+                }
+                $existingTemplate = gmV2ReadTemplate($CONFIG, $templateKey);
+                operatorPermissionEnforceCommandRole(
+                    $CONFIG,
+                    'previewBulkTemplate',
+                    $request,
+                    is_array($existingTemplate) ? array_value($existingTemplate, 'command_key', '') : ''
+                );
+                respondJson(gmV2PreviewBulkTemplatePayload($CONFIG, $templateKey, $request));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'executeBulkTemplate':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                respondJson(['error' => 'Use POST para executeBulkTemplate'], 405);
+                exit;
+            }
+
+            $request = readRequestPayload();
+            if (isset($request['__json_error'])) {
+                respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
+                exit;
+            }
+
+            try {
+                $templateKey = trim((string) firstArrayValue($request, ['template_key', 'templateKey', 'key', 'id'], ''));
+                if ($templateKey === '') {
+                    throw new InvalidArgumentException('template_key obrigatorio');
+                }
+                $existingTemplate = gmV2ReadTemplate($CONFIG, $templateKey);
+                operatorPermissionEnforceCommandRole(
+                    $CONFIG,
+                    'executeBulkTemplate',
+                    $request,
+                    is_array($existingTemplate) ? array_value($existingTemplate, 'command_key', '') : ''
+                );
+                respondJson(gmV2ExecuteBulkTemplatePayload($CONFIG, $templateKey, $request));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
         case 'scheduleBulkCommand':
             if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                 respondJson(['error' => 'Use POST para scheduleBulkCommand'], 405);
@@ -16999,6 +22176,12 @@ if (php_sapi_name() !== 'cli' || isset($_GET['action'])) {
                 respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
                 exit;
             }
+            operatorPermissionEnforceCommandRole(
+                $CONFIG,
+                'scheduleBulkCommand',
+                $request,
+                firstArrayValue($request, ['command_key', 'commandKey', 'command'], '')
+            );
 
             try {
                 respondJson(gmV2CreateBulkSchedule($CONFIG, $request));
@@ -17051,6 +22234,13 @@ if (php_sapi_name() !== 'cli' || isset($_GET['action'])) {
                 if ($scheduleId === '') {
                     throw new InvalidArgumentException('schedule_id obrigatorio');
                 }
+                $existingSchedule = gmV2ReadSchedule($CONFIG, $scheduleId);
+                operatorPermissionEnforceCommandRole(
+                    $CONFIG,
+                    'updateBulkSchedule',
+                    $request,
+                    firstArrayValue($request, ['command_key', 'commandKey', 'command'], is_array($existingSchedule) ? array_value($existingSchedule, 'command_key', '') : '')
+                );
                 respondJson(gmV2UpdateBulkSchedule($CONFIG, $scheduleId, $request));
             } catch (InvalidArgumentException $e) {
                 respondJson(['error' => $e->getMessage()], 400);
@@ -17076,6 +22266,13 @@ if (php_sapi_name() !== 'cli' || isset($_GET['action'])) {
                 if ($scheduleId === '') {
                     throw new InvalidArgumentException('schedule_id obrigatorio');
                 }
+                $existingSchedule = gmV2ReadSchedule($CONFIG, $scheduleId);
+                operatorPermissionEnforceCommandRole(
+                    $CONFIG,
+                    'deleteBulkSchedule',
+                    $request,
+                    is_array($existingSchedule) ? array_value($existingSchedule, 'command_key', '') : ''
+                );
                 respondJson(gmV2DeleteBulkSchedule($CONFIG, $scheduleId, $request));
             } catch (InvalidArgumentException $e) {
                 respondJson(['error' => $e->getMessage()], 400);
@@ -17133,6 +22330,63 @@ if (php_sapi_name() !== 'cli' || isset($_GET['action'])) {
 
         case 'getGmPermissionCatalog':
             respondJson(getGmPermissionCatalogSnapshot());
+            break;
+
+        case 'getOperatorPermissionCatalog':
+            respondJson(operatorPermissionCatalogPayload($CONFIG));
+            break;
+
+        case 'getOperatorPermissionState':
+            $request = ($_SERVER['REQUEST_METHOD'] === 'POST') ? readRequestPayload() : $_GET;
+            respondJson(operatorPermissionStatePayload($CONFIG, is_array($request) ? $request : []));
+            break;
+
+        case 'getOperatorRegistry':
+            respondJson(operatorRegistryListPayload($CONFIG));
+            break;
+
+        case 'saveOperatorRegistryEntry':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                respondJson(['error' => 'Use POST para saveOperatorRegistryEntry'], 405);
+                exit;
+            }
+
+            $request = readRequestPayload();
+            if (isset($request['__json_error'])) {
+                respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
+                exit;
+            }
+
+            try {
+                operatorPermissionEnforceRequiredRole($CONFIG, 'saveOperatorRegistryEntry', $request, 'super_admin');
+                respondJson(operatorRegistrySavePayload($CONFIG, $request));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
+            break;
+
+        case 'deleteOperatorRegistryEntry':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                respondJson(['error' => 'Use POST para deleteOperatorRegistryEntry'], 405);
+                exit;
+            }
+
+            $request = readRequestPayload();
+            if (isset($request['__json_error'])) {
+                respondJson(['error' => 'JSON invalido: ' . $request['__json_error']], 400);
+                exit;
+            }
+
+            try {
+                operatorPermissionEnforceRequiredRole($CONFIG, 'deleteOperatorRegistryEntry', $request, 'super_admin');
+                respondJson(operatorRegistryDeletePayload($CONFIG, $request));
+            } catch (InvalidArgumentException $e) {
+                respondJson(['error' => $e->getMessage()], 400);
+            } catch (Exception $e) {
+                respondJson(['error' => $e->getMessage()], 500);
+            }
             break;
 
         case 'sendMailItem':
@@ -18100,13 +23354,13 @@ if (php_sapi_name() !== 'cli' || isset($_GET['action'])) {
 
         default:
             respondJson([
-                'error' => 'Acao invalida. Use: getRole, getRoles, getRoleEditable, getRolesEditable, getClasses, getClsconfig, getClsconfigDebug, getItemCatalog, getGmCommandCatalog, getGmActionHistory, getGmPermissionCatalog, getGmPermissionState, getMallCashBalance, searchPlayerDirectory, getPlayerTargetProfile, resolveBulkTargets, previewBulkTargets, queueBulkCommand, getBulkCommandJob, getBulkCommandJobs, scheduleBulkCommand, getBulkSchedule, getBulkSchedules, updateBulkSchedule, deleteBulkSchedule, runDueBulkSchedules, getServiceStatus, getControlCenterSnapshot, getManageableServices, getManageableInstances, setInstanceAutoStart, startInstance, startInstances, stopInstance, stopInstances, restartInstance, restartInstances, getServerOperationStatus, getServerOperationsHistory, getServerLogs, sendSystemMessage, getMaintenanceMode, setMaintenanceMode, getWatchdogStatus, getWatchdogHistory, saveWatchdogConfig, enableWatchdog, disableWatchdog, runWatchdogCheckNow, startServer, stopServer, restartServer, startService, stopService, restartService, sendMailItem, sendMailGold, grantMallCash, grantGmPermission, revokeGmPermission, kickRole, banAccount, unbanAccount, muteAccount, muteRole, clearRolePk, reviveRole, teleportRole, listBackups, backupGamedbd, backupNow, getBackupContent, getRestorePlan, getRestoreHistory, restoreNow, restoreBackup, exportClsconfig, saveRoleEditable, saveClsconfigTemplate',
+                'error' => 'Acao invalida. Use: getRole, getRoles, getRoleEditable, getRolesEditable, getClasses, getClsconfig, getClsconfigDebug, getItemCatalog, getGmCommandCatalog, getGmActionHistory, getGmPermissionCatalog, getGmPermissionState, getOperatorPermissionCatalog, getOperatorPermissionState, getOperatorRegistry, saveOperatorRegistryEntry, deleteOperatorRegistryEntry, getMallCashBalance, searchPlayerDirectory, getPlayerTargetProfile, getQuickPunishmentCatalog, previewQuickPunishment, executeQuickPunishment, getPvpRankingLeaderboard, previewPvpRankingRewards, executePvpRankingRewards, getPvpRankingRewardHistory, getPvpRankingRewardSchedule, getPvpRankingRewardSchedules, savePvpRankingRewardSchedule, deletePvpRankingRewardSchedule, resolveBulkTargets, previewBulkTargets, queueBulkCommand, executeBulkCommandNow, queueBroadcastMessage, getBulkCommandJob, getBulkCommandJobs, updateBulkCommandJob, saveBulkTemplate, getBulkTemplate, getBulkTemplates, updateBulkTemplate, deleteBulkTemplate, previewBulkTemplate, executeBulkTemplate, scheduleBulkCommand, getBulkSchedule, getBulkSchedules, updateBulkSchedule, deleteBulkSchedule, runDueBulkSchedules, getServiceStatus, getControlCenterSnapshot, getManageableServices, getManageableInstances, setInstanceAutoStart, startInstance, startInstances, stopInstance, stopInstances, restartInstance, restartInstances, getServerOperationStatus, getServerOperationsHistory, getServerLogs, sendSystemMessage, getMaintenanceMode, setMaintenanceMode, getWatchdogStatus, getWatchdogHistory, saveWatchdogConfig, enableWatchdog, disableWatchdog, runWatchdogCheckNow, startServer, stopServer, restartServer, startService, stopService, restartService, sendMailItem, sendMailGold, grantMallCash, grantGmPermission, revokeGmPermission, kickRole, banAccount, unbanAccount, muteAccount, muteRole, clearRolePk, reviveRole, teleportRole, listBackups, backupGamedbd, backupNow, getBackupContent, getRestorePlan, getRestoreHistory, restoreNow, restoreBackup, exportClsconfig, saveRoleEditable, saveClsconfigTemplate',
             ], 400);
             break;
     }
 
     exit;
-} elseif (php_sapi_name() === 'cli') {
+} elseif (!$APICLS_LIBRARY_MODE && php_sapi_name() === 'cli') {
     $cliAction = isset($argv[1]) ? trim((string) $argv[1]) : '';
     if ($cliAction === 'watchdog-runner') {
         try {

@@ -1,4 +1,28 @@
-# PW Admin - Instalacao da API na VPS
+# PW Admin - Instalacao da API na VPS (PW 1.5.5 e 1.7.8)
+
+Esta base suporta os dois cenarios:
+- `game_version 155` para servidores PW `1.5.5`
+- `game_version 178` para servidores PW `1.7.8`
+
+Tambem ha dois instaladores:
+- `install-apicls-centos7.sh`
+- `install-apicls-debian12.sh`
+
+No instalador, escolha explicitamente a versao:
+
+```bash
+bash install-apicls-centos7.sh --secret SEU_SECRET --game-version 155
+```
+
+```bash
+bash install-apicls-centos7.sh --secret SEU_SECRET --game-version 178
+```
+
+Se precisar ativar com token de licenca:
+
+```bash
+bash install-apicls-centos7.sh --secret SEU_SECRET --activation-token SEU_TOKEN --game-version 178
+```
 
 Este pacote instala a ponte HTTP que conecta sua VPS Perfect World ao PW Admin.
 
@@ -12,7 +36,7 @@ basica (kick/ban/unban).
 
 ## Requisitos
 
-- CentOS 7 ou equivalente.
+- CentOS 7, Debian 12 ou equivalente proximo.
 - Acesso SSH como `root`.
 - Perfect World instalado em `/home/gamedbd`.
 - Apache/httpd com PHP 7+ ou PHP 8.x. O instalador tenta instalar PHP 8.2 via Remi se o PHP estiver ausente ou antigo.
@@ -20,22 +44,30 @@ basica (kick/ban/unban).
 
 ## Instalacao automatica
 
-Suba estes dois arquivos para a VPS:
+Suba estes arquivos para a VPS:
 
 - `api_cls.php`
 - `install-apicls-centos7.sh`
+- `install-apicls-debian12.sh` se a VPS for Debian 12
 
 No seu computador:
 
 ```powershell
 scp "api_cls.php" root@IP_DA_VPS:/root/api_cls.php
 scp "install-apicls-centos7.sh" root@IP_DA_VPS:/root/install-apicls-centos7.sh
+scp "install-apicls-debian12.sh" root@IP_DA_VPS:/root/install-apicls-debian12.sh
 ```
 
 Na VPS:
 
 ```bash
 bash /root/install-apicls-centos7.sh --secret SEU_SECRET --api-src /root/api_cls.php
+```
+
+Ou, em Debian 12:
+
+```bash
+bash /root/install-apicls-debian12.sh --secret SEU_SECRET --api-src /root/api_cls.php
 ```
 
 O instalador faz automaticamente:
@@ -278,6 +310,74 @@ curl -s -X POST -H "x-sync-secret: SEU_SECRET" -H "Content-Type: application/jso
 "http://127.0.0.1/apicls/api_cls.php?action=previewBulkTargets"
 ```
 
+## Templates operacionais de bulk
+
+O backend agora tambem suporta **templates operacionais** para reaproveitar comandos bulk prontos com seguranca.
+
+Endpoints disponiveis:
+
+- `saveBulkTemplate`
+- `getBulkTemplate`
+- `getBulkTemplates`
+- `updateBulkTemplate`
+- `deleteBulkTemplate`
+- `previewBulkTemplate`
+- `executeBulkTemplate`
+
+Categorias homologadas nesta fase:
+
+- `evento`
+- `punicao`
+- `recompensa`
+- `broadcast`
+
+Escopo inicial:
+
+- templates para os comandos bulk ja homologados
+- armazenamento file-based
+- selecao canonica salva no template
+- payload padrao salvo no template
+- preview real por template
+- execucao por template em modo `queue`
+- execucao por template em modo `schedule`
+
+Salvar template de reward por guild:
+
+```bash
+curl -s -X POST -H "x-sync-secret: SEU_SECRET" -H "Content-Type: application/json" \
+-d '{"template_key":"guild-gold-oldpw","label":"Gold semanal OldPw","category":"recompensa","command_key":"sendMailGold","selection":{"guild_ids":[1]},"money":1000,"title":"Guild Reward","message":"Entrega por template","requires_preview":true}' \
+"http://127.0.0.1/apicls/api_cls.php?action=saveBulkTemplate"
+```
+
+Preview do template:
+
+```bash
+curl -s -X POST -H "x-sync-secret: SEU_SECRET" -H "Content-Type: application/json" \
+-d '{"template_key":"guild-gold-oldpw"}' \
+"http://127.0.0.1/apicls/api_cls.php?action=previewBulkTemplate"
+```
+
+Executar template em fila:
+
+```bash
+curl -s -X POST -H "x-sync-secret: SEU_SECRET" -H "Content-Type: application/json" \
+-d '{"template_key":"guild-gold-oldpw","mode":"queue"}' \
+"http://127.0.0.1/apicls/api_cls.php?action=executeBulkTemplate"
+```
+
+Executar template como schedule semanal:
+
+```bash
+curl -s -X POST -H "x-sync-secret: SEU_SECRET" -H "Content-Type: application/json" \
+-d '{"template_key":"guild-gold-oldpw","mode":"schedule","name":"Guild Reward semanal","weekdays":[3],"time_of_day":"22:30","timezone":"America/Sao_Paulo","enabled":true}' \
+"http://127.0.0.1/apicls/api_cls.php?action=executeBulkTemplate"
+```
+
+Observacao importante:
+
+- `grantMallCash` salvo em template tambem exige `confirm:"GRANT_MALL_CASH"` no payload padrao
+- o execute do template reaproveita os mesmos validadores de bulk e de schedule
+
 Enfileirar job:
 
 ```bash
@@ -303,7 +403,6 @@ Limitacoes atuais desta fase:
 
 - busca por `userid` sem `roleid` ainda fica limitada a alvo de conta
 - selecao de guild confiavel nesta fase usa `guild_id` ou `guild_ids`
-- `ranking_key` ainda depende de integrar uma fonte de ranking real nesta VPS
 - `sendSystemMessage` continua global e nao respeita filtros de alvo
 
 Seletores ja homologados nesta fase:
@@ -315,6 +414,96 @@ Seletores ja homologados nesta fase:
 - `guild_id` / `guild_ids`
 - `class_ids`
 - `level_min` / `level_max`
+- `ranking_key`
+- `ranking_limit`
+
+`ranking_key` suportados nesta VPS:
+
+- `pvp_points`
+- `level`
+- `level2`
+- `exp`
+- `reputation`
+- `lastlogin_time`
+- `create_time`
+
+Implementacao atual do ranking:
+
+- `pvp_points` usa a mesma fonte do fluxo atual em [reward_pvp.php](C:/Files%20pw%20old/rankpvp/reward_pvp.php): tabela `pw_ranking.pvp_ranking`
+- `pvp_points` replica a ordenacao real da entrega automatica: `ORDER BY points DESC, last_kill_at DESC`
+- `pvp_points` consulta MySQL via wrapper privilegiado `gmv2-ranking-api.sh` usando `/root/.my.cnf`
+- usa leitura real das tabelas `base` e `status` do `gamedbd`
+- tenta primeiro dump local via `db_dump`
+- faz fallback para `getRawTable` quando necessario
+- aplica `ranking_limit` depois da resolucao e dos filtros restantes
+
+## Ranking PvP premiado
+
+O backend agora tambem expõe um fluxo dedicado para **TOP PvP com premiacao por
+posicao** e **reset do ranking ao final da entrega**.
+
+Endpoints disponiveis:
+
+- `getPvpRankingLeaderboard`
+- `previewPvpRankingRewards`
+- `executePvpRankingRewards`
+- `getPvpRankingRewardHistory`
+- `getPvpRankingRewardSchedule`
+- `getPvpRankingRewardSchedules`
+- `savePvpRankingRewardSchedule`
+- `deletePvpRankingRewardSchedule`
+
+O objetivo dessa camada e permitir que o painel:
+
+- veja a tabela real do TOP 3
+- monte a recompensa do 1o, 2o e 3o colocados
+- execute a entrega manualmente
+- agende a entrega automatica pelo worker de schedules
+- zere `pw_ranking.pvp_ranking` quando a rodada terminar
+
+Modelo de recompensa por posicao:
+
+```json
+{
+  "rewards": [
+    {
+      "position": 1,
+      "item_id": 51231,
+      "count": 1,
+      "money": 1000000,
+      "title": "Campeao do Ranking PvP",
+      "message": "Parabens, {player_name}! Voce ficou em {position}o lugar com {points} pontos."
+    },
+    {
+      "position": 2,
+      "money": 500000,
+      "title": "Vice-Campeao do Ranking PvP",
+      "message": "Parabens, {player_name}! Voce ficou em {position}o lugar."
+    },
+    {
+      "position": 3,
+      "money": 250000,
+      "title": "Top 3 do Ranking PvP",
+      "message": "Parabens, {player_name}! Voce ficou em {position}o lugar."
+    }
+  ],
+  "reset_ranking": true,
+  "reset_only_on_full_success": true
+}
+```
+
+Observacoes:
+
+- o leaderboard dedicado usa `pvp_points`
+- a premiacao usa o mesmo backend real de correio do `GM Commander`
+- o reset do ranking usa o wrapper privilegiado `gmv2-ranking-api.sh`
+- o worker `gm-schedule-worker.php` agora tambem processa schedules de
+  premiacao do ranking PvP
+- a execucao grava historico file-based em:
+
+```text
+/var/www/html/apicls/backups/gm-commander-v2/pvp-ranking/history.log
+```
 
 ## Agendamento semanal de bulk rewards
 
@@ -340,10 +529,11 @@ Arquitetura:
 Escopo atual:
 
 - selecionar `weekdays`
+- aceitar `every_day=true` como atalho para `weekdays=[1,2,3,4,5,6,7]`
 - selecionar `time_of_day`
 - definir `timezone`
 - ativar/pausar com `enabled`
-- permitir `sendMailItem`, `sendMailGold` e `grantMallCash`
+- permitir `sendMailItem`, `sendMailGold`, `grantMallCash` e `sendSystemMessage`
 - suportar os seletores da Fase A ja homologados
 - registrar criacao, alteracao, disparo e falha no log de auditoria
 
@@ -351,6 +541,7 @@ Observacao importante:
 
 - `grantMallCash` agendado tambem exige `confirm:"GRANT_MALL_CASH"` no payload salvo
 - o scheduler nao deve criar jobs de cash sem essa confirmacao explicita
+- `sendSystemMessage` agendado continua global e ignora filtros de alvo
 
 - `name` nesse endpoint e o nome do agendamento
 - para selecionar jogador por nome, use `selection.names`
@@ -360,6 +551,14 @@ Exemplo de criacao de schedule semanal:
 ```bash
 curl -s -X POST -H "x-sync-secret: SEU_SECRET" -H "Content-Type: application/json" \
 -d '{"name":"Gold semanal da guild","command_key":"sendMailGold","selection":{"guild_ids":[1]},"money":1000,"title":"Guild Reward","message":"Entrega semanal","weekdays":[1],"time_of_day":"21:00","timezone":"America/Sao_Paulo","enabled":true}' \
+"http://127.0.0.1/apicls/api_cls.php?action=scheduleBulkCommand"
+```
+
+Exemplo de schedule para todos os dias:
+
+```bash
+curl -s -X POST -H "x-sync-secret: SEU_SECRET" -H "Content-Type: application/json" \
+-d '{"name":"Broadcast diario","command_key":"sendSystemMessage","message":"Evento diario ativo","kind":"system","priority":"normal","every_day":true,"time_of_day":"21:00","timezone":"America/Sao_Paulo","enabled":true}' \
 "http://127.0.0.1/apicls/api_cls.php?action=scheduleBulkCommand"
 ```
 
@@ -389,6 +588,193 @@ Exemplo de cron para execucao automatica a cada minuto:
 ```cron
 * * * * * root /usr/bin/php /var/www/html/apicls/gm-schedule-worker.php >/dev/null 2>&1
 ```
+
+## Permissoes por operador
+
+O backend agora suporta uma camada separada de permissao do painel, sem
+misturar com a permissao GM dentro do jogo.
+
+### Modo de operacao
+
+Configuracoes em `api_cls.php`:
+
+- `operator_permissions_mode`
+  - `off`: desabilita a camada
+  - `audit`: calcula e audita, mas nao bloqueia
+  - `enforce`: bloqueia com `403 Forbidden`
+- `operator_permissions_registry_file`
+- `operator_permissions_allow_request_role`
+- `operator_permissions_require_known_operator`
+- `operator_permissions_default_role`
+
+Padrao atual:
+
+- `operator_permissions_mode: "audit"`
+- nao quebra a operacao homologada existente
+- permite integrar o Lovable primeiro e virar `enforce` depois
+
+### Headers aceitos
+
+O painel pode enviar:
+
+- `x-operator-id`
+- `x-operator-email`
+- `x-operator-name`
+- `x-operator-role`
+
+Para evitar colisao com payloads de negocio, os headers acima sao a fonte
+preferencial da identidade do operador autenticado.
+
+### Perfis suportados
+
+- `viewer`
+- `gm_operator`
+- `gm_supervisor`
+- `gm_admin`
+- `super_admin`
+
+Aliases aceitos:
+
+- `operator` -> `gm_operator`
+- `supervisor` -> `gm_supervisor`
+- `admin` -> `gm_admin`
+
+### Arquivo de registry
+
+Por padrao:
+
+```text
+/var/www/html/apicls/backups/gm-commander-v2/operators.json
+```
+
+Exemplo:
+
+```json
+{
+  "updated_at": "2026-05-07T00:00:00Z",
+  "operators": [
+    {
+      "id": "lovable-admin",
+      "email": "admin@seudominio.com",
+      "name": "Lovable Admin",
+      "role": "gm_admin",
+      "enabled": true
+    },
+    {
+      "id": "lovable-ops",
+      "email": "ops@seudominio.com",
+      "name": "Lovable Ops",
+      "role": "gm_operator",
+      "enabled": true
+    }
+  ]
+}
+```
+
+Modelo pronto no workspace:
+
+- [operators.example.json](/C:/Files%20pw%20old/home/apicls/operators.example.json)
+- [api_cls.local.example.php](/C:/Files%20pw%20old/home/apicls/api_cls.local.example.php)
+
+Para manter configuracoes locais da VPS entre deploys, crie
+`/var/www/html/apicls/api_cls.local.php`. Esse arquivo retorna um array PHP
+com overrides do `$CONFIG` principal, por exemplo:
+
+```php
+<?php
+return [
+    'operator_permissions_mode' => 'enforce',
+    'operator_permissions_allow_request_role' => false,
+    'operator_permissions_require_known_operator' => true,
+    'operator_permissions_default_role' => 'viewer',
+];
+```
+
+Assim, um novo deploy do `api_cls.php` nao desfaz o modo `enforce`.
+
+### Endpoints de suporte
+
+- `getOperatorPermissionCatalog`
+- `getOperatorPermissionState`
+- `getOperatorRegistry`
+- `saveOperatorRegistryEntry`
+- `deleteOperatorRegistryEntry`
+
+Exemplo:
+
+```bash
+curl -s -H "x-sync-secret: SEU_SECRET" \
+-H "x-operator-id: lovable-admin" \
+-H "x-operator-email: admin@seudominio.com" \
+"http://127.0.0.1/apicls/api_cls.php?action=getOperatorPermissionState"
+```
+
+Gerenciamento do registry pelo painel:
+
+```bash
+curl -s -X POST -H "x-sync-secret: SEU_SECRET" \
+-H "x-operator-id: SEU_SUPER_ADMIN" \
+-H "x-operator-email: admin@seudominio.com" \
+-H "Content-Type: application/json" \
+-d '{
+  "id": "11cfed69-0997-4baa-ae1a-0329b5742feb",
+  "email": "admin@seudominio.com",
+  "name": "Seu Nome",
+  "role": "super_admin",
+  "enabled": true
+}' \
+"http://127.0.0.1/apicls/api_cls.php?action=saveOperatorRegistryEntry"
+```
+
+Os endpoints de registry:
+
+- exigem `super_admin`
+- escrevem direto em `/var/www/html/apicls/backups/gm-commander-v2/operators.json`
+- suportam `enabled` e `allowed_ips`
+- impedem apagar/desabilitar o ultimo `super_admin`
+- impedem o proprio `super_admin` logado de remover o proprio acesso pelo painel
+
+### Minimos aplicados pelo backend
+
+- `viewer`
+  - leitura, historico e status
+- `gm_operator`
+  - `sendMailItem`
+  - `sendMailGold`
+  - bulk/schedule/template dessas recompensas
+- `gm_supervisor`
+  - `sendSystemMessage`
+  - `kickRole`
+  - `muteRole`
+  - `clearRolePk`
+  - `reviveRole`
+  - `teleportRole`
+- `gm_admin`
+  - `grantMallCash`
+  - `grantGmPermission`
+  - `revokeGmPermission`
+  - `banAccount`
+  - `unbanAccount`
+  - `muteAccount`
+  - operacao de servicos, manutencao e watchdog
+- `super_admin`
+  - `restoreNow`
+  - `restoreBackup`
+  - `saveRoleEditable`
+  - `saveClsconfigTemplate`
+  - `getOperatorRegistry`
+  - `saveOperatorRegistryEntry`
+  - `deleteOperatorRegistryEntry`
+
+### Auditoria
+
+Quando houver contexto de operador, jobs, schedules, templates e auditoria do
+GM V2 passam a registrar:
+
+- `actor_user_id`
+- `actor_email`
+- `actor_role`
+- `actor_ip`
 
 ## Cadastro no painel
 

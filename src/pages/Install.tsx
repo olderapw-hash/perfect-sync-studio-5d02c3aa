@@ -90,6 +90,8 @@ const Install = () => {
   const [hasStorageZip, setHasStorageZip] = useState(false);
   const [vpsToken, setVpsToken] = useState<string | null>(null);
   const [vpsStatus, setVpsStatus] = useState<string | null>(null);
+  const [osType, setOsType] = useState<OsType>("centos7");
+  const [serverVersion, setServerVersion] = useState<ServerVersion>("pw178");
 
   // Check if zip exists in storage
   useEffect(() => {

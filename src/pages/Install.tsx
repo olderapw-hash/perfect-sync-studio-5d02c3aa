@@ -480,6 +480,47 @@ const Install = () => {
               </div>
             </div>
 
+            <div className="mb-4 grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Sistema operacional
+                </Label>
+                <Select value={osType} onValueChange={(v) => setOsType(v as OsType)}>
+                  <SelectTrigger className="mt-1 h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="centos7">CentOS 7</SelectItem>
+                    <SelectItem value="debian12">Debian 12</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  {osType === "debian12"
+                    ? "Debian 12 usa install-apicls-debian12.sh"
+                    : "CentOS 7 usa install-apicls-centos7.sh"}
+                </p>
+              </div>
+              <div>
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Versão do servidor
+                </Label>
+                <Select value={serverVersion} onValueChange={(v) => setServerVersion(v as ServerVersion)}>
+                  <SelectTrigger className="mt-1 h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pw155">PW 1.5.5</SelectItem>
+                    <SelectItem value="pw178">PW 1.7.8</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  {serverVersion === "pw155"
+                    ? "Use 155 para servidores PW 1.5.5"
+                    : "Use 178 para servidores PW 1.7.8"}
+                </p>
+              </div>
+            </div>
+
             <div className="relative">
               <pre className="overflow-x-auto rounded-md border border-border bg-background p-3 font-mono text-xs">
                 {step3Command}
@@ -499,10 +540,9 @@ const Install = () => {
               <p>✅ Configura sudoers e scripts auxiliares</p>
               <p>✅ Secrets salvos no .env (nunca no código-fonte)</p>
               <p>✅ Testa a conexão com o gamedbd</p>
+              <p>ℹ️ O mesmo pacote suporta PW 1.5.5 e PW 1.7.8 — o que muda é o <code className="font-mono">--game-version</code>. O script muda conforme o SO.</p>
               {vpsToken ? (
                 <p className="text-primary font-semibold">🔒 Token de ativação VPS incluído — protegido contra redistribuição</p>
-              ) : isSuperadmin ? (
-                <p className="text-primary font-semibold">👑 Superadmin bypass ativo — token não necessário</p>
               ) : (
                 <p className="text-destructive font-semibold">🚫 Sem token de ativação VPS — a API será BLOQUEADA. Crie uma licença primeiro.</p>
               )}

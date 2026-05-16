@@ -55,6 +55,8 @@ const API_FEATURES: { label: string; detail: string }[] = [
 
 const INCLUDED_FILES = [
   "api_cls.php",
+  "api_cls_meridian_titles.php",
+  "api_cls.local.example.php",
   "install-apicls-centos7.sh",
   "install-apicls-debian12.sh",
   "pw_send_mail.php",
@@ -63,6 +65,7 @@ const INCLUDED_FILES = [
   "gm-queue-worker.php",
   "gm-schedule-worker.php",
   "sudoers.gamedbd-backup.example",
+  "operators.example.json",
   "README.md",
 ];
 

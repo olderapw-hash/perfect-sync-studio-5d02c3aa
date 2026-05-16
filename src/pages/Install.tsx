@@ -556,7 +556,7 @@ const Install = () => {
               <p className="mt-3 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-600 dark:text-amber-400">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <span>
-                  Os comandos contêm <strong>IP e secret reais</strong>. Não compartilhe.
+                  Os comandos contêm <strong>IP, secret{vpsToken ? " e activation token" : ""} reais</strong>. Não compartilhe{vpsToken ? " — qualquer um com o token consegue ativar a API." : "."}
                 </span>
               </p>
             )}

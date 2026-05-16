@@ -542,7 +542,7 @@ const Install = () => {
             <div className="mt-3 space-y-1 text-[11px] text-muted-foreground">
               <p>✅ Instala Apache + PHP automaticamente</p>
               <p>✅ Configura sudoers e scripts auxiliares</p>
-              <p>✅ Secrets salvos no .env (nunca no código-fonte)</p>
+              <p>✅ <code className="font-mono">api_secret</code> gravado no <code className="font-mono">api_cls.php</code> e token salvo em <code className="font-mono">.activation_token</code></p>
               <p>✅ Testa a conexão com o gamedbd</p>
               <p>ℹ️ O mesmo pacote suporta PW 1.5.5 e PW 1.7.8 — o que muda é o <code className="font-mono">--game-version</code>. O script muda conforme o SO.</p>
               {vpsToken ? (

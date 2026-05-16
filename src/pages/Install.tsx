@@ -196,7 +196,8 @@ const Install = () => {
 
   // ---- Commands ----
   const step2Command = `scp -r C:\\orphea\\* root@${ipDisplay}:/root/orphea/`;
-  const activationPart = vpsToken ? ` --activation-token ${vpsToken}` : "";
+  const tokenDisplay = showRealValues && vpsToken ? vpsToken : "SEU_TOKEN";
+  const activationPart = vpsToken ? ` --activation-token ${tokenDisplay}` : "";
   const installerScript = osType === "debian12" ? "install-apicls-debian12.sh" : "install-apicls-centos7.sh";
   const gameVersion = serverVersion === "pw155" ? "155" : "178";
   const step3Command = `ssh root@${ipDisplay} "bash /root/orphea/${installerScript} --secret ${secretDisplay}${activationPart} --game-version ${gameVersion}"`;

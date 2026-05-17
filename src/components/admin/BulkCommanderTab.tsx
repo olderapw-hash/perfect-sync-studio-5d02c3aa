@@ -148,6 +148,7 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
   const [jobs, setJobs] = useState<BulkJobSummary[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
   const [selectedJob, setSelectedJob] = useState<BulkJobSummary | null>(null);
+  const [itemPickerOpen, setItemPickerOpen] = useState(false);
 
   const buildSelection = useCallback((): BulkSelectionParams => {
     const sel: BulkSelectionParams = {};

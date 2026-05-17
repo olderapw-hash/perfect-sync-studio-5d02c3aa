@@ -56,7 +56,6 @@ const API_FEATURES: { label: string; detail: string }[] = [
 const INCLUDED_FILES = [
   "api_cls.php",
   "api_cls_meridian_titles.php",
-  "api_cls.local.example.php",
   "install-apicls-centos7.sh",
   "install-apicls-debian12.sh",
   "pw_send_mail.php",
@@ -65,7 +64,6 @@ const INCLUDED_FILES = [
   "gm-queue-worker.php",
   "gm-schedule-worker.php",
   "sudoers.gamedbd-backup.example",
-  "operators.example.json",
   "README.md",
 ];
 
@@ -81,7 +79,7 @@ function expectedApiUrl(rawUrl: string | null | undefined): string {
 
 const Install = () => {
   const navigate = useNavigate();
-  const { session, isSuperadmin, loading: authLoading } = useAuth();
+  const { session, loading: authLoading } = useAuth();
   const { servers, active, loading: serversLoading } = useServers();
 
   const [selectedId, setSelectedId] = useState<string>("");
@@ -111,7 +109,7 @@ const Install = () => {
   // Fetch user's VPS activation token
   useEffect(() => {
     if (!session?.user) return;
-    supabase.rpc("ensure_my_vps_activation_token").then(({ data }) => {
+    supabase.rpc("get_my_vps_activation_token").then(({ data }) => {
       if (data && Array.isArray(data) && data.length > 0) {
         setVpsToken(data[0].activation_token);
         setVpsStatus(data[0].vps_status);
@@ -556,7 +554,7 @@ const Install = () => {
               <p className="mt-3 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-600 dark:text-amber-400">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <span>
-                  Os comandos contêm <strong>IP, secret{vpsToken ? " e activation token" : ""} reais</strong>. Não compartilhe{vpsToken ? " — qualquer um com o token consegue ativar a API." : "."}
+                  Os comandos contêm <strong>IP, secret e token reais</strong>. Não compartilhe.
                 </span>
               </p>
             )}
@@ -566,6 +564,12 @@ const Install = () => {
                 Substitua <code className="rounded bg-muted px-1 font-mono">IP_DA_VPS</code> e{" "}
                 <code className="rounded bg-muted px-1 font-mono">SEU_SECRET</code> pelos valores
                 reais do seu servidor.
+                {vpsToken ? (
+                  <>
+                    {" "}Quando necessário, o token também aparece mascarado como{" "}
+                    <code className="rounded bg-muted px-1 font-mono">SEU_TOKEN</code>.
+                  </>
+                ) : null}
               </p>
             )}
           </section>

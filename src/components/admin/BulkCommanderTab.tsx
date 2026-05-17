@@ -815,6 +815,12 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
       {/* Schedule Manager */}
       <Separator className="bg-border/30" />
       <BulkScheduleManager />
+
+      <ItemCatalogAdvancedDialog
+        open={itemPickerOpen}
+        onOpenChange={setItemPickerOpen}
+        onPick={(it) => setItemId(String(it.id))}
+      />
     </div>
   );
 }

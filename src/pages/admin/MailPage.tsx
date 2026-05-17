@@ -46,6 +46,7 @@ import {
   type MailTemplate,
 } from "@/lib/mailTemplates";
 import { NoActiveServerState } from "@/components/admin/NoActiveServerState";
+import { ItemCatalogAdvancedDialog } from "@/components/admin/ItemCatalogAdvancedDialog";
 import { MailStatusBadge } from "@/components/admin/mail/MailStatusBadge";
 import { cn } from "@/lib/utils";
 

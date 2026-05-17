@@ -777,6 +777,11 @@ function ScheduleFormDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+      <ItemCatalogAdvancedDialog
+        open={itemPickerOpen}
+        onOpenChange={setItemPickerOpen}
+        onPick={(it) => setItemId(String(it.id))}
+      />
     </Dialog>
   );
 }

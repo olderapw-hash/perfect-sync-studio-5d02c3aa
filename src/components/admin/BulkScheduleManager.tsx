@@ -18,6 +18,7 @@ import {
   Plus,
   RefreshCw,
   Trash2,
+  Search,
   XCircle,
 } from "lucide-react";
 

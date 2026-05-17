@@ -441,6 +441,7 @@ function ScheduleFormDialog({
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [message, setMessage] = useState("");
+  const [itemPickerOpen, setItemPickerOpen] = useState(false);
 
   const needsAudience = !NO_AUDIENCE_COMMANDS.has(commandKey);
 

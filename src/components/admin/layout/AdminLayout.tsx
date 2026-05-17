@@ -291,8 +291,23 @@ const AdminNavSidebar = () => {
   });
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-border">
-      <SidebarContent className="bg-card/40 backdrop-blur-md">
+    <Sidebar collapsible="icon" className="border-r border-border/70">
+      <SidebarContent className="bg-gradient-to-b from-[hsl(0_0%_4%)] via-[hsl(0_0%_3%)] to-[hsl(0_0%_2%)] backdrop-blur-md">
+        {!collapsed && (
+          <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md border border-[hsl(40_48%_56%/0.3)] bg-gradient-to-br from-[hsl(0_60%_25%/0.4)] to-[hsl(0_0%_5%)] shadow-[inset_0_1px_0_hsl(40_40%_50%/0.1),0_0_12px_hsl(0_60%_30%/0.15)]">
+              <Shield className="h-3.5 w-3.5 text-[hsl(40_48%_60%)]" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[hsl(40_48%_60%)]">
+                Orphea Core
+              </div>
+              <div className="text-[9px] uppercase tracking-widest text-muted-foreground/70">
+                Control Center
+              </div>
+            </div>
+          </div>
+        )}
         {sections.map((section) => (
           <NavSectionGroup key={section.id} section={section} collapsed={collapsed} />
         ))}
@@ -440,7 +455,7 @@ const AdminTopBar = () => {
   const { current: currentRelease, hasUpdate } = useInstallerRelease();
 
   return (
-    <header className="flex flex-wrap items-center gap-3 border-b border-border bg-card/60 px-5 py-3 backdrop-blur-md">
+    <header className="flex flex-wrap items-center gap-3 border-b border-border/70 bg-gradient-to-r from-[hsl(0_0%_5%/0.85)] via-[hsl(0_0%_4%/0.7)] to-[hsl(0_0%_5%/0.85)] px-5 py-3 backdrop-blur-md shadow-[0_1px_0_hsl(40_40%_45%/0.06)]">
       <SidebarTrigger className="-ml-1" />
       {settings.logo_url ? (
         <img src={settings.logo_url} alt="" className="h-6 w-6 rounded object-cover" />

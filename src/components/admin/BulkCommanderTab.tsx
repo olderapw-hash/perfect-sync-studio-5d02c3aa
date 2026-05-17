@@ -74,6 +74,7 @@ import {
 } from "@/lib/pwApiActions";
 import { BulkScheduleManager } from "@/components/admin/BulkScheduleManager";
 import { BulkTemplatesManager } from "@/components/admin/BulkTemplatesManager";
+import { ItemCatalogAdvancedDialog } from "@/components/admin/ItemCatalogAdvancedDialog";
 
 const PW_CLASSES = [
   { id: 0, name: "Guerreiro" },
@@ -147,6 +148,7 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
   const [jobs, setJobs] = useState<BulkJobSummary[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
   const [selectedJob, setSelectedJob] = useState<BulkJobSummary | null>(null);
+  const [itemPickerOpen, setItemPickerOpen] = useState(false);
 
   const buildSelection = useCallback((): BulkSelectionParams => {
     const sel: BulkSelectionParams = {};
@@ -514,7 +516,19 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className="text-[11px] text-muted-foreground">Item ID</Label>
-                      <Input value={itemId} onChange={e => setItemId(e.target.value)} placeholder="Ex: 21652" className="h-9 text-xs border-border/60 bg-card/60" />
+                      <div className="flex gap-1.5">
+                        <Input value={itemId} onChange={e => setItemId(e.target.value)} placeholder="Ex: 21652" className="h-9 text-xs border-border/60 bg-card/60" />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setItemPickerOpen(true)}
+                          className="h-9 px-2 border-border/60 bg-card/60"
+                          title="Buscar item por ID ou nome"
+                        >
+                          <Search className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
                     <div className="space-y-1">
                       <Label className="text-[11px] text-muted-foreground">Quantidade</Label>
@@ -801,6 +815,12 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
       {/* Schedule Manager */}
       <Separator className="bg-border/30" />
       <BulkScheduleManager />
+
+      <ItemCatalogAdvancedDialog
+        open={itemPickerOpen}
+        onOpenChange={setItemPickerOpen}
+        onPick={(it) => setItemId(String(it.id))}
+      />
     </div>
   );
 }

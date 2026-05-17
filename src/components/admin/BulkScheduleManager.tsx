@@ -18,6 +18,7 @@ import {
   Plus,
   RefreshCw,
   Trash2,
+  Search,
   XCircle,
 } from "lucide-react";
 
@@ -44,6 +45,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ItemCatalogAdvancedDialog } from "@/components/admin/ItemCatalogAdvancedDialog";
 
 import { cn } from "@/lib/utils";
 import {
@@ -440,6 +442,7 @@ function ScheduleFormDialog({
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [message, setMessage] = useState("");
+  const [itemPickerOpen, setItemPickerOpen] = useState(false);
 
   const needsAudience = !NO_AUDIENCE_COMMANDS.has(commandKey);
 
@@ -710,7 +713,19 @@ function ScheduleFormDialog({
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-[10px]">Item ID</Label>
-                  <Input value={itemId} onChange={e => setItemId(e.target.value)} className="h-8 text-xs" />
+                  <div className="flex gap-1.5">
+                    <Input value={itemId} onChange={e => setItemId(e.target.value)} className="h-8 text-xs" />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setItemPickerOpen(true)}
+                      className="h-8 px-2"
+                      title="Buscar item por ID ou nome"
+                    >
+                      <Search className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-[10px]">Quantidade</Label>
@@ -763,6 +778,11 @@ function ScheduleFormDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+      <ItemCatalogAdvancedDialog
+        open={itemPickerOpen}
+        onOpenChange={setItemPickerOpen}
+        onPick={(it) => setItemId(String(it.id))}
+      />
     </Dialog>
   );
 }

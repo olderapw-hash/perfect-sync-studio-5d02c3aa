@@ -436,15 +436,26 @@ const MailPage = () => {
                 <div className="grid gap-3 sm:grid-cols-[1fr_140px]">
                   <div className="space-y-1.5">
                     <Label htmlFor="itemId">Item ID *</Label>
-                    <Input
-                      id="itemId"
-                      type="number"
-                      min={1}
-                      value={itemIdStr}
-                      onChange={(e) => setItemIdStr(e.target.value)}
-                      placeholder="ex.: 11530"
-                      className="font-mono"
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        id="itemId"
+                        type="number"
+                        min={1}
+                        value={itemIdStr}
+                        onChange={(e) => setItemIdStr(e.target.value)}
+                        placeholder="ex.: 11530"
+                        className="font-mono"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setPickerOpen(true)}
+                        title="Buscar item por ID ou nome"
+                      >
+                        <Search className="h-3.5 w-3.5" />
+                        Buscar
+                      </Button>
+                    </div>
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="itemCount">Quantidade *</Label>

@@ -211,6 +211,17 @@ export const ItemCatalogAdvancedDialog = ({
   }, [catalog, catalogLoading]);
 
   const handleAdd = (item: CatalogItem) => {
+    if (pickMode) {
+      recents.push({
+        id: item.id,
+        name: item.name,
+        iconPath: item.icon_path,
+        maxCount: item.max_count ?? item.stack_max,
+      });
+      onPick?.(item);
+      onOpenChange(false);
+      return;
+    }
     if (!canInsert) {
       toast.warning("Sem destino para adicionar — abra o catálogo de dentro do editor.");
       return;

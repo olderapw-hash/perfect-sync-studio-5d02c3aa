@@ -114,7 +114,8 @@ export const ItemCatalogAdvancedDialog = ({
   const [insertOpen, setInsertOpen] = useState(false);
 
   const hasContexts = !!contexts && Object.values(contexts).some(Boolean);
-  const canInsert = hasContexts && !!onInsert;
+  const pickMode = !!onPick;
+  const canInsert = pickMode || (hasContexts && !!onInsert);
 
   // Reset on open
   useEffect(() => {

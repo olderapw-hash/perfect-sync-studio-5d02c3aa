@@ -1,88 +1,121 @@
+## Redesign do /admin — Sistema de Cards Premium
 
-# Alinhamento do Admin com o contrato real da VPS
-
-Esta rodada toca 8 áreas independentes do frontend. Sem mudanças no backend. Vou organizar por arquivo/área para minimizar risco.
-
----
-
-## 1. Bulk Schedule Manager — hidratação completa antes de editar/toggle
-**Arquivo:** `src/components/admin/BulkScheduleManager.tsx`
-
-- No clique de **Editar** e no **toggle ativar/pausar**, chamar `getBulkSchedule(id)` para obter o objeto completo.
-- O formulário de edição passa a hidratar a partir do `command_payload` real (item_id, money, amount, message, target selection).
-- Bloquear `saveBulkSchedule` em modo edição se o payload completo não tiver `command_payload` válido — abortar com toast de erro.
-- Remover qualquer fallback do tipo `summary.command_payload ?? {}`.
-
-## 2. Eventos ingame — remover promessa de premiação automática
-**Arquivos:** `src/pages/admin/IngameEventsPage.tsx`, componentes relacionados.
-
-- Não há entrega real via VPS hoje. Vou:
-  - Remover textos "sortear vencedores e disparar premiação por correio".
-  - Substituir por aviso explícito: "Esta tela registra participantes/vencedores localmente. A entrega de prêmios ainda não está integrada à VPS — execute manualmente via Mail/Bulk."
-  - Manter botões de sorteio/registro, mas sem prometer mail automático.
-
-## 3. Permissões por operador em Control Center / Server Ops / Instances
-**Arquivos:** `src/pages/admin/ControlCenterPage.tsx`, `src/pages/admin/ServerOpsPage.tsx`, `src/pages/admin/InstancesPage.tsx`.
-
-- Adicionar `useOperatorPermissions` + `canAction(...)` para gating das ações reais (start/stop/restart, system message, etc).
-- Bloquear leitura quando `require_known_operator=true` e operador não está em `operators.json` (estado já vem do `useOperatorPermissions`).
-- Mostrar banner amigável quando bloqueado por enforce/known_operator.
-- Manter `useServerPermissions` como camada Supabase (não remover); somar a checagem de operador.
-
-## 4. Mail History — deixar claro que é histórico LOCAL
-**Arquivo:** `src/pages/admin/MailHistoryPage.tsx`
-
-- Adicionar banner no topo: "Histórico local do painel. Envios realizados diretamente pela VPS, bulk jobs ou Rank PvP backend-first não aparecem aqui."
-- Renomear título da página/aba para "Histórico de envios (local)".
-- Sem integração nova com VPS nesta rodada.
-
-## 5. Security History — deixar claro que é audit_logs LOCAL
-**Arquivo:** `src/pages/admin/SecurityHistoryPage.tsx`
-
-- Banner: "Trilha local do painel (audit_logs). Para a trilha autoritativa da VPS, use GM Commander → histórico."
-- Renomear título para "Histórico local de moderação".
-- Sem chamada nova a `getGmActionHistory` (apenas link/CTA para a página GM).
-
-## 6. Rank PVP — botão salvar rewards + remover fallback no toggle
-**Arquivo:** `src/pages/admin/RankPvpPage.tsx`
-
-- Verificar estado atual (rodadas anteriores já adicionaram parte disso). Garantir:
-  - Botão explícito "Salvar recompensas no agendamento":
-    - Se `linkedSchedule` existe → salva no schedule atual (mantém days/time, atualiza rewards).
-    - Se não → abre fluxo de criação pré-preenchido com rewards.
-  - No `toggleActive` do `ScheduleManager`: remover qualquer `full.rewards ?? rewards`. Se `full.rewards` ausente/vazio → abortar com erro, sem salvar.
-
-## 7. Server Actions — esconder seção de reload (endpoint não existe)
-**Arquivo:** `src/pages/admin/ServerActionsPage.tsx`
-
-- Remover/ocultar o card de "reload" enquanto `reloadService` não existir no backend homologado.
-- Não deixar UI cair em `EndpointMissingNotice` para esse card.
-
-## 8. Gestão de Operadores — ampliar contrato de getOperatorRegistry
-**Arquivos:** `src/lib/pwApiActions.ts`, `src/pages/admin/OperatorManagementPage.tsx`
-
-- Estender o tipo de retorno de `getOperatorRegistry` para incluir:
-  - `roles: OperatorRole[]`
-  - `role_meta: Record<OperatorRole, { label: string; rank: number; description?: string }>`
-  - `invalid_entries: Array<{ raw: unknown; error: string }>`
-  - `registry_file: string`
-  - `updated_at: string`
-- Na tela:
-  - Mostrar seção "Entradas inválidas" se `invalid_entries.length > 0`.
-  - Usar `role_meta[role].label` em vez de label hardcoded.
-  - Mostrar `registry_file` + `updated_at` no header.
+Refatoração visual completa da área `/admin` mantendo **100% da lógica, rotas, hooks, permissões, APIs e autenticação intactos**. Foco: padronizar todos os cards e criar uma identidade NOC/Game Server Control Center.
 
 ---
 
-## Ordem de execução
+### Fase 1 — Fundação (design tokens + primitivos)
 
-1. Ler todos os arquivos-alvo em paralelo (várias leituras grandes).
-2. Aplicar edits área por área (8 grupos), começando pelas mais isoladas (4, 5, 7) e fechando com as mais complexas (1, 3, 8).
-3. Verificar build no final.
+**`src/index.css`** — adicionar novas utilitárias (sem quebrar as existentes):
+- `.admin-card` — fundo glass dark, borda fina bronze/grafite, sombra com profundidade
+- `.admin-card-hover` — brilho sutil vermelho/dourado no hover
+- `.admin-card-danger` — variante para ações destrutivas (borda vinho)
+- `.admin-card-header-grid` — header com ícone + título + badge alinhados
+- `.admin-stat-number` — tipografia premium para KPIs
+- `.admin-divider-bronze` — divisor ornamental
+- Novos tokens: `--admin-surface`, `--admin-surface-elevated`, `--admin-border-subtle`, `--admin-glow-crimson`, `--admin-glow-gold`
 
-## Notas técnicas
+**Componentes novos em `src/components/admin/ui/`**:
+- `AdminCard.tsx` — base (variantes: `default | elevated | danger | success`)
+- `AdminCardHeader.tsx` — ícone + título + subtítulo + slot direito (badge/ação)
+- `AdminStatCard.tsx` — KPI (label, valor grande, trend, ícone)
+- `AdminStatusCard.tsx` — serviço/recurso com pill de status
+- `AdminActionCard.tsx` — card com CTA primário
+- `AdminTableCard.tsx` — wrapper para tabelas com toolbar embutida
+- `AdminSectionCard.tsx` — agrupamento de formulários/configs com seções
+- `AdminDangerCard.tsx` — operações sensíveis com confirmação visual
+- `EmptyStateCard.tsx` — vazio elegante (ícone bronze + título + descrição + ação opcional)
+- `PageHeader.tsx` — título de página + breadcrumb + ações
+- `StatusBadge.tsx` — variantes (online/offline/warning/maintenance/critical)
+- `ActionButton.tsx` — botão padronizado (primary/ghost/danger/gold)
+- `DataPanel.tsx` — painel compacto tipo "linha de serviço" (Serviço | Status | Processos | Ação)
+- `SectionCard.tsx` — alias semântico de AdminSectionCard
 
-- Nada muda no backend nem em edge functions.
-- Tipos novos em `pwApiActions.ts` são aditivos (campos opcionais) para não quebrar consumidores existentes.
-- `canAction` já existe em `useOperatorPermissions`; só precisa ser cabeado nas 3 páginas operacionais.
-- Para o item 6, parte já foi feita em rodadas anteriores; vou apenas verificar e completar o que faltar (sem reescrever).
+Todos usando **apenas tokens semânticos do design system** (sem cores hardcoded).
+
+---
+
+### Fase 2 — Layout geral
+
+**`src/components/admin/layout/AdminLayout.tsx`**:
+- Header superior premium: nome do servidor, status global (dot + label), última sincronização, botão refresh, badge de permissão do operador, quick actions
+- Manter SidebarProvider e estrutura de roteamento existentes
+
+**`src/components/admin/AdminSidebar.tsx`**:
+- Reagrupar itens em: Dashboard / Servidor / GM Commander / Personagens / Eventos / Segurança / Site / Conta
+- Item ativo com glow vermelho discreto + barra lateral bronze
+- Badges pequenos (contadores, "novo")
+- Logo Orphea Core no topo
+- Drawer no mobile (já suportado pelo shadcn sidebar)
+
+---
+
+### Fase 3 — Migração das páginas (apenas wrapping/visual)
+
+Substituir `<Card>` / divs genéricas por `AdminCard` + primitivos nas páginas, **sem tocar em lógica/handlers/hooks**:
+
+- `ControlCenterPage` → KPIs com `AdminStatCard`, serviços com `DataPanel` (linha compacta), não cards gigantes
+- `GmCommanderPage` → `AdminActionCard` para comunicação/moderação/recompensas; `AdminDangerCard` para ações perigosas
+- `SecurityOverviewPage`, `SecurityHistoryPage`, `SecurityModerationPage`, `SecuritySettingsPage` → `AdminCard` + `AdminTableCard`
+- `ServerLogsPage`, `ServerHistoryPage`, `MailHistoryPage` → `AdminTableCard` com estética de terminal/auditoria
+- `RankPvpPage` → leaderboard com destaque TOP 3 (bronze/prata/dourado discreto)
+- `RolesPage`, `RolesHistoryPage`, `RolesBackupsPage` → `AdminCard` compactos + busca padronizada
+- `MailTemplatesPage`, `ServerMessagesPage` → cards editoriais com preview
+- `AccountSettingsPage`, `SitePage` → `AdminSectionCard` agrupando toggles/forms
+- Demais páginas admin → wrapping consistente
+- Substituir todos os estados vazios por `EmptyStateCard`
+
+---
+
+### Fase 4 — Padronização final
+
+- `PageHeader` em todas as páginas
+- `StatusBadge` substitui badges ad-hoc
+- `ActionButton` para CTAs principais
+- Espaçamentos (`p-5`, `gap-4`), tipografia e tamanhos de ícone uniformes
+
+---
+
+### Garantias
+
+- **Nenhuma alteração** em: rotas, hooks (`useAuth`, `useOperatorPermissions`, `useClsconfig`, etc.), libs de API (`pwApiActions`, `mailSend`, etc.), Supabase client, edge functions, schemas, lógica de permissão, formulários, handlers
+- Build sem erros
+- Apenas arquivos UI/JSX tocados; props e contratos dos componentes funcionais preservados
+- Todas as cores via tokens HSL semânticos
+
+---
+
+### Detalhes técnicos
+
+```text
+src/
+├── index.css                              (+ tokens e utilitárias .admin-*)
+├── components/admin/
+│   ├── ui/                                NOVO
+│   │   ├── AdminCard.tsx
+│   │   ├── AdminCardHeader.tsx
+│   │   ├── AdminStatCard.tsx
+│   │   ├── AdminStatusCard.tsx
+│   │   ├── AdminActionCard.tsx
+│   │   ├── AdminTableCard.tsx
+│   │   ├── AdminSectionCard.tsx
+│   │   ├── AdminDangerCard.tsx
+│   │   ├── EmptyStateCard.tsx
+│   │   ├── PageHeader.tsx
+│   │   ├── StatusBadge.tsx
+│   │   ├── ActionButton.tsx
+│   │   ├── DataPanel.tsx
+│   │   └── SectionCard.tsx
+│   ├── AdminSidebar.tsx                   (visual + agrupamento)
+│   └── layout/AdminLayout.tsx             (header premium)
+└── pages/admin/*.tsx                       (substituição de Card → AdminCard, sem mexer em lógica)
+```
+
+### Escopo desta entrega
+
+Devido ao tamanho (~25 páginas admin), proponho entregar em **duas etapas dentro desta sessão**:
+
+1. **Agora**: Fundação completa (Fase 1 + 2) + migração das páginas mais visíveis (ControlCenter, GmCommander, SecurityOverview, RankPvp, RolesPage, MailHistory, ServerLogs, AccountSettings).
+2. **Próxima mensagem (se aprovado)**: Migração das páginas restantes seguindo o mesmo padrão.
+
+Confirma que posso seguir assim?

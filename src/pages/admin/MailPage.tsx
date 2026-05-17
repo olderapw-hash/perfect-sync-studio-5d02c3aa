@@ -657,6 +657,14 @@ const MailPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ItemCatalogAdvancedDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        onPick={(it) => {
+          setItemIdStr(String(it.id));
+        }}
+      />
     </div>
   );
 };

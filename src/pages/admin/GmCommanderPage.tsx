@@ -51,6 +51,7 @@ import {
   Paintbrush,
   RefreshCw,
   Scroll,
+  Search,
   Settings,
   Shield,
   ShieldAlert,
@@ -111,6 +112,7 @@ import {
 import { NoActiveServerState } from "@/components/admin/NoActiveServerState";
 import { EndpointMissingNotice } from "@/components/admin/EndpointMissingNotice";
 import { BulkCommanderTab } from "@/components/admin/BulkCommanderTab";
+import { ItemCatalogAdvancedDialog } from "@/components/admin/ItemCatalogAdvancedDialog";
 import { QuickPunishmentTab } from "@/components/admin/gm/QuickPunishmentTab";
 import { BroadcastScheduleTab } from "@/components/admin/gm/BroadcastScheduleTab";
 import { MeridianTitlesTab } from "@/components/admin/gm/MeridianTitlesTab";
@@ -1310,6 +1312,7 @@ function SendMailItemCard({
   const [subject, setSubject] = useState("Compensação");
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
+  const [itemPickerOpen, setItemPickerOpen] = useState(false);
 
   const submit = async () => {
     const r = Number(roleid);
@@ -1360,7 +1363,18 @@ function SendMailItemCard({
         <Input value={roleid} onChange={(e) => setRoleid(e.target.value)} placeholder="1024" />
       </FieldRow>
       <FieldRow label="Item ID">
-        <Input value={itemId} onChange={(e) => setItemId(e.target.value)} placeholder="22272" />
+        <div className="flex gap-1.5">
+          <Input value={itemId} onChange={(e) => setItemId(e.target.value)} placeholder="22272" />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setItemPickerOpen(true)}
+            title="Buscar item por ID ou nome"
+          >
+            <Search className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </FieldRow>
       <FieldRow label="Quantidade">
         <Input
@@ -1385,6 +1399,11 @@ function SendMailItemCard({
         {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
         Enviar item
       </Button>
+      <ItemCatalogAdvancedDialog
+        open={itemPickerOpen}
+        onOpenChange={setItemPickerOpen}
+        onPick={(it) => setItemId(String(it.id))}
+      />
     </GmCard>
   );
 }

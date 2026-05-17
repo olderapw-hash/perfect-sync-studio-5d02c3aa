@@ -1363,7 +1363,18 @@ function SendMailItemCard({
         <Input value={roleid} onChange={(e) => setRoleid(e.target.value)} placeholder="1024" />
       </FieldRow>
       <FieldRow label="Item ID">
-        <Input value={itemId} onChange={(e) => setItemId(e.target.value)} placeholder="22272" />
+        <div className="flex gap-1.5">
+          <Input value={itemId} onChange={(e) => setItemId(e.target.value)} placeholder="22272" />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setItemPickerOpen(true)}
+            title="Buscar item por ID ou nome"
+          >
+            <Search className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </FieldRow>
       <FieldRow label="Quantidade">
         <Input

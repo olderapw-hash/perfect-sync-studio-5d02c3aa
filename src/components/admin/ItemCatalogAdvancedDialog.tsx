@@ -80,6 +80,13 @@ interface Props {
    * o botão "Adicionar" fica desabilitado.
    */
   onInsert?: (result: InsertResult) => void;
+  /**
+   * Modo "pick-only": quando fornecido, o dialog ignora o fluxo de
+   * InsertModal/contexts e chama `onPick` diretamente com o item
+   * escolhido (ideal para Mail, onde só precisamos do id+nome+max_count).
+   * O dialog fecha automaticamente após o pick.
+   */
+  onPick?: (item: CatalogItem) => void;
 }
 
 export const ItemCatalogAdvancedDialog = ({
@@ -88,6 +95,7 @@ export const ItemCatalogAdvancedDialog = ({
   contexts,
   defaultDestination,
   onInsert,
+  onPick,
 }: Props) => {
   const { items: tabItems, catalog, loading: catalogLoading, iconUrlFor } = useItemCatalog();
   const { tenantId } = useServerPermissions();
@@ -106,7 +114,8 @@ export const ItemCatalogAdvancedDialog = ({
   const [insertOpen, setInsertOpen] = useState(false);
 
   const hasContexts = !!contexts && Object.values(contexts).some(Boolean);
-  const canInsert = hasContexts && !!onInsert;
+  const pickMode = !!onPick;
+  const canInsert = pickMode || (hasContexts && !!onInsert);
 
   // Reset on open
   useEffect(() => {
@@ -202,6 +211,17 @@ export const ItemCatalogAdvancedDialog = ({
   }, [catalog, catalogLoading]);
 
   const handleAdd = (item: CatalogItem) => {
+    if (pickMode) {
+      recents.push({
+        id: item.id,
+        name: item.name,
+        iconPath: item.icon_path,
+        maxCount: item.max_count ?? item.stack_max,
+      });
+      onPick?.(item);
+      onOpenChange(false);
+      return;
+    }
     if (!canInsert) {
       toast.warning("Sem destino para adicionar — abra o catálogo de dentro do editor.");
       return;

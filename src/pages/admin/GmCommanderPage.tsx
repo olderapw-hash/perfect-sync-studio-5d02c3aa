@@ -51,6 +51,7 @@ import {
   Paintbrush,
   RefreshCw,
   Scroll,
+  Search,
   Settings,
   Shield,
   ShieldAlert,

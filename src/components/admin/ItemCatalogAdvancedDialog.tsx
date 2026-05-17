@@ -95,6 +95,7 @@ export const ItemCatalogAdvancedDialog = ({
   contexts,
   defaultDestination,
   onInsert,
+  onPick,
 }: Props) => {
   const { items: tabItems, catalog, loading: catalogLoading, iconUrlFor } = useItemCatalog();
   const { tenantId } = useServerPermissions();

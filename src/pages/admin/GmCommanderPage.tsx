@@ -1312,6 +1312,7 @@ function SendMailItemCard({
   const [subject, setSubject] = useState("Compensação");
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
+  const [itemPickerOpen, setItemPickerOpen] = useState(false);
 
   const submit = async () => {
     const r = Number(roleid);

@@ -113,6 +113,7 @@ const MailPage = () => {
 
   const [appliedTemplateId, setAppliedTemplateId] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [lastResult, setLastResult] = useState<{
     status: "success" | "error" | "endpoint_missing" | "pending";

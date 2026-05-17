@@ -712,7 +712,19 @@ function ScheduleFormDialog({
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-[10px]">Item ID</Label>
-                  <Input value={itemId} onChange={e => setItemId(e.target.value)} className="h-8 text-xs" />
+                  <div className="flex gap-1.5">
+                    <Input value={itemId} onChange={e => setItemId(e.target.value)} className="h-8 text-xs" />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setItemPickerOpen(true)}
+                      className="h-8 px-2"
+                      title="Buscar item por ID ou nome"
+                    >
+                      <Search className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-[10px]">Quantidade</Label>

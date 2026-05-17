@@ -2,7 +2,7 @@ import * as React from "react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export interface AdminCardHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface AdminCardHeaderProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "title"> {
   icon?: LucideIcon | React.ComponentType<{ className?: string }>;
   title: React.ReactNode;
   subtitle?: React.ReactNode;

@@ -45,6 +45,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ItemCatalogAdvancedDialog } from "@/components/admin/ItemCatalogAdvancedDialog";
 
 import { cn } from "@/lib/utils";
 import {

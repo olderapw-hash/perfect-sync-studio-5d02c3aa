@@ -85,7 +85,7 @@ function Particles() {
           style={{
             width: `${Math.random() * 3 + 1}px`,
             height: `${Math.random() * 3 + 1}px`,
-            background: `hsl(0 ${40 + Math.random() * 20}% ${30 + Math.random() * 20}%)`,
+            background: `hsl(40 ${40 + Math.random() * 20}% ${40 + Math.random() * 15}%)`,
             left: `${Math.random() * 100}%`,
             top: `${Math.random() * 100}%`,
             animation: `float-particle ${8 + Math.random() * 12}s ease-in-out infinite`,
@@ -126,7 +126,7 @@ function PremiumInput({
           error
             ? "border-red-500/60 bg-red-500/5"
             : focused
-              ? "border-[hsl(0_50%_35%/0.6)] bg-white/[0.03] shadow-[0_0_12px_hsl(0_60%_30%/0.1)]"
+              ? "border-[hsl(var(--primary)/0.55)] bg-white/[0.03] shadow-[0_0_12px_hsl(var(--primary)/0.1)]"
               : "border-white/[0.08] bg-white/[0.02] hover:border-white/[0.12]"
         }`}
       >
@@ -278,24 +278,24 @@ const Auth = () => {
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#050505] p-4">
       {/* Background effects */}
       <div className="pointer-events-none absolute inset-0" aria-hidden>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_-10%,hsl(0_60%_15%/0.15),transparent_70%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_40%_50%_at_80%_90%,hsl(0_50%_12%/0.08),transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_-10%,hsl(var(--primary)/0.12),transparent_70%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_40%_50%_at_80%_90%,hsl(var(--primary)/0.06),transparent_60%)]" />
       </div>
       <Particles />
 
       {/* Main Card */}
       <section className="relative z-10 w-full max-w-[420px] animate-fade-in-up">
         {/* Glow behind card */}
-        <div className="pointer-events-none absolute -inset-4 rounded-3xl bg-[radial-gradient(ellipse_at_center,hsl(0_60%_25%/0.08),transparent_70%)] blur-xl" aria-hidden />
+        <div className="pointer-events-none absolute -inset-4 rounded-3xl bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.08),transparent_70%)] blur-xl" aria-hidden />
 
         <div className="relative rounded-2xl border border-white/[0.06] bg-[hsl(0_0%_5%/0.85)] p-8 shadow-[0_32px_80px_-20px_hsl(0_0%_0%/0.9)] backdrop-blur-2xl">
           {/* Top border glow */}
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[hsl(0_50%_35%/0.3)] to-transparent" aria-hidden />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[hsl(var(--primary)/0.35)] to-transparent" aria-hidden />
 
           {/* Logo */}
           <header className="mb-8 flex flex-col items-center gap-3 text-center">
             <div className="relative">
-              <div className="absolute -inset-2 rounded-2xl bg-[radial-gradient(circle,hsl(0_60%_30%/0.15),transparent_70%)]" />
+              <div className="absolute -inset-2 rounded-2xl bg-[radial-gradient(circle,hsl(var(--primary)/0.15),transparent_70%)]" />
               <img
                 src={orpheaLogo}
                 alt="Orphea Core"
@@ -320,9 +320,9 @@ const Auth = () => {
           {showConfirmation ? (
             <div className="flex flex-col items-center gap-5 text-center">
               <div className="relative flex h-16 w-16 items-center justify-center">
-                <div className="absolute inset-0 animate-pulse rounded-full bg-[hsl(0_60%_30%/0.15)]" />
-                <div className="relative flex h-14 w-14 items-center justify-center rounded-full border border-[hsl(0_50%_35%/0.3)] bg-[hsl(0_0%_8%)]">
-                  <MailCheck className="h-7 w-7 text-[hsl(0_50%_45%)]" />
+                <div className="absolute inset-0 animate-pulse rounded-full bg-[hsl(var(--primary)/0.15)]" />
+                <div className="relative flex h-14 w-14 items-center justify-center rounded-full border border-[hsl(var(--primary)/0.35)] bg-[hsl(0_0%_8%)]">
+                  <MailCheck className="h-7 w-7 text-[hsl(var(--primary))]" />
                 </div>
               </div>
               <div className="space-y-2">
@@ -332,14 +332,14 @@ const Auth = () => {
                   Confirme sua conta para continuar utilizando todos os recursos do Orphea Core.
                 </p>
                 <div className="mt-3 inline-block rounded-md border border-white/[0.06] bg-white/[0.03] px-4 py-2">
-                  <p className="font-mono text-sm text-[hsl(0_50%_50%)]">{maskEmail(email)}</p>
+                  <p className="font-mono text-sm text-[hsl(var(--primary))]">{maskEmail(email)}</p>
                 </div>
               </div>
               <div className="w-full space-y-2 pt-2">
                 <button
                   onClick={handleResend}
                   disabled={resendCooldown > 0}
-                  className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] py-2.5 text-xs font-semibold text-foreground transition-all hover:border-[hsl(0_50%_35%/0.3)] hover:bg-white/[0.05] disabled:opacity-40"
+                  className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] py-2.5 text-xs font-semibold text-foreground transition-all hover:border-[hsl(var(--primary)/0.35)] hover:bg-white/[0.05] disabled:opacity-40"
                 >
                   {resendCooldown > 0 ? `Reenviar em ${resendCooldown}s` : "Reenviar email"}
                 </button>
@@ -358,8 +358,8 @@ const Auth = () => {
           ) : forgotSent ? (
             /* ─── Forgot Password Sent ─── */
             <div className="flex flex-col items-center gap-5 text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full border border-[hsl(0_50%_35%/0.3)] bg-[hsl(0_0%_8%)]">
-                <Mail className="h-6 w-6 text-[hsl(0_50%_45%)]" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-full border border-[hsl(var(--primary)/0.35)] bg-[hsl(0_0%_8%)]">
+                <Mail className="h-6 w-6 text-[hsl(var(--primary))]" />
               </div>
               <div className="space-y-2">
                 <h2 className="text-base font-bold text-foreground">Instruções enviadas</h2>
@@ -369,7 +369,7 @@ const Auth = () => {
               </div>
               <button
                 onClick={() => { setForgotSent(false); setMode("signin"); }}
-                className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-[hsl(0_50%_50%)] hover:text-[hsl(0_50%_60%)] transition-colors"
+                className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-[hsl(var(--primary))] hover:text-[hsl(var(--primary)/0.85)] transition-colors"
               >
                 <ArrowLeft className="h-3.5 w-3.5" /> Voltar para login
               </button>
@@ -441,7 +441,7 @@ const Auth = () => {
                   <label className="flex items-start gap-2.5 cursor-pointer group pt-1">
                     <div className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-all ${
                       acceptTerms
-                        ? "border-[hsl(0_50%_35%)] bg-[hsl(0_50%_30%)]"
+                        ? "border-[hsl(var(--primary))] bg-[hsl(var(--primary)/0.6)]"
                         : "border-white/[0.12] bg-white/[0.03] group-hover:border-white/[0.2]"
                     }`}>
                       {acceptTerms && <Check className="h-3 w-3 text-white" />}
@@ -454,9 +454,9 @@ const Auth = () => {
                     />
                     <span className="text-[11px] leading-relaxed text-muted-foreground">
                       Li e aceito os{" "}
-                      <Link to="/terms" className="text-[hsl(0_50%_50%)] hover:underline">Termos de Uso</Link>
+                      <Link to="/terms" className="text-[hsl(var(--primary))] hover:underline">Termos de Uso</Link>
                       {" "}e a{" "}
-                      <Link to="/privacy" className="text-[hsl(0_50%_50%)] hover:underline">Política de Privacidade</Link>.
+                      <Link to="/privacy" className="text-[hsl(var(--primary))] hover:underline">Política de Privacidade</Link>.
                     </span>
                   </label>
                 )}
@@ -466,7 +466,7 @@ const Auth = () => {
                     <button
                       type="button"
                       onClick={() => setMode("forgot")}
-                      className="text-[11px] text-muted-foreground/70 hover:text-[hsl(0_50%_50%)] transition-colors"
+                      className="text-[11px] text-muted-foreground/70 hover:text-[hsl(var(--primary))] transition-colors"
                     >
                       Esqueceu a senha?
                     </button>
@@ -476,7 +476,7 @@ const Auth = () => {
                 <button
                   type="submit"
                   disabled={busy}
-                  className="group relative w-full overflow-hidden rounded-lg bg-gradient-to-r from-[hsl(0_50%_22%)] to-[hsl(0_60%_28%)] py-3 text-sm font-bold text-white shadow-[0_4px_20px_hsl(0_60%_25%/0.25)] transition-all duration-300 hover:shadow-[0_6px_30px_hsl(0_60%_25%/0.4)] hover:brightness-110 disabled:opacity-50 disabled:hover:shadow-none"
+                  className="group relative w-full overflow-hidden rounded-lg bg-gradient-to-r from-[hsl(var(--primary)/0.85)] to-[hsl(var(--primary))] py-3 text-sm font-bold text-white shadow-[0_4px_20px_hsl(var(--primary)/0.25)] transition-all duration-300 hover:shadow-[0_6px_30px_hsl(var(--primary)/0.4)] hover:brightness-110 disabled:opacity-50 disabled:hover:shadow-none"
                 >
                   <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/0 via-white/[0.06] to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
                   <span className="relative flex items-center justify-center gap-2">
@@ -493,7 +493,7 @@ const Auth = () => {
                 {mode === "signin" && (
                   <p className="text-xs text-muted-foreground">
                     Não possui uma conta?{" "}
-                    <button onClick={() => { setMode("signup"); setPassword(""); setConfirmPassword(""); }} className="font-semibold text-[hsl(0_50%_50%)] hover:text-[hsl(0_50%_60%)] transition-colors">
+                    <button onClick={() => { setMode("signup"); setPassword(""); setConfirmPassword(""); }} className="font-semibold text-[hsl(var(--primary))] hover:text-[hsl(var(--primary)/0.85)] transition-colors">
                       Criar conta
                     </button>
                   </p>
@@ -501,7 +501,7 @@ const Auth = () => {
                 {mode === "signup" && (
                   <p className="text-xs text-muted-foreground">
                     Já possui uma conta?{" "}
-                    <button onClick={() => { setMode("signin"); setPassword(""); setConfirmPassword(""); }} className="font-semibold text-[hsl(0_50%_50%)] hover:text-[hsl(0_50%_60%)] transition-colors">
+                    <button onClick={() => { setMode("signin"); setPassword(""); setConfirmPassword(""); }} className="font-semibold text-[hsl(var(--primary))] hover:text-[hsl(var(--primary)/0.85)] transition-colors">
                       Acessar
                     </button>
                   </p>
@@ -509,7 +509,7 @@ const Auth = () => {
                 {mode === "forgot" && (
                   <button
                     onClick={() => setMode("signin")}
-                    className="flex items-center gap-1.5 mx-auto text-xs font-semibold text-[hsl(0_50%_50%)] hover:text-[hsl(0_50%_60%)] transition-colors"
+                    className="flex items-center gap-1.5 mx-auto text-xs font-semibold text-[hsl(var(--primary))] hover:text-[hsl(var(--primary)/0.85)] transition-colors"
                   >
                     <ArrowLeft className="h-3.5 w-3.5" /> Voltar para login
                   </button>

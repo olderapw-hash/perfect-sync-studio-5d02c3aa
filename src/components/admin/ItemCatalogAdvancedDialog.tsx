@@ -80,6 +80,13 @@ interface Props {
    * o botão "Adicionar" fica desabilitado.
    */
   onInsert?: (result: InsertResult) => void;
+  /**
+   * Modo "pick-only": quando fornecido, o dialog ignora o fluxo de
+   * InsertModal/contexts e chama `onPick` diretamente com o item
+   * escolhido (ideal para Mail, onde só precisamos do id+nome+max_count).
+   * O dialog fecha automaticamente após o pick.
+   */
+  onPick?: (item: CatalogItem) => void;
 }
 
 export const ItemCatalogAdvancedDialog = ({

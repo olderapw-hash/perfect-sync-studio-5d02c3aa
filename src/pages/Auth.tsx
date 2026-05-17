@@ -126,7 +126,7 @@ function PremiumInput({
           error
             ? "border-red-500/60 bg-red-500/5"
             : focused
-              ? "border-[hsl(var(--primary)/0.55)] bg-white/[0.03] shadow-[0_0_12px_hsl(0_60%_30%/0.1)]"
+              ? "border-[hsl(var(--primary)/0.55)] bg-white/[0.03] shadow-[0_0_12px_hsl(var(--primary)/0.1)]"
               : "border-white/[0.08] bg-white/[0.02] hover:border-white/[0.12]"
         }`}
       >
@@ -441,7 +441,7 @@ const Auth = () => {
                   <label className="flex items-start gap-2.5 cursor-pointer group pt-1">
                     <div className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-all ${
                       acceptTerms
-                        ? "border-[hsl(0_50%_35%)] bg-[hsl(var(--primary)/0.6)]"
+                        ? "border-[hsl(var(--primary))] bg-[hsl(var(--primary)/0.6)]"
                         : "border-white/[0.12] bg-white/[0.03] group-hover:border-white/[0.2]"
                     }`}>
                       {acceptTerms && <Check className="h-3 w-3 text-white" />}

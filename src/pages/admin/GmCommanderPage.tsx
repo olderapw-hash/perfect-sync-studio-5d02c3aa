@@ -1399,6 +1399,11 @@ function SendMailItemCard({
         {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
         Enviar item
       </Button>
+      <ItemCatalogAdvancedDialog
+        open={itemPickerOpen}
+        onOpenChange={setItemPickerOpen}
+        onPick={(it) => setItemId(String(it.id))}
+      />
     </GmCard>
   );
 }

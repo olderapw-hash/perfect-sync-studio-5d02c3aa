@@ -74,6 +74,7 @@ import {
 } from "@/lib/pwApiActions";
 import { BulkScheduleManager } from "@/components/admin/BulkScheduleManager";
 import { BulkTemplatesManager } from "@/components/admin/BulkTemplatesManager";
+import { ItemCatalogAdvancedDialog } from "@/components/admin/ItemCatalogAdvancedDialog";
 
 const PW_CLASSES = [
   { id: 0, name: "Guerreiro" },

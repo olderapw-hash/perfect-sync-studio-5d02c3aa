@@ -111,6 +111,7 @@ import {
 import { NoActiveServerState } from "@/components/admin/NoActiveServerState";
 import { EndpointMissingNotice } from "@/components/admin/EndpointMissingNotice";
 import { BulkCommanderTab } from "@/components/admin/BulkCommanderTab";
+import { PlayerLookupCard } from "@/components/admin/PlayerLookupCard";
 
 import { useAuth } from "@/hooks/useAuth";
 import { OperatorPermissionsProvider, useOperatorPermissions } from "@/hooks/useOperatorPermissions";

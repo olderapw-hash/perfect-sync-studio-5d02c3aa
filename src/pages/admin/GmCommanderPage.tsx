@@ -610,6 +610,7 @@ function GmCommanderPageInner() {
 /* -------------------------------------------------------------------------- */
 
 const TAB_LABELS: Record<TabKey, string> = {
+  lookup: "Buscar personagem",
   compensation: "Compensação",
   moderation: "Moderação",
   communication: "Comunicação",

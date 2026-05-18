@@ -1,5 +1,6 @@
-// Mapeamentos do Perfect World (race/cls/gender) → nome legível + cor de classe.
-// Códigos de race/cls baseados nos padrões clássicos do PW International.
+// Mapeamentos de race/cls para o painel Lovable.
+// Esta base acompanha o catalogo atual do api_cls.php, incluindo
+// as classes extras da variante PWServer 1.7.8 local.
 
 export interface RaceInfo {
   name: string;
@@ -8,75 +9,100 @@ export interface RaceInfo {
 
 export interface ClassInfo {
   name: string;
-  /** Cor base (HSL) usada como aura/borda do avatar. */
   color: string;
   short: string;
 }
 
 const C = {
-  warrior: { color: "0 72% 55%", short: "GUE" }, // vermelho
-  mage: { color: "260 78% 65%", short: "MAG" }, // roxo
-  archer: { color: "140 60% 50%", short: "ARQ" }, // verde
-  cleric: { color: "45 95% 60%", short: "CLE" }, // dourado
-  werebeast: { color: "20 75% 55%", short: "BES" }, // laranja
-  werefox: { color: "320 65% 60%", short: "FOX" }, // rosa
-  assassin: { color: "280 50% 45%", short: "ASS" }, // roxo escuro
-  psychic: { color: "200 70% 55%", short: "PSI" }, // azul
-  seeker: { color: "30 80% 55%", short: "SEE" },
-  mystic: { color: "150 55% 50%", short: "MYS" },
-  duskblade: { color: "350 60% 45%", short: "DUS" },
-  stormbringer: { color: "210 65% 55%", short: "STO" },
+  guerreiro: { color: "0 72% 55%", short: "GUE" },
+  mago: { color: "260 78% 65%", short: "MAG" },
+  espiritualista: { color: "200 70% 55%", short: "ESP" },
+  feiticeira: { color: "320 65% 60%", short: "FEI" },
+  barbaro: { color: "20 75% 55%", short: "BAR" },
+  mercenario: { color: "280 50% 45%", short: "MER" },
+  arqueiro: { color: "140 60% 50%", short: "ARQ" },
+  sacerdote: { color: "45 95% 60%", short: "SAC" },
+  arcano: { color: "30 80% 55%", short: "ARC" },
+  mistico: { color: "150 55% 50%", short: "MIS" },
+  retalhador: { color: "350 60% 45%", short: "RET" },
+  tormentador: { color: "210 65% 55%", short: "TOR" },
+  atirador: { color: "190 70% 52%", short: "ATI" },
+  paladino: { color: "42 88% 58%", short: "PAL" },
+  andarilho: { color: "95 58% 45%", short: "AND" },
 } as const;
 
-// race 0 = Humano, 1 = Elfo (Wing Elf), 2 = Untamed, 3 = Tideborn, 4 = Earthguard, 5 = Nightshade
-// cls dentro de cada race segue ordem padrão.
 const RACES: Record<number, RaceInfo> = {
   0: {
     name: "Humano",
     classes: {
-      0: { name: "Guerreiro", ...C.warrior },
-      1: { name: "Mágico", ...C.mage },
+      0: { name: "Guerreiro", ...C.guerreiro },
+      1: { name: "Mago", ...C.mago },
     },
   },
   1: {
-    name: "Elfo",
+    name: "Alada",
     classes: {
-      2: { name: "Arqueiro", ...C.archer },
-      3: { name: "Sacerdote", ...C.cleric },
+      6: { name: "Arqueiro", ...C.arqueiro },
+      7: { name: "Sacerdote", ...C.sacerdote },
     },
   },
   2: {
-    name: "Untamed",
+    name: "Selvagem",
     classes: {
-      4: { name: "Lupina", ...C.werebeast },
-      5: { name: "Felina", ...C.werefox },
+      3: { name: "Feiticeira", ...C.feiticeira },
+      4: { name: "Barbaro", ...C.barbaro },
     },
   },
   3: {
-    name: "Tideborn",
+    name: "Abissal",
     classes: {
-      6: { name: "Assassino", ...C.assassin },
-      7: { name: "Aquariano", ...C.psychic },
+      2: { name: "Espiritualista", ...C.espiritualista },
+      5: { name: "Mercenario", ...C.mercenario },
     },
   },
   4: {
-    name: "Earthguard",
+    name: "Guardiao",
     classes: {
-      8: { name: "Buscador", ...C.seeker },
-      9: { name: "Místico", ...C.mystic },
+      8: { name: "Arcano", ...C.arcano },
+      9: { name: "Mistico", ...C.mistico },
     },
   },
   5: {
-    name: "Nightshade",
+    name: "Sombria",
     classes: {
-      10: { name: "Lâmina Crepuscular", ...C.duskblade },
-      11: { name: "Conjuradora", ...C.stormbringer },
+      10: { name: "Retalhador", ...C.retalhador },
+      11: { name: "Tormentador", ...C.tormentador },
+    },
+  },
+  6: {
+    name: "Serafins",
+    classes: {
+      12: { name: "Atirador", ...C.atirador },
+      13: { name: "Paladino", ...C.paladino },
+    },
+  },
+  7: {
+    name: "Andarilio",
+    classes: {
+      14: { name: "Andarilho", ...C.andarilho },
     },
   },
 };
 
-const FALLBACK_CLASS: ClassInfo = { name: "Desconhecida", color: "0 0% 50%", short: "???" };
+const FALLBACK_CLASS: ClassInfo = {
+  name: "Desconhecida",
+  color: "0 0% 50%",
+  short: "???",
+};
+
 const FALLBACK_RACE = "Desconhecida";
+
+export function getKnownRaceIds(): number[] {
+  return Object.keys(RACES)
+    .map((value) => Number(value))
+    .filter((value) => Number.isFinite(value))
+    .sort((a, b) => a - b);
+}
 
 export function getRaceName(race: number): string {
   return RACES[race]?.name ?? FALLBACK_RACE;
@@ -87,12 +113,11 @@ export function getClassInfo(race: number, cls: number): ClassInfo {
 }
 
 export function getGenderInfo(gender: number): { label: string; symbol: string } {
-  if (gender === 0) return { label: "Masculino", symbol: "♂" };
-  if (gender === 1) return { label: "Feminino", symbol: "♀" };
-  return { label: "—", symbol: "•" };
+  if (gender === 0) return { label: "Masculino", symbol: "\u2642" };
+  if (gender === 1) return { label: "Feminino", symbol: "\u2640" };
+  return { label: "-", symbol: "\u2022" };
 }
 
-/** Iniciais para o avatar (até 2 letras). */
 export function getInitials(name: string): string {
   if (!name) return "??";
   const parts = name.trim().split(/\s+/);

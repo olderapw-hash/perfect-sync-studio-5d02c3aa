@@ -42,6 +42,7 @@ export const RolePersonagemTab = () => {
       return;
     }
 
+    loadingRef.current = true;
     setLoading(true);
     setError(null);
     setEntry(null);

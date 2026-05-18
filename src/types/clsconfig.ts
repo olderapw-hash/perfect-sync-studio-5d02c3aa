@@ -180,4 +180,12 @@ export interface ClsconfigResponse {
   classes: ApiClass[];
   /** IDs das classes que realmente possuem entries no payload. */
   used_classes: number[];
+  /** Roleids realmente devolvidos pelo VPS atual, agrupados por cls. */
+  roleids_by_cls?: Record<number, number[]>;
+  /** Melhor roleid descoberto por cls no payload atual do proxy. */
+  primary_roleid_by_cls?: Record<number, number>;
+  /** Roleids disponÃ­veis no payload atual do proxy. */
+  available_roleids?: number[];
+  /** Classes do catÃ¡logo da API sem template retornado agora. */
+  missing_class_ids?: number[];
 }

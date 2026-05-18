@@ -7,6 +7,7 @@ import {
   AlertCircle,
   Archive,
   Database,
+  Info,
   Loader2,
   RefreshCw,
   Search,
@@ -18,12 +19,24 @@ import { HistoryDrawer } from "@/components/admin/HistoryDrawer";
 import { BackupsDialog } from "@/components/admin/BackupsDialog";
 import { ItemCatalogAdvancedDialog } from "@/components/admin/ItemCatalogAdvancedDialog";
 import { ItemCatalogManager } from "@/components/admin/ItemCatalogManager";
+import type { ApiClass } from "@/types/clsconfig";
 
 const TemplatesPage = () => {
   const { data, raw, loading, error, reload } = useClsconfig();
   const [selected, setSelected] = useState<string | null>(null);
   const [backupsOpen, setBackupsOpen] = useState(false);
   const [searchItemOpen, setSearchItemOpen] = useState(false);
+  const classesById = new Map((data?.classes ?? []).map((cls) => [cls.id, cls]));
+  const missingClasses = (data?.missing_class_ids ?? [])
+    .map((id) => classesById.get(id))
+    .filter((value): value is ApiClass => Boolean(value));
+  const discoveredRoleidLines = Object.entries(data?.roleids_by_cls ?? {})
+    .sort((a, b) => Number(a[0]) - Number(b[0]))
+    .map(([cls, roleids]) => {
+      const apiClass = classesById.get(Number(cls));
+      const label = apiClass ? `${apiClass.name} (cls ${cls})` : `cls ${cls}`;
+      return `${label}: ${roleids.join(", ")}`;
+    });
 
   useEffect(() => {
     if (data?.entries.length && !selected) {
@@ -42,6 +55,19 @@ const TemplatesPage = () => {
           <Search className="h-3.5 w-3.5 text-primary" />
           Templates CLS
         </div>
+        {data && (
+          <div className="border-b border-border bg-background/30 px-3 py-2 text-[11px] text-muted-foreground">
+            <div>
+              Proxy: <strong>{data.entries.length}</strong> template(s) carregado(s) de{" "}
+              <strong>{data.classes.length}</strong> classe(s) no catÃ¡logo.
+            </div>
+            {data.available_roleids && data.available_roleids.length > 0 && (
+              <div className="mt-1 font-mono text-[10px]">
+                roleids disponÃ­veis: {data.available_roleids.join(", ")}
+              </div>
+            )}
+          </div>
+        )}
         <div className="flex-1 overflow-y-auto">
           <ClsconfigList
             entries={data?.entries ?? []}
@@ -95,6 +121,35 @@ const TemplatesPage = () => {
         </div>
 
         <section className="flex-1 overflow-hidden">
+          {!loading && !error && data && (
+            <div className="border-b border-border bg-amber-500/5 px-4 py-3">
+              <div className="flex items-start gap-2 text-sm">
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                <div className="min-w-0 space-y-1">
+                  <div className="font-semibold text-foreground">
+                    DiagnÃ³stico do clsconfig-proxy
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    O hook mostra apenas os templates que o VPS devolve agora pelo proxy. Se uma
+                    classe nÃ£o aparece aqui, ainda falta template correspondente no servidor ou o
+                    <code className="mx-1 font-mono">clsconfig_template_roleids</code>
+                    da API nÃ£o inclui o roleid dela.
+                  </div>
+                  {missingClasses.length > 0 && (
+                    <div className="text-xs text-amber-300">
+                      Classes sem template retornado agora:{" "}
+                      {missingClasses.map((cls) => `${cls.name} (cls ${cls.id})`).join(", ")}
+                    </div>
+                  )}
+                  {discoveredRoleidLines.length > 0 && (
+                    <pre className="overflow-x-auto rounded-md bg-background/60 p-2 font-mono text-[10px] text-foreground/80">
+                      {discoveredRoleidLines.join("\n")}
+                    </pre>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
           {error ? (
             <div className="m-6 overflow-auto rounded-xl border border-destructive/40 bg-destructive/10 p-6 text-sm text-destructive">
               <div className="flex items-center gap-2 font-semibold">

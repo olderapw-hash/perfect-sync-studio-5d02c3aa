@@ -694,6 +694,16 @@ export const pwApi = {
       body: params,
     });
   },
+  getPlayerTargetProfile(target: { roleid?: number; userid?: number; name?: string }) {
+    const query: Record<string, string> = {};
+    if (target.roleid != null) query.roleid = String(target.roleid);
+    if (target.userid != null) query.userid = String(target.userid);
+    if (target.name != null && target.name.trim()) query.name = target.name.trim();
+    return callAction<PlayerTargetProfileResponse>("getPlayerTargetProfile", {
+      method: "GET",
+      query,
+    });
+  },
   resolveBulkTargets(body: ResolveBulkTargetsPayload) {
     return callAction<ResolveBulkTargetsResponse>("resolveBulkTargets", {
       method: "POST",

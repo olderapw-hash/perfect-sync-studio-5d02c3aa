@@ -2543,6 +2543,7 @@ export interface OperatorRegistryEntry {
 export interface OperatorRegistryInvalidEntry {
   index?: number;
   reason?: string;
+  error?: string;
   raw?: unknown;
   [key: string]: unknown;
 }

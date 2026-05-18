@@ -694,6 +694,16 @@ export const pwApi = {
       body: params,
     });
   },
+  getPlayerTargetProfile(target: { roleid?: number; userid?: number; name?: string }) {
+    const query: Record<string, string> = {};
+    if (target.roleid != null) query.roleid = String(target.roleid);
+    if (target.userid != null) query.userid = String(target.userid);
+    if (target.name != null && target.name.trim()) query.name = target.name.trim();
+    return callAction<PlayerTargetProfileResponse>("getPlayerTargetProfile", {
+      method: "GET",
+      query,
+    });
+  },
   resolveBulkTargets(body: ResolveBulkTargetsPayload) {
     return callAction<ResolveBulkTargetsResponse>("resolveBulkTargets", {
       method: "POST",
@@ -2832,5 +2842,25 @@ export interface GetBulkScheduleResponse {
   schedule: Record<string, unknown>;
   summary: VpsBulkScheduleSummary;
   schedule_file?: string;
+  error?: string;
+}
+
+export interface PlayerTargetProfile {
+  roleid: number;
+  userid?: number;
+  name?: string;
+  cls?: number;
+  class_name?: string;
+  level?: number;
+  guild?: string;
+  guild_id?: number;
+  online?: boolean;
+  [k: string]: unknown;
+}
+
+export interface PlayerTargetProfileResponse {
+  success: boolean;
+  profile: PlayerTargetProfile;
+  resolved_at?: string;
   error?: string;
 }

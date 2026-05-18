@@ -51,7 +51,6 @@ import {
   Paintbrush,
   RefreshCw,
   Scroll,
-  Search,
   Settings,
   Shield,
   ShieldAlert,
@@ -112,10 +111,6 @@ import {
 import { NoActiveServerState } from "@/components/admin/NoActiveServerState";
 import { EndpointMissingNotice } from "@/components/admin/EndpointMissingNotice";
 import { BulkCommanderTab } from "@/components/admin/BulkCommanderTab";
-import { ItemCatalogAdvancedDialog } from "@/components/admin/ItemCatalogAdvancedDialog";
-import { QuickPunishmentTab } from "@/components/admin/gm/QuickPunishmentTab";
-import { BroadcastScheduleTab } from "@/components/admin/gm/BroadcastScheduleTab";
-import { MeridianTitlesTab } from "@/components/admin/gm/MeridianTitlesTab";
 
 import { useAuth } from "@/hooks/useAuth";
 import { OperatorPermissionsProvider, useOperatorPermissions } from "@/hooks/useOperatorPermissions";
@@ -123,7 +118,6 @@ import { useServers } from "@/hooks/useServers";
 import { useServerPermissions } from "@/hooks/useServerPermissions";
 import { logAuditEvent } from "@/lib/auditLog";
 import { cn } from "@/lib/utils";
-import gmCommanderIcon from "@/assets/gm-commander-icon.png";
 import {
   EndpointMissingError,
   pwApi,
@@ -140,6 +134,7 @@ import {
   type GrantMallCashResponse,
   type MallCashBalanceResponse,
   type MallCashWallet,
+  type PlayerTargetProfile,
   type SecurityActionResponse,
 } from "@/lib/pwApiActions";
 
@@ -330,16 +325,7 @@ const ROLE_LABELS: Record<string, string> = {
   super_admin: "Super Admin",
 };
 
-type TabKey =
-  | "compensation"
-  | "moderation"
-  | "communication"
-  | "permissions"
-  | "bulk"
-  | "punish"
-  | "meridian"
-  | "broadcast"
-  | "history";
+type TabKey = "compensation" | "moderation" | "communication" | "permissions" | "bulk" | "history";
 
 
 const DEFAULT_TAB_ICONS: Record<TabKey, string> = {
@@ -348,9 +334,6 @@ const DEFAULT_TAB_ICONS: Record<TabKey, string> = {
   communication: "MessageSquare",
   permissions: "Shield",
   bulk: "Users",
-  punish: "ShieldAlert",
-  meridian: "Crown",
-  broadcast: "Megaphone",
   history: "History",
 };
 
@@ -501,16 +484,16 @@ function GmCommanderPageInner() {
         <div className="pointer-events-none absolute -left-10 bottom-0 h-40 w-40 rounded-full bg-primary/5 blur-3xl" />
         
         <div className="relative flex flex-wrap items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-purple-500/30 bg-[#050505] ring-1 ring-purple-500/10 transition-transform hover:scale-105">
-            <img src={gmCommanderIcon} alt="GM Commander" className="h-full w-full object-contain" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-purple-500/30 bg-purple-500/10 text-purple-400 ring-1 ring-purple-500/10 transition-transform hover:scale-105">
+            <Wand2 className="h-6 w-6" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-purple-400 shadow-[0_0_12px_-3px_hsl(270_60%_55%/0.3)]">
               <Zap className="h-3 w-3" />
               GM · v1
             </div>
-            <h1 className="truncate text-xl font-extrabold tracking-tight text-foreground uppercase">
-              cOMANDOS gm
+            <h1 className="truncate text-xl font-extrabold tracking-tight text-foreground">
+              GM Commander
             </h1>
             <p className="text-xs leading-relaxed text-muted-foreground">
               Compensação, moderação e comunicação operacional. Toda ação
@@ -570,10 +553,7 @@ function GmCommanderPageInner() {
             {([
               { key: "compensation" as TabKey, label: "Compensação", gateAction: "sendMailItem" },
               { key: "moderation" as TabKey, label: "Moderação", gateAction: "kickRole" },
-              { key: "punish" as TabKey, label: "Punições rápidas", gateAction: "previewQuickPunishment" },
               { key: "communication" as TabKey, label: "Comunicação", gateAction: "sendSystemMessage" },
-              { key: "broadcast" as TabKey, label: "Broadcast agendado", gateAction: "queueBroadcastMessage" },
-              { key: "meridian" as TabKey, label: "Meridiano & Títulos", gateAction: "previewMeridianTitlePreset" },
               { key: "permissions" as TabKey, label: "Permissões GM", gateAction: "grantGmPermission" },
               { key: "bulk" as TabKey, label: "Bulk Commander", gateAction: "queueBulkCommand" },
               { key: "history" as TabKey, label: "Histórico", gateAction: "getGmActionHistory" },
@@ -601,17 +581,8 @@ function GmCommanderPageInner() {
           <TabsContent value="moderation" className="space-y-4">
             <ModerationTab caps={caps} onActed={refreshHistory} isSuperadmin={isSuperadmin} cardVisibility={cardVisibility} onToggleVisibility={toggleCardVisibility} />
           </TabsContent>
-          <TabsContent value="punish" className="space-y-4">
-            <QuickPunishmentTab />
-          </TabsContent>
           <TabsContent value="communication" className="space-y-4">
             <CommunicationTab caps={caps} onActed={refreshHistory} isSuperadmin={isSuperadmin} cardVisibility={cardVisibility} onToggleVisibility={toggleCardVisibility} />
-          </TabsContent>
-          <TabsContent value="broadcast" className="space-y-4">
-            <BroadcastScheduleTab />
-          </TabsContent>
-          <TabsContent value="meridian" className="space-y-4">
-            <MeridianTitlesTab />
           </TabsContent>
           <TabsContent value="permissions" className="space-y-4">
             <GmPermissionsTab caps={caps} onActed={refreshHistory} isSuperadmin={isSuperadmin} cardVisibility={cardVisibility} onToggleVisibility={toggleCardVisibility} />
@@ -643,9 +614,6 @@ const TAB_LABELS: Record<TabKey, string> = {
   communication: "Comunicação",
   permissions: "Permissões GM",
   bulk: "Bulk Commander",
-  punish: "Punições rápidas",
-  meridian: "Meridiano & Títulos",
-  broadcast: "Broadcast agendado",
   history: "Histórico",
 };
 
@@ -1312,7 +1280,6 @@ function SendMailItemCard({
   const [subject, setSubject] = useState("Compensação");
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
-  const [itemPickerOpen, setItemPickerOpen] = useState(false);
 
   const submit = async () => {
     const r = Number(roleid);
@@ -1363,18 +1330,7 @@ function SendMailItemCard({
         <Input value={roleid} onChange={(e) => setRoleid(e.target.value)} placeholder="1024" />
       </FieldRow>
       <FieldRow label="Item ID">
-        <div className="flex gap-1.5">
-          <Input value={itemId} onChange={(e) => setItemId(e.target.value)} placeholder="22272" />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setItemPickerOpen(true)}
-            title="Buscar item por ID ou nome"
-          >
-            <Search className="h-3.5 w-3.5" />
-          </Button>
-        </div>
+        <Input value={itemId} onChange={(e) => setItemId(e.target.value)} placeholder="22272" />
       </FieldRow>
       <FieldRow label="Quantidade">
         <Input
@@ -1399,11 +1355,6 @@ function SendMailItemCard({
         {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
         Enviar item
       </Button>
-      <ItemCatalogAdvancedDialog
-        open={itemPickerOpen}
-        onOpenChange={setItemPickerOpen}
-        onPick={(it) => setItemId(String(it.id))}
-      />
     </GmCard>
   );
 }
@@ -2908,14 +2859,19 @@ function GmPermissionsTab({
 } & VisibilityProps) {
   const toast = useFeedback();
   const { active } = useServers();
+  const [lookup, setLookup] = useState<{ kind: "name" | "userid" | "roleid"; value: string }>(
+    { kind: "name", value: "" },
+  );
   const [target, setTarget] = useState<{ kind: "userid" | "roleid"; value: string }>(
     { kind: "userid", value: "" },
   );
   const [reason, setReason] = useState("gm-permission-update");
   const [state, setState] = useState<GmPermissionStateResponse | null>(null);
+  const [resolvedProfile, setResolvedProfile] = useState<PlayerTargetProfile | null>(null);
   const [catalogRules, setCatalogRules] = useState<GmPermissionRule[]>(FALLBACK_RULE_CATALOG);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(false);
+  const [resolving, setResolving] = useState(false);
   const [busy, setBusy] = useState(false);
   const [missing, setMissing] = useState(false);
   const [lastResult, setLastResult] = useState<GmPermissionMutationResponse | null>(null);
@@ -2951,6 +2907,13 @@ function GmPermissionsTab({
 
   const summary: GmPermissionSummary = state?.permission_summary ?? {};
 
+  const applyPermissionState = useCallback((res: GmPermissionStateResponse) => {
+    setState(res);
+    const cur = res.permission_state?.current_rules ?? res.current_rules ?? [];
+    setSelected(new Set(cur));
+    if (res.rule_catalog) setCatalogRules(mergeRuleCatalog(res.rule_catalog));
+  }, []);
+
   const loadState = useCallback(async () => {
     const v = Number(target.value);
     if (!v) {
@@ -2973,6 +2936,105 @@ function GmPermissionsTab({
       setLoading(false);
     }
   }, [target]);
+
+  const consultResolvedTarget = useCallback(
+    async (nextTarget: { kind: "userid" | "roleid"; value: string }) => {
+      const v = Number(nextTarget.value);
+      if (!v) {
+        toast.error(`Informe ${nextTarget.kind} valido`);
+        return;
+      }
+      setLoading(true);
+      setMissing(false);
+      setLastResult(null);
+      try {
+        const res = await pwApi.getGmPermissionState({ [nextTarget.kind]: v });
+        applyPermissionState(res);
+      } catch (e) {
+        if (e instanceof EndpointMissingError) setMissing(true);
+        else toast.error(e instanceof Error ? e.message : String(e));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [applyPermissionState, toast],
+  );
+
+  const pickResolvedTarget = useCallback(
+    (
+      profile: PlayerTargetProfile,
+      preferredKind: "name" | "userid" | "roleid",
+    ): { kind: "userid" | "roleid"; value: string } => {
+      if (preferredKind === "roleid") {
+        return { kind: "roleid", value: String(profile.roleid) };
+      }
+      if (preferredKind === "userid" && profile.userid != null && profile.userid > 0) {
+        return { kind: "userid", value: String(profile.userid) };
+      }
+      if (profile.userid != null && profile.userid > 0) {
+        return { kind: "userid", value: String(profile.userid) };
+      }
+      return { kind: "roleid", value: String(profile.roleid) };
+    },
+    [],
+  );
+
+  const useResolvedTarget = useCallback(
+    async (kind: "userid" | "roleid") => {
+      if (!resolvedProfile) return;
+      if (kind === "userid" && (resolvedProfile.userid == null || resolvedProfile.userid <= 0)) {
+        toast.error("Esse alvo nao expoe userid no perfil resolvido");
+        return;
+      }
+      const nextTarget =
+        kind === "userid"
+          ? { kind: "userid" as const, value: String(resolvedProfile.userid) }
+          : { kind: "roleid" as const, value: String(resolvedProfile.roleid) };
+      setTarget(nextTarget);
+      await consultResolvedTarget(nextTarget);
+    },
+    [consultResolvedTarget, resolvedProfile, toast],
+  );
+
+  const resolveTarget = useCallback(async () => {
+    const raw = lookup.value.trim();
+    if (!raw) {
+      toast.error(
+        lookup.kind === "name"
+          ? "Informe o nick do personagem"
+          : `Informe ${lookup.kind} valido`,
+      );
+      return;
+    }
+
+    const query: { roleid?: number; userid?: number; name?: string } = {};
+    if (lookup.kind === "name") {
+      query.name = raw;
+    } else {
+      const numericValue = Number(raw);
+      if (!numericValue) {
+        toast.error(`Informe ${lookup.kind} valido`);
+        return;
+      }
+      query[lookup.kind] = numericValue;
+    }
+
+    setResolving(true);
+    setMissing(false);
+    setLastResult(null);
+    try {
+      const res = await pwApi.getPlayerTargetProfile(query);
+      const profile = res.profile;
+      setResolvedProfile(profile);
+      const nextTarget = pickResolvedTarget(profile, lookup.kind);
+      setTarget(nextTarget);
+      await consultResolvedTarget(nextTarget);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setResolving(false);
+    }
+  }, [consultResolvedTarget, lookup, pickResolvedTarget, toast]);
 
   const toggleRule = (id: number) => {
     setSelected((prev) => {
@@ -3137,13 +3199,105 @@ function GmPermissionsTab({
                 <CapBadge action="getGmPermissionState" caps={caps} />
               </div>
               <p className="mt-0.5 text-[11px] text-muted-foreground">
-                Espelha o checklist do pwadmin. Consulte por <code>userid</code> ou{" "}
-                <code>roleid</code> e aplique grant/revoke total ou granular.
+                Resolva o alvo por <code>nick</code>, <code>userid</code> ou{" "}
+                <code>roleid</code>. Depois consulte e aplique grant/revoke total ou granular.
               </p>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-[140px_1fr_auto]">
+            <Select
+              value={lookup.kind}
+              onValueChange={(v) =>
+                setLookup((current) => ({ ...current, kind: v as "name" | "userid" | "roleid" }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name">nick</SelectItem>
+                <SelectItem value="userid">userid</SelectItem>
+                <SelectItem value="roleid">roleid</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              value={lookup.value}
+              onChange={(e) => setLookup((current) => ({ ...current, value: e.target.value }))}
+              placeholder={
+                lookup.kind === "name"
+                  ? "Nome do personagem"
+                  : lookup.kind === "userid"
+                    ? "1216"
+                    : "1024"
+              }
+            />
+            <Button onClick={() => void resolveTarget()} disabled={resolving}>
+              {resolving ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Crosshair className="h-3.5 w-3.5" />
+              )}
+              Resolver alvo
+            </Button>
+          </div>
+
+          {resolvedProfile && (
+            <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 px-3 py-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-purple-400">
+                    Alvo resolvido
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
+                    <span>{resolvedProfile.name || `roleid ${resolvedProfile.roleid}`}</span>
+                    {resolvedProfile.online ? (
+                      <Badge variant="outline" className="border-emerald-500/40 text-emerald-400">
+                        online
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-muted-foreground">
+                        offline
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                    <span>
+                      roleid: <code>{resolvedProfile.roleid}</code>
+                    </span>
+                    {resolvedProfile.userid != null && resolvedProfile.userid > 0 && (
+                      <span>
+                        userid: <code>{resolvedProfile.userid}</code>
+                      </span>
+                    )}
+                    {resolvedProfile.class_name && <span>classe: {resolvedProfile.class_name}</span>}
+                    {resolvedProfile.level != null && <span>lvl {resolvedProfile.level}</span>}
+                    {resolvedProfile.guild && <span>cla: {resolvedProfile.guild}</span>}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {resolvedProfile.userid != null && resolvedProfile.userid > 0 && (
+                    <Button
+                      size="sm"
+                      variant={target.kind === "userid" && target.value === String(resolvedProfile.userid) ? "default" : "outline"}
+                      onClick={() => void useResolvedTarget("userid")}
+                    >
+                      Usar userid
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant={target.kind === "roleid" && target.value === String(resolvedProfile.roleid) ? "default" : "outline"}
+                    onClick={() => void useResolvedTarget("roleid")}
+                  >
+                    Usar roleid
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid gap-3 sm:grid-cols-[140px_1fr_auto]">
             <Select
               value={target.kind}

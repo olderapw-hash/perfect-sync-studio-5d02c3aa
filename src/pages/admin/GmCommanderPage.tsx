@@ -329,6 +329,7 @@ type TabKey = "lookup" | "compensation" | "moderation" | "communication" | "perm
 
 
 const DEFAULT_TAB_ICONS: Record<TabKey, string> = {
+  lookup: "Search",
   compensation: "Gift",
   moderation: "Hammer",
   communication: "MessageSquare",

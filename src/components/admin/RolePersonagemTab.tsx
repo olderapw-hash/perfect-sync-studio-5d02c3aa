@@ -95,6 +95,7 @@ export const RolePersonagemTab = () => {
       }
     } finally {
       setLoading(false);
+      loadingRef.current = false;
     }
   };
 

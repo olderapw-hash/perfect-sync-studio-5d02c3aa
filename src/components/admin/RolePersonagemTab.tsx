@@ -122,6 +122,16 @@ export const RolePersonagemTab = () => {
         </div>
       </div>
 
+      {/* Buscar por nick → roleid (auto-carrega) */}
+      <PlayerLookupCard
+        hideResult
+        hint="Resolve nick → roleid e carrega o personagem automaticamente."
+        onResolved={(p) => {
+          setRoleidStr(String(p.roleid));
+          void handleLoad(p.roleid);
+        }}
+      />
+
       {/* Carregar roleid */}
       <section className="rounded-xl border border-border bg-card/40 p-4">
         <header className="mb-3 flex items-center gap-2">

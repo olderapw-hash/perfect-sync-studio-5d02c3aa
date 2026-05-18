@@ -28,6 +28,7 @@ export interface ClsSummary {
   storehouse_items: number;
   /** Nome legível da classe vindo da API (ex: "Guerreiro"). */
   class_name?: string;
+  class_race?: string;
   /** Caminho relativo do ícone da classe (ex: "img/guerreiro.png"). */
   class_icon_path?: string;
 }

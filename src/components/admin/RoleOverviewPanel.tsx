@@ -87,7 +87,7 @@ export const RoleOverviewPanel = ({ template, roleid, online }: Props) => {
   const race = template.base?.race ?? 0;
   const gender = template.base?.gender ?? 0;
   const classInfo = getClassInfo(race, cls);
-  const raceName = getRaceName(race);
+  const raceName = template.summary?.class_race || getRaceName(race);
   const genderInfo = getGenderInfo(gender);
   const className = template.summary?.class_name || classInfo.name;
   const charName = template.summary?.name || template.base?.name || "(sem nome)";

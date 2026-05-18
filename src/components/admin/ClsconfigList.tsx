@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Loader2, Search, ShieldAlert, Users } from "lucide-react";
 import type { ApiClass, ClsEntry } from "@/types/clsconfig";
-import { getClassInfo, getGenderInfo, getInitials, getRaceName } from "@/lib/pwClasses";
+import { getClassInfo, getGenderInfo, getInitials, getKnownRaceIds, getRaceName } from "@/lib/pwClasses";
 import { buildClassIconUrl } from "@/lib/pwIcons";
 import { useCharacterPhoto } from "@/hooks/useCharacterPhoto";
 import { cn } from "@/lib/utils";
@@ -90,7 +90,7 @@ export const ClsconfigList = ({
       list.push({
         id: `cls-${cls}`,
         cls,
-        raceName: getRaceName(s.race),
+        raceName: s.class_race ?? getRaceName(s.race),
         gender: s.gender,
         className: s.class_name ?? `Classe ${cls}`,
         iconPath: s.class_icon_path,
@@ -201,8 +201,7 @@ export const ClsconfigList = ({
 
 /** Resolve a cor da classe a partir do cls id, varrendo o mapa local. */
 const colorForCls = (cls: number): string => {
-  // Tenta nas raças 0..5 — getClassInfo aceita race+cls; usamos a primeira que casa.
-  for (let race = 0; race <= 5; race++) {
+  for (const race of getKnownRaceIds()) {
     const info = getClassInfo(race, cls);
     if (info.short !== "???") return info.color;
   }
@@ -210,7 +209,7 @@ const colorForCls = (cls: number): string => {
 };
 
 const shortForCls = (cls: number): string => {
-  for (let race = 0; race <= 5; race++) {
+  for (const race of getKnownRaceIds()) {
     const info = getClassInfo(race, cls);
     if (info.short !== "???") return info.short;
   }

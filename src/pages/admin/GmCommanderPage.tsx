@@ -111,7 +111,6 @@ import {
 import { NoActiveServerState } from "@/components/admin/NoActiveServerState";
 import { EndpointMissingNotice } from "@/components/admin/EndpointMissingNotice";
 import { BulkCommanderTab } from "@/components/admin/BulkCommanderTab";
-import { PlayerLookupCard } from "@/components/admin/PlayerLookupCard";
 
 import { useAuth } from "@/hooks/useAuth";
 import { OperatorPermissionsProvider, useOperatorPermissions } from "@/hooks/useOperatorPermissions";
@@ -326,11 +325,10 @@ const ROLE_LABELS: Record<string, string> = {
   super_admin: "Super Admin",
 };
 
-type TabKey = "lookup" | "compensation" | "moderation" | "communication" | "permissions" | "bulk" | "history";
+type TabKey = "compensation" | "moderation" | "communication" | "permissions" | "bulk" | "history";
 
 
 const DEFAULT_TAB_ICONS: Record<TabKey, string> = {
-  lookup: "Search",
   compensation: "Gift",
   moderation: "Hammer",
   communication: "MessageSquare",
@@ -553,7 +551,6 @@ function GmCommanderPageInner() {
         <Tabs defaultValue={opPerms.canAction("sendMailItem") ? "compensation" : "history"} className="space-y-5">
           <TabsList className="h-auto flex-wrap gap-1 rounded-xl border border-border/40 bg-card/30 p-1 backdrop-blur-sm">
             {([
-              { key: "lookup" as TabKey, label: "Buscar personagem", gateAction: "getGmActionHistory" },
               { key: "compensation" as TabKey, label: "Compensação", gateAction: "sendMailItem" },
               { key: "moderation" as TabKey, label: "Moderação", gateAction: "kickRole" },
               { key: "communication" as TabKey, label: "Comunicação", gateAction: "sendSystemMessage" },
@@ -578,9 +575,6 @@ function GmCommanderPageInner() {
             )}
           </TabsList>
 
-          <TabsContent value="lookup" className="space-y-4">
-            <PlayerLookupCard hint="Resolve nick → roleid/userid. Use o resultado nas outras abas (Compensação, Moderação, Permissões GM)." />
-          </TabsContent>
           <TabsContent value="compensation" className="space-y-4">
             <CompensationTab caps={caps} onActed={refreshHistory} isSuperadmin={isSuperadmin} cardVisibility={cardVisibility} onToggleVisibility={toggleCardVisibility} />
           </TabsContent>
@@ -615,7 +609,6 @@ function GmCommanderPageInner() {
 /* -------------------------------------------------------------------------- */
 
 const TAB_LABELS: Record<TabKey, string> = {
-  lookup: "Buscar personagem",
   compensation: "Compensação",
   moderation: "Moderação",
   communication: "Comunicação",
@@ -3201,15 +3194,13 @@ function GmPermissionsTab({
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <CardTitle className="text-sm font-extrabold uppercase tracking-wider">
-                  Buscar personagem (nick → roleid)
+                  Permissões GM da conta
                 </CardTitle>
-                <Badge variant="outline" className="border-primary/40 text-primary text-[10px]">
-                  Lookup
-                </Badge>
                 <CapBadge action="getGmPermissionState" caps={caps} />
               </div>
               <p className="mt-0.5 text-[11px] text-muted-foreground">
-                Selecione <strong className="text-foreground">nick</strong> no menu à esquerda, digite o nome do personagem e clique em <strong className="text-foreground">Resolver alvo</strong>. O sistema retorna o <code>roleid</code> e demais dados. Também aceita busca por <code>userid</code> ou <code>roleid</code>.
+                Resolva o alvo por <code>nick</code>, <code>userid</code> ou{" "}
+                <code>roleid</code>. Depois consulte e aplique grant/revoke total ou granular.
               </p>
             </div>
           </div>
@@ -3226,7 +3217,7 @@ function GmPermissionsTab({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="name">nick (nome)</SelectItem>
+                <SelectItem value="name">nick</SelectItem>
                 <SelectItem value="userid">userid</SelectItem>
                 <SelectItem value="roleid">roleid</SelectItem>
               </SelectContent>
@@ -3236,10 +3227,10 @@ function GmPermissionsTab({
               onChange={(e) => setLookup((current) => ({ ...current, value: e.target.value }))}
               placeholder={
                 lookup.kind === "name"
-                  ? "Digite o nick do personagem aqui…"
+                  ? "Nome do personagem"
                   : lookup.kind === "userid"
-                    ? "Ex.: 1216"
-                    : "Ex.: 1024"
+                    ? "1216"
+                    : "1024"
               }
             />
             <Button onClick={() => void resolveTarget()} disabled={resolving}>

@@ -75,6 +75,7 @@ const normTemplate = (raw: unknown): ClsTemplate => {
       equipment_items: num(summary.equipment_items),
       storehouse_items: num(summary.storehouse_items),
       class_name: summary.class_name != null ? str(summary.class_name) : undefined,
+      class_race: summary.class_race != null ? str(summary.class_race) : undefined,
       class_icon_path: summary.class_icon_path != null ? str(summary.class_icon_path) : undefined,
     },
     base: {

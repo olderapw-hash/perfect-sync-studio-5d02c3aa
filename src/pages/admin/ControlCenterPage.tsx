@@ -65,10 +65,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useServers } from "@/hooks/useServers";
 import { useServerPermissions } from "@/hooks/useServerPermissions";
 import {
-  OperatorPermissionsProvider,
-  useOperatorPermissions,
-} from "@/hooks/useOperatorPermissions";
-import {
   EndpointMissingError,
   PwApiActionError,
   pwApi,
@@ -86,6 +82,11 @@ import {
 } from "@/lib/pwApiActions";
 import { logAuditEvent } from "@/lib/auditLog";
 import { cn } from "@/lib/utils";
+import {
+  getOriginalInstanceName,
+  localizeInstanceCategory,
+  localizeInstanceName,
+} from "@/lib/pwWorldLabels";
 import { ServerOperationProgressDrawer } from "@/components/admin/ServerOperationProgressDrawer";
 
 const POLL_MS = 15_000;
@@ -123,25 +124,14 @@ const BACKUP_TYPES: PanelBackupKind[] = [
 /* -------------------------------------------------------------------------- */
 
 export default function ControlCenterPage() {
-  return (
-    <OperatorPermissionsProvider>
-      <ControlCenterPageInner />
-    </OperatorPermissionsProvider>
-  );
-}
-
-function ControlCenterPageInner() {
   const { active } = useServers();
   const { isSuperadmin } = useAuth();
   const { can, loading: permLoading } = useServerPermissions();
-  const { canAction, loading: opLoading } = useOperatorPermissions();
   const [tab, setTab] = useState<"dashboard" | "logs" | "backups" | "watchdog">("dashboard");
 
   if (!active) return <NoActiveServerState />;
-  // Leitura: precisa de view (Supabase) E permissão de ler snapshot na VPS.
-  const allowed =
-    (isSuperadmin || can("view")) && (opLoading || canAction("getControlCenterSnapshot"));
-  if (!permLoading && !opLoading && !allowed) {
+  const allowed = isSuperadmin || can("view");
+  if (!permLoading && !allowed) {
     return (
       <div className="flex h-full items-center justify-center p-6">
         <div className="max-w-md rounded-2xl border border-destructive/40 bg-destructive/10 p-8 text-center">
@@ -552,9 +542,7 @@ function MetricCard({
 function ServerWideOpsPanel({ onChange }: { onChange: () => void }) {
   const { isSuperadmin } = useAuth();
   const { can } = useServerPermissions();
-  const { canAction } = useOperatorPermissions();
-  const canManage =
-    (isSuperadmin || can("manage_servers")) && canAction("startServer");
+  const canManage = isSuperadmin || can("manage_servers");
   const [dryRun, setDryRun] = useState(false);
   const [busy, setBusy] = useState<"start" | "stop" | "restart" | null>(null);
   const [confirm, setConfirm] = useState<"stop" | "restart" | null>(null);
@@ -923,7 +911,7 @@ function InstancesPanel({
   const groups = useMemo(() => {
     const g = new Map<string, ManageableInstance[]>();
     for (const i of items) {
-      const cat = i.category ?? "outras";
+      const cat = localizeInstanceCategory(i.category ?? "outras");
       if (!g.has(cat)) g.set(cat, []);
       g.get(cat)!.push(i);
     }
@@ -975,11 +963,14 @@ function InstancesPanel({
                   <div className="flex flex-wrap gap-1.5">
                     {list.map((i) => {
                       const isRunning = i.running || i.state === "running";
+                      const localizedName = localizeInstanceName(i.code, i.name);
+                      const originalName = getOriginalInstanceName(i.code, i.name);
                       return (
                         <div
                           key={i.code}
                           title={[
-                            i.name && `Nome: ${i.name}`,
+                            localizedName && `Nome: ${localizedName}`,
+                            originalName && `Original: ${originalName}`,
                             i.listen_port && `Porta: ${i.listen_port}`,
                             i.pid && `PID: ${i.pid}`,
                             i.auto_start && "Auto-start",
@@ -1364,8 +1355,7 @@ function LogsTab() {
 function BackupsTab() {
   const { isSuperadmin } = useAuth();
   const { can } = useServerPermissions();
-  const { canAction } = useOperatorPermissions();
-  const canAct = (isSuperadmin || can("manage_servers")) && canAction("backupNow");
+  const canAct = isSuperadmin || can("manage_servers");
   const [filter, setFilter] = useState<PanelBackupKind | "all">("all");
   const [items, setItems] = useState<PanelBackupRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -1671,9 +1661,7 @@ const BACKUP_CRITICAL = new Set<string>(["gamedbd", "mysql", "full"]);
 function WatchdogTab() {
   const { isSuperadmin } = useAuth();
   const { can } = useServerPermissions();
-  const { canAction } = useOperatorPermissions();
-  const canAct =
-    (isSuperadmin || can("manage_servers")) && canAction("saveWatchdogConfig");
+  const canAct = isSuperadmin || can("manage_servers");
   const [status, setStatus] = useState<WatchdogStatusBlock | undefined>();
   const [config, setConfig] = useState<WatchdogConfig | undefined>();
   const [history, setHistory] = useState<WatchdogHistoryEntry[]>([]);

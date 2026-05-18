@@ -3,6 +3,7 @@ import type { ClsTemplate } from "@/types/clsconfig";
 import { Loader2, Save } from "lucide-react";
 import { useMemo, useState } from "react";
 import { summarizeIssues, validateAllItems, type ItemIssue } from "@/lib/validateItem";
+import { formatWorldTagLabel } from "@/lib/pwWorldLabels";
 import { ValidationPanel } from "./ValidationPanel";
 
 interface Props {
@@ -64,7 +65,7 @@ export const SavePreviewDialog = ({
           </Section>
 
           <Section title="Posição">
-            <Row label="World tag" value={s.worldtag} mono />
+            <Row label="Mapa (worldtag)" value={formatWorldTagLabel(s.worldtag)} mono />
             <Row label="X, Y, Z" value={`${s.posx}, ${s.posy}, ${s.posz}`} mono />
           </Section>
 

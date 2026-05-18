@@ -8,6 +8,7 @@ import {
   normalizeClsconfigResponse,
   toNumber,
 } from "@/lib/clsconfig";
+import { formatWorldTagLabel } from "@/lib/pwWorldLabels";
 import type { ClsEntry, ClsStatus, ClsTemplate } from "@/types/clsconfig";
 
 interface Props {
@@ -146,13 +147,13 @@ export const StatusTab = ({ template, entry, onChange, onEntryRefreshed }: Props
             type="button"
             onClick={handleTeleportStarterCity}
             className="inline-flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-smooth hover:bg-primary/20"
-            title={`Define worldtag/posx/posy/posz para a cidade inicial (${STARTER_CITY.posx}, ${STARTER_CITY.posy}, ${STARTER_CITY.posz})`}
+            title={`Define mapa/worldtag e posicao para a cidade inicial (${STARTER_CITY.posx}, ${STARTER_CITY.posy}, ${STARTER_CITY.posz})`}
           >
             <MapPin className="h-3.5 w-3.5" />
             Teleportar para Cidade Inicial
           </button>
           <span className="font-mono text-[11px] text-muted-foreground">
-            worldtag={STARTER_CITY.worldtag} · {STARTER_CITY.posx}, {STARTER_CITY.posy}, {STARTER_CITY.posz}
+            {formatWorldTagLabel(STARTER_CITY.worldtag)} · {STARTER_CITY.posx}, {STARTER_CITY.posy}, {STARTER_CITY.posz}
           </span>
           <button
             type="button"
@@ -165,7 +166,7 @@ export const StatusTab = ({ template, entry, onChange, onEntryRefreshed }: Props
           </button>
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <NumField label="World tag" value={Number(s.worldtag)} onChange={(v) => onChange(setStatus(template, { worldtag: v }))} />
+          <NumField label="Mapa (worldtag)" value={Number(s.worldtag)} onChange={(v) => onChange(setStatus(template, { worldtag: v }))} />
           <NumField label="Pos X" value={Number(s.posx)} step="any" onChange={(v) => onChange(setStatus(template, { posx: v }))} />
           <NumField label="Pos Y" value={Number(s.posy)} step="any" onChange={(v) => onChange(setStatus(template, { posy: v }))} />
           <NumField label="Pos Z" value={Number(s.posz)} step="any" onChange={(v) => onChange(setStatus(template, { posz: v }))} />

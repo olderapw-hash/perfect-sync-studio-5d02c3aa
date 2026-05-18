@@ -58,10 +58,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useServers } from "@/hooks/useServers";
 import { useServerPermissions } from "@/hooks/useServerPermissions";
 import {
-  OperatorPermissionsProvider,
-  useOperatorPermissions,
-} from "@/hooks/useOperatorPermissions";
-import {
   EndpointMissingError,
   PwApiActionError,
   pwApi,
@@ -72,6 +68,14 @@ import { logAuditEvent } from "@/lib/auditLog";
 import { EndpointMissingNotice } from "@/components/admin/EndpointMissingNotice";
 import { ServerOperationProgressDrawer } from "@/components/admin/ServerOperationProgressDrawer";
 import { cn } from "@/lib/utils";
+import {
+  getOriginalInstanceName,
+  localizeInstanceCategory,
+  localizeInstanceName,
+  localizeInstanceScope,
+  localizeInstanceSectionType,
+  localizeInstanceState,
+} from "@/lib/pwWorldLabels";
 
 type InstanceAction = "start" | "stop" | "restart";
 
@@ -95,18 +99,9 @@ function formatCollectedAt(v: string | number): string {
 }
 
 export default function InstancesPage() {
-  return (
-    <OperatorPermissionsProvider>
-      <InstancesPageInner />
-    </OperatorPermissionsProvider>
-  );
-}
-
-function InstancesPageInner() {
   const { active } = useServers();
   const { isSuperadmin } = useAuth();
-  const { can, loading: permLoading } = useServerPermissions();
-  const { canAction, loading: opLoading } = useOperatorPermissions();
+  const { can } = useServerPermissions();
 
   const [instances, setInstances] = useState<ManageableInstance[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -125,10 +120,8 @@ function InstancesPageInner() {
   const [startDialogOpen, setStartDialogOpen] = useState(false);
   const [startSelected, setStartSelected] = useState<Set<string>>(new Set());
 
-  const canManage =
-    (isSuperadmin || can("manage_servers")) && canAction("startInstance");
-  const allowed =
-    (isSuperadmin || can("view")) && (opLoading || canAction("getManageableInstances"));
+  const canManage = isSuperadmin || can("manage_servers");
+  const allowed = isSuperadmin || can("view");
 
   const load = async () => {
     setLoading(true);
@@ -434,7 +427,7 @@ function InstancesPageInner() {
     [stoppedList],
   );
 
-  if (!permLoading && !opLoading && !allowed) {
+  if (!allowed) {
     return (
       <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-6 text-center text-sm text-muted-foreground">
         Você precisa da permissão <strong>view</strong> para acessar Instance Control.
@@ -882,6 +875,8 @@ function InstancesPageInner() {
                 <TableBody>
                   {startableList.map((inst) => {
                     const checked = startSelected.has(inst.code);
+                    const localizedName = localizeInstanceName(inst.code, inst.name);
+                    const originalName = getOriginalInstanceName(inst.code, inst.name);
                     return (
                       <TableRow
                         key={inst.code}
@@ -899,18 +894,22 @@ function InstancesPageInner() {
                           />
                         </TableCell>
                         <TableCell className="py-2">
-                          <p className="text-sm font-semibold text-foreground">
-                            {inst.name || inst.code}
+                          <p
+                            className="text-sm font-semibold text-foreground"
+                            title={originalName ?? undefined}
+                          >
+                            {localizedName || inst.code}
                           </p>
                           <p className="font-mono text-[10px] text-muted-foreground">
                             {inst.code}
+                            {originalName && <> · {originalName}</>}
                           </p>
                         </TableCell>
                         <TableCell className="py-2 font-mono text-[11px] text-muted-foreground">
-                          {inst.category || "—"}
+                          {localizeInstanceCategory(inst.category) || "—"}
                         </TableCell>
                         <TableCell className="py-2 font-mono text-[11px] text-muted-foreground">
-                          {inst.scope || "—"}
+                          {localizeInstanceScope(inst.scope) || "—"}
                         </TableCell>
                         <TableCell className="py-2 font-mono text-[11px] text-foreground">
                           {inst.listen_port > 0 ? `:${inst.listen_port}` : "—"}
@@ -1007,6 +1006,14 @@ function InstanceRow({
   const supported = inst.supported_actions ?? [];
   const selectable = inst.selectable !== false;
   const canAutoStart = inst.configured && selectable && canManage;
+  const localizedName = localizeInstanceName(inst.code, inst.name);
+  const originalName = getOriginalInstanceName(inst.code, inst.name);
+  const localizedSectionType = localizeInstanceSectionType(inst.section_type);
+  const localizedCategory = localizeInstanceCategory(inst.category);
+  const localizedScope = localizeInstanceScope(inst.scope);
+  const localizedState = localizeInstanceState(
+    inst.state || (isRunning ? "running" : "stopped"),
+  );
 
   const stateTone = isRunning
     ? "border-success/50 bg-success/10 text-success"
@@ -1031,25 +1038,29 @@ function InstanceRow({
 
       <TableCell className="py-3">
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-foreground">
-            {inst.name || inst.code}
+          <p
+            className="truncate text-sm font-semibold text-foreground"
+            title={originalName ?? undefined}
+          >
+            {localizedName || inst.code}
           </p>
           <p className="truncate font-mono text-[10px] text-muted-foreground">
             {inst.code}
-            {inst.section_type && <> · {inst.section_type}</>}
+            {originalName && <> · {originalName}</>}
+            {localizedSectionType && <> · {localizedSectionType}</>}
           </p>
         </div>
       </TableCell>
 
       <TableCell className="py-3">
         <span className="font-mono text-[11px] text-muted-foreground">
-          {inst.category || "—"}
+          {localizedCategory || "—"}
         </span>
       </TableCell>
 
       <TableCell className="py-3">
         <span className="font-mono text-[11px] text-muted-foreground">
-          {inst.scope || "—"}
+          {localizedScope || "—"}
         </span>
       </TableCell>
 
@@ -1061,7 +1072,7 @@ function InstanceRow({
           )}
         >
           <span className={cn("h-1.5 w-1.5 rounded-full", dot)} />
-          {inst.state || (isRunning ? "running" : "stopped")}
+          {localizedState}
         </span>
         {inst.pid != null && (
           <p className="mt-1 font-mono text-[10px] text-muted-foreground">

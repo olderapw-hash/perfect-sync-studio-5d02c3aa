@@ -35,6 +35,7 @@ import {
   getInitials,
   getRaceName,
 } from "@/lib/pwClasses";
+import { formatWorldTagLabel } from "@/lib/pwWorldLabels";
 import { useCharacterPhoto } from "@/hooks/useCharacterPhoto";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { ItemSlot } from "./ItemSlot";
@@ -439,7 +440,7 @@ const OverviewPane = ({
         <KV label="Level" value={`${fmt(status?.level)} / ${fmt(status?.level2 ?? 0)}`} mono />
         <KV label="Cultivo" value={fmt(status?.cultivation)} mono />
         <KV label="Reputação (Fama)" value={fmt(status?.reputation)} mono />
-        <KV label="World tag" value={fmt(status?.worldtag)} mono />
+        <KV label="Mapa (worldtag)" value={formatWorldTagLabel(status?.worldtag)} mono />
         <KV
           label="Criado em"
           value={
@@ -464,7 +465,7 @@ const OverviewPane = ({
           value={`${fmt(status?.posx)}, ${fmt(status?.posy)}, ${fmt(status?.posz)}`}
           mono
         />
-        <KV label="World tag" value={fmt(status?.worldtag)} mono />
+        <KV label="Mapa (worldtag)" value={formatWorldTagLabel(status?.worldtag)} mono />
         <KV label="Charactermode" value={fmt(status?.charactermode)} mono />
         <KV
           label="Waypoints"
@@ -716,7 +717,7 @@ const ProgressionPane = ({ template }: { template: ClsTemplate }) => {
         <KV label="Reputação (Fama)" value={fmt(s?.reputation)} mono />
         <KV label="SP" value={fmt(s?.sp)} mono />
         <KV label="PP" value={fmt(s?.pp)} mono />
-        <KV label="Worldtag" value={fmt(s?.worldtag)} mono />
+        <KV label="Mapa (worldtag)" value={formatWorldTagLabel(s?.worldtag)} mono />
       </Card>
 
       <Card title="Tempo de jogo" icon={<TrendingUp className="h-3.5 w-3.5" />}>

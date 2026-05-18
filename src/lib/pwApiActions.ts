@@ -2844,3 +2844,23 @@ export interface GetBulkScheduleResponse {
   schedule_file?: string;
   error?: string;
 }
+
+export interface PlayerTargetProfile {
+  roleid: number;
+  userid?: number;
+  name?: string;
+  cls?: number;
+  class_name?: string;
+  level?: number;
+  guild?: string;
+  guild_id?: number;
+  online?: boolean;
+  [k: string]: unknown;
+}
+
+export interface PlayerTargetProfileResponse {
+  success: boolean;
+  profile: PlayerTargetProfile;
+  resolved_at?: string;
+  error?: string;
+}

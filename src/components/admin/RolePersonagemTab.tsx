@@ -32,9 +32,11 @@ export const RolePersonagemTab = () => {
   const [entry, setEntry] = useState<ClsEntry | null>(null);
   const [online, setOnline] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const loadingRef = useRef(false);
 
-  const handleLoad = async () => {
-    const roleid = Number(roleidStr);
+  const handleLoad = async (override?: number) => {
+    if (loadingRef.current) return;
+    const roleid = override ?? Number(roleidStr);
     if (!Number.isFinite(roleid) || roleid <= 0) {
       toast.error("Informe um roleid válido (> 0)");
       return;

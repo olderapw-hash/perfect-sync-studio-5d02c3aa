@@ -111,6 +111,7 @@ import {
 import { NoActiveServerState } from "@/components/admin/NoActiveServerState";
 import { EndpointMissingNotice } from "@/components/admin/EndpointMissingNotice";
 import { BulkCommanderTab } from "@/components/admin/BulkCommanderTab";
+import { PlayerLookupCard } from "@/components/admin/PlayerLookupCard";
 
 import { useAuth } from "@/hooks/useAuth";
 import { OperatorPermissionsProvider, useOperatorPermissions } from "@/hooks/useOperatorPermissions";
@@ -325,10 +326,11 @@ const ROLE_LABELS: Record<string, string> = {
   super_admin: "Super Admin",
 };
 
-type TabKey = "compensation" | "moderation" | "communication" | "permissions" | "bulk" | "history";
+type TabKey = "lookup" | "compensation" | "moderation" | "communication" | "permissions" | "bulk" | "history";
 
 
 const DEFAULT_TAB_ICONS: Record<TabKey, string> = {
+  lookup: "Search",
   compensation: "Gift",
   moderation: "Hammer",
   communication: "MessageSquare",
@@ -551,6 +553,7 @@ function GmCommanderPageInner() {
         <Tabs defaultValue={opPerms.canAction("sendMailItem") ? "compensation" : "history"} className="space-y-5">
           <TabsList className="h-auto flex-wrap gap-1 rounded-xl border border-border/40 bg-card/30 p-1 backdrop-blur-sm">
             {([
+              { key: "lookup" as TabKey, label: "Buscar personagem", gateAction: "getGmActionHistory" },
               { key: "compensation" as TabKey, label: "Compensação", gateAction: "sendMailItem" },
               { key: "moderation" as TabKey, label: "Moderação", gateAction: "kickRole" },
               { key: "communication" as TabKey, label: "Comunicação", gateAction: "sendSystemMessage" },
@@ -575,6 +578,9 @@ function GmCommanderPageInner() {
             )}
           </TabsList>
 
+          <TabsContent value="lookup" className="space-y-4">
+            <PlayerLookupCard hint="Resolve nick → roleid/userid. Use o resultado nas outras abas (Compensação, Moderação, Permissões GM)." />
+          </TabsContent>
           <TabsContent value="compensation" className="space-y-4">
             <CompensationTab caps={caps} onActed={refreshHistory} isSuperadmin={isSuperadmin} cardVisibility={cardVisibility} onToggleVisibility={toggleCardVisibility} />
           </TabsContent>
@@ -609,6 +615,7 @@ function GmCommanderPageInner() {
 /* -------------------------------------------------------------------------- */
 
 const TAB_LABELS: Record<TabKey, string> = {
+  lookup: "Buscar personagem",
   compensation: "Compensação",
   moderation: "Moderação",
   communication: "Comunicação",

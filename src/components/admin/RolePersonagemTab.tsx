@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AlertTriangle, Loader2, UserCog, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { pwApi, EndpointMissingError } from "@/lib/pwApiActions";
 import { normalizeClsconfigResponse } from "@/lib/clsconfig";
 import type { ClsEntry } from "@/types/clsconfig";
 import { ClsconfigEditor } from "./ClsconfigEditor";
+import { PlayerLookupCard } from "./PlayerLookupCard";
 import { toast } from "sonner";
 
 /**
@@ -31,14 +32,17 @@ export const RolePersonagemTab = () => {
   const [entry, setEntry] = useState<ClsEntry | null>(null);
   const [online, setOnline] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const loadingRef = useRef(false);
 
-  const handleLoad = async () => {
-    const roleid = Number(roleidStr);
+  const handleLoad = async (override?: number) => {
+    if (loadingRef.current) return;
+    const roleid = override ?? Number(roleidStr);
     if (!Number.isFinite(roleid) || roleid <= 0) {
       toast.error("Informe um roleid válido (> 0)");
       return;
     }
 
+    loadingRef.current = true;
     setLoading(true);
     setError(null);
     setEntry(null);
@@ -91,6 +95,7 @@ export const RolePersonagemTab = () => {
       }
     } finally {
       setLoading(false);
+      loadingRef.current = false;
     }
   };
 
@@ -119,6 +124,16 @@ export const RolePersonagemTab = () => {
         </div>
       </div>
 
+      {/* Buscar por nick → roleid (auto-carrega) */}
+      <PlayerLookupCard
+        hideResult
+        hint="Resolve nick → roleid e carrega o personagem automaticamente."
+        onResolved={(p) => {
+          setRoleidStr(String(p.roleid));
+          void handleLoad(p.roleid);
+        }}
+      />
+
       {/* Carregar roleid */}
       <section className="rounded-xl border border-border bg-card/40 p-4">
         <header className="mb-3 flex items-center gap-2">
@@ -143,7 +158,7 @@ export const RolePersonagemTab = () => {
               }}
             />
           </div>
-          <Button onClick={handleLoad} disabled={loading || !roleidStr}>
+          <Button onClick={() => void handleLoad()} disabled={loading || !roleidStr}>
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (

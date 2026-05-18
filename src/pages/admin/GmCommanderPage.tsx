@@ -325,7 +325,7 @@ const ROLE_LABELS: Record<string, string> = {
   super_admin: "Super Admin",
 };
 
-type TabKey = "compensation" | "moderation" | "communication" | "permissions" | "bulk" | "history";
+type TabKey = "lookup" | "compensation" | "moderation" | "communication" | "permissions" | "bulk" | "history";
 
 
 const DEFAULT_TAB_ICONS: Record<TabKey, string> = {

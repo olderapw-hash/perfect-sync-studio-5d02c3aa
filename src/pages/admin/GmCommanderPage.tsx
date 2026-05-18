@@ -552,7 +552,7 @@ function GmCommanderPageInner() {
         <Tabs defaultValue={opPerms.canAction("sendMailItem") ? "compensation" : "history"} className="space-y-5">
           <TabsList className="h-auto flex-wrap gap-1 rounded-xl border border-border/40 bg-card/30 p-1 backdrop-blur-sm">
             {([
-              { key: "lookup" as TabKey, label: "Buscar personagem", gateAction: "getPlayerTargetProfile" },
+              { key: "lookup" as TabKey, label: "Buscar personagem", gateAction: "getGmActionHistory" },
               { key: "compensation" as TabKey, label: "Compensação", gateAction: "sendMailItem" },
               { key: "moderation" as TabKey, label: "Moderação", gateAction: "kickRole" },
               { key: "communication" as TabKey, label: "Comunicação", gateAction: "sendSystemMessage" },

@@ -13,6 +13,10 @@ export const CLS_TO_ROLEID: Record<number, number> = {
   9: 17,
   10: 21,
   11: 22,
+  // Descobertos no clsconfig real da variante PWServer 1.7.8.
+  12: 25,
+  13: 26,
+  14: 29,
 };
 
 export const ROLEID_TO_CLS: Record<number, number> = Object.fromEntries(

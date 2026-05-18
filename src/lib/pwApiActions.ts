@@ -694,6 +694,16 @@ export const pwApi = {
       body: params,
     });
   },
+  getPlayerTargetProfile(target: { roleid?: number; userid?: number; name?: string }) {
+    const query: Record<string, string> = {};
+    if (target.roleid != null) query.roleid = String(target.roleid);
+    if (target.userid != null) query.userid = String(target.userid);
+    if (target.name != null && target.name.trim()) query.name = target.name.trim();
+    return callAction<PlayerTargetProfileResponse>("getPlayerTargetProfile", {
+      method: "GET",
+      query,
+    });
+  },
   resolveBulkTargets(body: ResolveBulkTargetsPayload) {
     return callAction<ResolveBulkTargetsResponse>("resolveBulkTargets", {
       method: "POST",
@@ -853,298 +863,7 @@ export const pwApi = {
       { method: "POST", body },
     );
   },
-
-  /* ─────────── GM Commander v3 — Punições rápidas ─────────── */
-  getQuickPunishmentCatalog() {
-    return callAction<QuickPunishmentCatalogResponse>("getQuickPunishmentCatalog", {
-      method: "GET",
-    });
-  },
-  previewQuickPunishment(body: QuickPunishmentRequest) {
-    return callAction<QuickPunishmentResponse>("previewQuickPunishment", {
-      method: "POST",
-      body,
-    });
-  },
-  executeQuickPunishment(body: QuickPunishmentRequest) {
-    return callAction<QuickPunishmentResponse>("executeQuickPunishment", {
-      method: "POST",
-      body,
-    });
-  },
-
-  /* ─────────── GM Commander v3 — Broadcast agendado ─────────── */
-  queueBroadcastMessage(body: QueueBroadcastMessagePayload) {
-    return callAction<QueueBroadcastMessageResponse>("queueBroadcastMessage", {
-      method: "POST",
-      body,
-    });
-  },
-
-  /* ─────────── Meridiano & Títulos ─────────── */
-  getMeridianTitlePresetCatalog() {
-    return callAction<MeridianTitlePresetCatalogResponse>(
-      "getMeridianTitlePresetCatalog",
-      { method: "GET" },
-    );
-  },
-  previewMeridianTitlePreset(body: MeridianTitlePresetRequest) {
-    return callAction<MeridianTitlePreviewResponse>("previewMeridianTitlePreset", {
-      method: "POST",
-      body,
-    });
-  },
-  applyMeridianTitlePreset(body: MeridianTitlePresetRequest) {
-    return callAction<MeridianTitleApplyResponse>("applyMeridianTitlePreset", {
-      method: "POST",
-      body,
-    });
-  },
 };
-
-/* ─────────── GM Commander v3 — tipos ─────────── */
-
-export type QuickPunishmentPresetId =
-  | "kick_role"
-  | "mute_account_temporary"
-  | "mute_role_temporary"
-  | "ban_account_temporary"
-  | "ban_account_permanent"
-  | "jail"
-  | string;
-
-/** Preset retornado pelo catálogo real da VPS.
- *  Shape oficial: usa `key` + `status` + `duration_required`.
- *  Campos legados (`id`, `state`, `supports_duration`) são opcionais
- *  apenas para compat reversa de leitura. */
-export interface QuickPunishmentPreset {
-  /** Chave canônica (oficial). */
-  key: QuickPunishmentPresetId;
-  label: string;
-  summary?: string;
-  description?: string;
-  underlying_action?: string;
-  target_scope?: "role" | "account" | string;
-  /** Status oficial: "supported" | "contract_only" | "unsupported". */
-  status?: string;
-  /** Role mínimo (hierarquia OperatorRole) exigido para executar. */
-  required_role?: OperatorRole | string;
-  /** Indica se duração é obrigatória (ex.: mute/ban temporário). */
-  duration_required?: boolean;
-  duration_presets_seconds?: number[];
-  default_duration_seconds?: number;
-  supports_kick_online?: boolean;
-  warnings?: string[];
-  /** Compat legado — não usar em código novo. */
-  id?: QuickPunishmentPresetId;
-  state?: string;
-  supports_duration?: boolean;
-  [k: string]: unknown;
-}
-
-export interface QuickPunishmentCatalogResponse {
-  success: boolean;
-  presets?: QuickPunishmentPreset[];
-  /** Presets retornados pelo backend como NÃO suportados/contract_only.
-   *  A UI deve renderizá-los visivelmente bloqueados (ex.: jail). */
-  unsupported_presets?: QuickPunishmentPreset[];
-  warnings?: string[];
-  error?: string;
-}
-
-export interface QuickPunishmentRequest {
-  /** Chave do preset (preset.key do catálogo). */
-  preset: QuickPunishmentPresetId;
-  roleid: number | string;
-  reason: string;
-  duration_seconds?: number;
-  kick_online?: boolean;
-  context?: Record<string, unknown>;
-  dry_run?: boolean;
-}
-
-/** Bloco operacional retornado pela API após preview/execute. */
-export interface QuickPunishmentPlan {
-  underlying_action?: string;
-  target_scope?: string;
-  target?: Record<string, unknown>;
-  duration_seconds?: number;
-  warnings?: string[];
-  [k: string]: unknown;
-}
-
-export interface QuickPunishmentResponse {
-  success: boolean;
-  dry_run?: boolean;
-  /** Preset agora vem como objeto { key, label, ... }. */
-  preset?: { key: QuickPunishmentPresetId; label?: string; [k: string]: unknown };
-  /** Detalhes operacionais (substitui campos top-level antigos). */
-  plan?: QuickPunishmentPlan;
-  resolved?: {
-    roleid?: number;
-    userid?: number | string;
-    account?: string;
-    name?: string;
-  };
-  warnings?: string[];
-  result?: {
-    message?: string;
-    warning?: string;
-    account_ban?: Record<string, unknown>;
-    [k: string]: unknown;
-  };
-  error?: string;
-}
-
-export interface QueueBroadcastMessagePayload {
-  message: string;
-  kind?: string;
-  priority?: string;
-  /** Canal numérico exigido pelo backend (1-255). */
-  channel?: number;
-  /** Estilo ainda não funcional no protocolo — backend trata como metadado. */
-  style?: string;
-  repeat_count?: number;
-  repeat_interval_seconds?: number;
-  schedule_at?: string;
-  context?: Record<string, unknown>;
-  dry_run?: boolean;
-}
-
-export interface QueueBroadcastJob {
-  job_id?: string;
-  schedule_at?: string;
-  not_before_at?: string;
-  index?: number;
-  status?: string;
-  [k: string]: unknown;
-}
-
-export interface QueueBroadcastMessageResponse {
-  success: boolean;
-  dry_run?: boolean;
-  campaign_id?: string;
-  repeat_count?: number;
-  repeat_interval_seconds?: number;
-  schedule_at?: string;
-  schedule_timezone?: string;
-  not_before_at?: string;
-  jobs?: QueueBroadcastJob[];
-  context?: Record<string, unknown>;
-  warnings?: string[];
-  error?: string;
-}
-
-/* ─────────── Meridiano & Títulos — tipos ─────────── */
-
-export type MeridianTitlePresetId =
-  | "full_meridian"
-  | "full_titles"
-  | "full_meridian_titles"
-  | "reset_meridian"
-  | "reset_titles"
-  | "reset_meridian_titles"
-  | string;
-
-export type MeridianTargetMode = "role" | "cls_template";
-
-/** Preset retornado pelo gateway real (api_cls_meridian_titles.php).
- *  Usa `key` como identificador canônico e expõe `baseline_source`. */
-export interface MeridianTitlePresetMeta {
-  key: MeridianTitlePresetId;
-  label: string;
-  summary?: string;
-  kind?: "full" | "reset" | string;
-  scope?: "meridian" | "titles" | "meridian_titles" | string;
-  baseline_source?: string;
-  warnings?: string[];
-  /** Compat legado — não usar em código novo. */
-  id?: MeridianTitlePresetId;
-  [k: string]: unknown;
-}
-
-/** Template de classe retornado pelo catálogo. Identificado por `roleid`. */
-export interface MeridianClsTemplateMeta {
-  roleid: number | string;
-  label?: string;
-  cls?: number;
-  /** Compat legado. */
-  id?: string | number;
-  [k: string]: unknown;
-}
-
-export interface MeridianTitlePresetCatalogResponse {
-  success: boolean;
-  presets?: MeridianTitlePresetMeta[];
-  target_modes?: MeridianTargetMode[];
-  cls_templates?: MeridianClsTemplateMeta[];
-  warnings?: string[];
-  error?: string;
-}
-
-export interface MeridianTitlePresetRequest {
-  /** Chave canônica (preset.key). */
-  preset: MeridianTitlePresetId;
-  target_mode: MeridianTargetMode;
-  /** Para target_mode="role" → roleid do personagem.
-   *  Para target_mode="cls_template" → roleid do template (NÃO usar cls_template_id). */
-  roleid?: number | string;
-  kick_online?: boolean;
-  context?: Record<string, unknown>;
-}
-
-export interface MeridianDiffBlock {
-  current?: Record<string, unknown> | unknown[];
-  after?: Record<string, unknown> | unknown[];
-  would_change?: boolean;
-  changed_fields?: string[];
-  baseline?: Record<string, unknown> | unknown[];
-  baseline_source?: string;
-  [k: string]: unknown;
-}
-
-/** Bloco target devolvido pelo backend — contém `target_mode`. */
-export interface MeridianTargetBlock {
-  target_mode?: MeridianTargetMode;
-  roleid?: number | string;
-  cls?: number;
-  [k: string]: unknown;
-}
-
-export interface MeridianTitlePreviewResponse {
-  success: boolean;
-  /** Preset retornado pode vir como objeto { key, label, baseline_source, ... }
-   *  ou (compat) como string. */
-  preset?:
-    | { key: MeridianTitlePresetId; label?: string; baseline_source?: string; [k: string]: unknown }
-    | MeridianTitlePresetId;
-  target?: MeridianTargetBlock;
-  /** Shape REAL do gateway: blocos top-level. */
-  current?: Record<string, unknown> | unknown[];
-  after?: Record<string, unknown> | unknown[];
-  baseline?: Record<string, unknown> | unknown[];
-  would_change?: boolean;
-  changed_fields?: string[];
-  baseline_source?: string;
-  /** Compat com versões antigas que aninhavam tudo em `diff`. */
-  diff?: MeridianDiffBlock;
-  warnings?: string[];
-  error?: string;
-}
-
-export interface MeridianTitleApplyResponse {
-  success: boolean;
-  preset?:
-    | { key: MeridianTitlePresetId; label?: string; baseline_source?: string; [k: string]: unknown }
-    | MeridianTitlePresetId;
-  target?: MeridianTargetBlock;
-  changed?: boolean;
-  save?: Record<string, unknown>;
-  session_kick?: Record<string, unknown> | boolean;
-  audit_file?: string;
-  warnings?: string[];
-  error?: string;
-}
 
 /* ─────────── Rank PvP — tipos ─────────── */
 
@@ -2502,6 +2221,7 @@ export interface WatchdogCheckResponse {
 
 export interface BulkSelectionParams {
   roleids?: number[];
+  userids?: number[];
   names?: string[];
   guild_id?: number;
   guild_ids?: number[];
@@ -2534,6 +2254,26 @@ export interface PlayerDirectoryResponse {
   warnings?: string[];
   online_diagnostics?: Record<string, number>;
   capabilities?: Record<string, boolean>;
+  error?: string;
+}
+
+export interface PlayerTargetProfile {
+  roleid: number;
+  userid?: number;
+  name?: string;
+  cls?: number;
+  class_name?: string;
+  level?: number;
+  guild?: string;
+  guild_id?: number;
+  online?: boolean;
+  [k: string]: unknown;
+}
+
+export interface PlayerTargetProfileResponse {
+  success: boolean;
+  profile: PlayerTargetProfile;
+  resolved_at?: string;
   error?: string;
 }
 
@@ -2800,30 +2540,9 @@ export interface OperatorRegistryEntry {
   allowed_ips?: string[];
 }
 
-export interface OperatorRoleMeta {
-  label: string;
-  rank: number;
-  description?: string;
-}
-
-export interface OperatorRegistryInvalidEntry {
-  raw: unknown;
-  error: string;
-}
-
 export interface OperatorRegistryResponse {
   success: boolean;
   operators: OperatorRegistryEntry[];
-  /** Lista de roles conhecidas pela VPS (ordem por rank). */
-  roles?: OperatorRole[];
-  /** Metadados por role (label, rank, descrição). */
-  role_meta?: Partial<Record<OperatorRole, OperatorRoleMeta>>;
-  /** Entradas inválidas detectadas no operators.json. */
-  invalid_entries?: OperatorRegistryInvalidEntry[];
-  /** Caminho absoluto do operators.json carregado. */
-  registry_file?: string;
-  /** Última modificação detectada (ISO). */
-  updated_at?: string;
   error?: string;
 }
 

@@ -578,6 +578,9 @@ function GmCommanderPageInner() {
             )}
           </TabsList>
 
+          <TabsContent value="lookup" className="space-y-4">
+            <PlayerLookupCard hint="Resolve nick → roleid/userid. Use o resultado nas outras abas (Compensação, Moderação, Permissões GM)." />
+          </TabsContent>
           <TabsContent value="compensation" className="space-y-4">
             <CompensationTab caps={caps} onActed={refreshHistory} isSuperadmin={isSuperadmin} cardVisibility={cardVisibility} onToggleVisibility={toggleCardVisibility} />
           </TabsContent>

@@ -3194,13 +3194,15 @@ function GmPermissionsTab({
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <CardTitle className="text-sm font-extrabold uppercase tracking-wider">
-                  Permissões GM da conta
+                  Buscar personagem (nick → roleid)
                 </CardTitle>
+                <Badge variant="outline" className="border-primary/40 text-primary text-[10px]">
+                  Lookup
+                </Badge>
                 <CapBadge action="getGmPermissionState" caps={caps} />
               </div>
               <p className="mt-0.5 text-[11px] text-muted-foreground">
-                Resolva o alvo por <code>nick</code>, <code>userid</code> ou{" "}
-                <code>roleid</code>. Depois consulte e aplique grant/revoke total ou granular.
+                Selecione <strong className="text-foreground">nick</strong> no menu à esquerda, digite o nome do personagem e clique em <strong className="text-foreground">Resolver alvo</strong>. O sistema retorna o <code>roleid</code> e demais dados. Também aceita busca por <code>userid</code> ou <code>roleid</code>.
               </p>
             </div>
           </div>
@@ -3217,7 +3219,7 @@ function GmPermissionsTab({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="name">nick</SelectItem>
+                <SelectItem value="name">nick (nome)</SelectItem>
                 <SelectItem value="userid">userid</SelectItem>
                 <SelectItem value="roleid">roleid</SelectItem>
               </SelectContent>
@@ -3227,10 +3229,10 @@ function GmPermissionsTab({
               onChange={(e) => setLookup((current) => ({ ...current, value: e.target.value }))}
               placeholder={
                 lookup.kind === "name"
-                  ? "Nome do personagem"
+                  ? "Digite o nick do personagem aqui…"
                   : lookup.kind === "userid"
-                    ? "1216"
-                    : "1024"
+                    ? "Ex.: 1216"
+                    : "Ex.: 1024"
               }
             />
             <Button onClick={() => void resolveTarget()} disabled={resolving}>

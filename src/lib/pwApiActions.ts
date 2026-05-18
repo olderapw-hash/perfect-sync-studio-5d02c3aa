@@ -2540,9 +2540,28 @@ export interface OperatorRegistryEntry {
   allowed_ips?: string[];
 }
 
+export interface OperatorRegistryInvalidEntry {
+  index?: number;
+  reason?: string;
+  error?: string;
+  raw?: unknown;
+  [key: string]: unknown;
+}
+
+export interface OperatorRoleMeta {
+  label?: string;
+  description?: string;
+  [key: string]: unknown;
+}
+
 export interface OperatorRegistryResponse {
   success: boolean;
   operators: OperatorRegistryEntry[];
+  roles?: OperatorRole[] | null;
+  role_meta?: Partial<Record<OperatorRole, OperatorRoleMeta>>;
+  invalid_entries?: OperatorRegistryInvalidEntry[];
+  registry_file?: string | null;
+  updated_at?: string | null;
   error?: string;
 }
 

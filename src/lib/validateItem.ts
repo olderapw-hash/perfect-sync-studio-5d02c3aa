@@ -304,6 +304,12 @@ export function validateAllItems(template: ClsTemplate): ItemIssue[] {
   );
 
   // task.task_inventory — opcional, lido de forma defensiva.
+  //
+  // Importante: a API atual não expõe uma `capacity` real dessa seção.
+  // Em personagem real, o payload pode vir esparso (ex: itens só nas pos 7 e 9).
+  // Usar `taskInv.length` como capacidade cria falso positivo de save bloqueado.
+  // Por isso aqui validamos estrutura/duplicidade/hex/etc., mas não aplicamos
+  // regra de "fora da capacidade" para task inventory.
   const tplAny = template as unknown as Record<string, unknown>;
   const taskRaw =
     (tplAny.task as Record<string, unknown> | undefined) ??
@@ -315,7 +321,7 @@ export function validateAllItems(template: ClsTemplate): ItemIssue[] {
         section: "task.task_inventory",
         tab: "task",
         label: "Task · Inventário",
-        capacity: Math.max(taskInv.length, 1),
+        capacity: Number.POSITIVE_INFINITY,
       }),
     );
   }

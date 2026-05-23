@@ -157,7 +157,7 @@ const Pricing = () => {
       });
   }, [session?.user?.id]);
 
-  // Bypass: usuário com acesso vai direto pro painel ou onboarding.
+  // Bypass: usuário com acesso vai direto pro painel.
   useEffect(() => {
     if (authLoading || subLoading || serversLoading) return;
     if (!session) return;
@@ -166,10 +166,8 @@ const Pricing = () => {
       return;
     }
     const bypass = isActive || isAdmin || isSuperadmin;
-    if (bypass && active?.onboarding_completed) {
+    if (bypass) {
       navigate("/admin", { replace: true });
-    } else if (bypass && !active?.onboarding_completed) {
-      navigate("/onboarding", { replace: true });
     }
   }, [
     authLoading,
@@ -273,7 +271,7 @@ const Pricing = () => {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-8 sm:py-16">
-        {/* Banner: pagamento confirmado → ir pro onboarding */}
+        {/* Banner: pagamento confirmado → ir pro painel para ativar licença */}
         {hasPaidPix && session && (
           <div className="mb-8 rounded-2xl border-2 border-emerald-500/40 bg-emerald-500/10 p-6 text-center">
             <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/20">
@@ -281,14 +279,14 @@ const Pricing = () => {
             </div>
             <h3 className="text-lg font-extrabold text-emerald-400">Pagamento confirmado!</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Seu plano já está ativo. Configure seu servidor agora.
+              Seu plano já está ativo. Ative sua licença para entrar no painel.
             </p>
             <button
-              onClick={() => navigate("/onboarding", { state: { fromPayment: true } })}
+              onClick={() => navigate("/admin", { state: { fromPayment: true } })}
               className="mt-4 inline-flex items-center gap-2 rounded-md bg-emerald-500 px-8 py-3 text-sm font-bold text-white shadow-lg transition-smooth hover:brightness-110"
             >
               <Server className="h-4 w-4" />
-              Configurar meu servidor
+              Ativar licença e abrir painel
               <ArrowRight className="h-4 w-4" />
             </button>
           </div>
@@ -536,7 +534,7 @@ const Pricing = () => {
           setPixModalOpen(false);
           if (pixStatus === "approved") {
             await refetchSub();
-            navigate("/onboarding", { state: { fromPayment: true } });
+            navigate("/admin", { state: { fromPayment: true } });
           }
           resetPix();
         }}

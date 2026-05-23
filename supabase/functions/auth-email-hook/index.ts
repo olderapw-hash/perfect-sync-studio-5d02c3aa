@@ -198,6 +198,27 @@ async function handleWebhook(req: Request): Promise<Response> {
     )
   }
 
+  // Look up the user's activation key so it can be embedded in the signup email
+  let activationKey: string | undefined
+  if (emailType === 'signup' && payload.data.email) {
+    try {
+      const lookup = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      )
+      const { data: keyData, error: keyErr } = await lookup.rpc('get_user_activation_key', {
+        _email: payload.data.email,
+      })
+      if (keyErr) {
+        console.warn('get_user_activation_key failed', { error: keyErr.message })
+      } else if (keyData) {
+        activationKey = String(keyData)
+      }
+    } catch (e) {
+      console.warn('activation key lookup error', { error: String(e) })
+    }
+  }
+
   // Build template props from payload.data (HookData structure)
   const templateProps = {
     siteName: SITE_NAME,
@@ -208,6 +229,7 @@ async function handleWebhook(req: Request): Promise<Response> {
     email: payload.data.email,
     oldEmail: payload.data.old_email,
     newEmail: payload.data.new_email,
+    activationKey,
   }
 
   // Render React Email to HTML and plain text

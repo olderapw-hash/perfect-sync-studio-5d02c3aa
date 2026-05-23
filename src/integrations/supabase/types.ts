@@ -1720,7 +1720,9 @@ export type Database = {
         }[]
       }
       get_tenant_secret: { Args: { _tenant_id: string }; Returns: string }
+      get_user_activation_key: { Args: { _email: string }; Returns: string }
       get_user_plan_limits: { Args: { _user_id: string }; Returns: Json }
+      grant_admin_for_current_user: { Args: never; Returns: boolean }
       has_active_subscription: {
         Args: { check_env?: string; user_uuid: string }
         Returns: boolean

@@ -213,7 +213,23 @@ Deno.serve(async (req) => {
         .upsert(row, { onConflict: "user_id,device_id" });
       if (upErr) return json({ error: upErr.message }, 500);
 
-      return json({ status: "ok", plan, max_devices: maxDevices });
+      // Confirmação de licença = concede o papel "admin" automaticamente
+      // (qualquer plano: iniciante, pro ou ultimate). Superadmin permanece intacto.
+      let adminGranted = false;
+      try {
+        const { error: roleErr } = await admin
+          .from("user_roles")
+          .upsert({ user_id: userId, role: "admin" }, { onConflict: "user_id,role" });
+        if (roleErr) {
+          console.warn("grant admin role failed", roleErr.message);
+        } else {
+          adminGranted = true;
+        }
+      } catch (e) {
+        console.warn("grant admin role exception", String(e));
+      }
+
+      return json({ status: "ok", plan, max_devices: maxDevices, admin_granted: adminGranted });
     }
 
     if (action === "revoke") {

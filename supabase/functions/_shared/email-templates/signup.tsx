@@ -21,6 +21,7 @@ interface SignupEmailProps {
   siteUrl: string
   recipient: string
   confirmationUrl: string
+  activationKey?: string
 }
 
 export const SignupEmail = ({
@@ -28,6 +29,7 @@ export const SignupEmail = ({
   siteUrl,
   recipient,
   confirmationUrl,
+  activationKey,
 }: SignupEmailProps) => (
   <Html lang="pt-BR" dir="ltr">
     <Head />
@@ -47,15 +49,38 @@ export const SignupEmail = ({
           !
         </Text>
         <Text style={text}>
-          Confirme seu endereço de email (
+          <strong>Seu usuário:</strong>{' '}
           <Link href={`mailto:${recipient}`} style={link}>
             {recipient}
           </Link>
-          ) clicando no botão abaixo:
+        </Text>
+        <Text style={text}>
+          Confirme seu endereço de email clicando no botão abaixo:
         </Text>
         <Button style={button} href={confirmationUrl}>
           Verificar Email
         </Button>
+
+        {activationKey ? (
+          <>
+            <Hr style={divider} />
+            <Heading style={h2}>🔑 Chave de ativação do primeiro acesso</Heading>
+            <Text style={text}>
+              Guarde esta chave em local seguro. Você precisará dela para validar o
+              seu <strong>primeiro login</strong> no painel administrativo, e também
+              para autorizar cada novo dispositivo que usar para acessar a sua conta.
+            </Text>
+            <Section style={keyBox}>
+              <Text style={keyText}>{activationKey}</Text>
+            </Section>
+            <Text style={footer}>
+              Por segurança, nunca enviamos sua senha por email. Use a senha que você
+              cadastrou no momento do registro. Caso a tenha esquecido, utilize a
+              opção "Esqueci minha senha" na tela de login.
+            </Text>
+          </>
+        ) : null}
+
         <Text style={footer}>
           Se você não criou uma conta, pode ignorar este email com segurança.
         </Text>
@@ -100,4 +125,27 @@ const button = {
   textDecoration: 'none',
   border: '1px solid #C6A15B',
 }
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
+const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0', lineHeight: '1.5' }
+const h2 = {
+  fontSize: '16px',
+  fontWeight: 'bold' as const,
+  color: '#7F1D1D',
+  margin: '20px 0 10px',
+}
+const keyBox = {
+  backgroundColor: '#181818',
+  border: '1px solid #C6A15B',
+  borderRadius: '6px',
+  padding: '14px 18px',
+  textAlign: 'center' as const,
+  margin: '12px 0 20px',
+}
+const keyText = {
+  fontFamily: 'Menlo, Consolas, monospace',
+  fontSize: '15px',
+  fontWeight: 'bold' as const,
+  color: '#E0C891',
+  letterSpacing: '1px',
+  margin: 0,
+  wordBreak: 'break-all' as const,
+}

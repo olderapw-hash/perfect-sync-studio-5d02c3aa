@@ -105,13 +105,30 @@ Deno.serve(async (req) => {
       }
 
       // Needs validation → return license token & current active count
-      const { data: license } = await admin
+      let { data: license } = await admin
         .from("licenses")
         .select("license_key, vps_activation_token")
         .or(`created_by.eq.${userId},client_email.eq.${userData.user.email ?? ""}`)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
+
+      // Auto-issue a personal token for users without a license yet (trial/free).
+      if (!license) {
+        const { data: created } = await admin
+          .from("licenses")
+          .insert({
+            created_by: userId,
+            client_name: userData.user.email ?? "Auto",
+            client_email: userData.user.email,
+            plan: "auto",
+            status: "active",
+            notes: "Auto-generated on first device validation",
+          })
+          .select("license_key, vps_activation_token")
+          .maybeSingle();
+        license = created;
+      }
 
       const { data: activeDevices } = await admin
         .from("account_devices")

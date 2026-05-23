@@ -66,6 +66,7 @@ import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import gmCommanderIcon from "@/assets/gm-commander-icon.png";
 import { DeviceValidationGate } from "@/components/admin/DeviceValidationGate";
+import { ServerSetupTutorial } from "@/components/admin/ServerSetupTutorial";
 
 const GmCommanderIcon = ({ className }: { className?: string }) => (
   <img src={gmCommanderIcon} alt="" className={cn("object-contain", className)} />

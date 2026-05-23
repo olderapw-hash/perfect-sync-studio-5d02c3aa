@@ -9,7 +9,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-type Plan = "free" | "pro" | "ultimate";
+type Plan = "free" | "iniciante" | "pro" | "ultimate";
 
 function rand(len: number, alphabet: string) {
   const bytes = crypto.getRandomValues(new Uint8Array(len));
@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
     const rawHours = Number(body?.duration_hours ?? 24);
     const isUnlimited = rawHours === 0;
     const durationHours = isUnlimited ? 0 : Math.max(1, Math.min(24 * 60, rawHours));
-    if (!["free", "pro", "ultimate"].includes(plan)) {
+    if (!["free", "iniciante", "pro", "ultimate"].includes(plan)) {
       return json({ error: "Invalid plan" }, 400);
     }
 

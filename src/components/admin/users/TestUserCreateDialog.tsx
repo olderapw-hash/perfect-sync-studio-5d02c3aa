@@ -10,7 +10,7 @@ interface Props {
   onCreated: () => void;
 }
 
-type Plan = "free" | "pro" | "ultimate";
+type Plan = "free" | "iniciante" | "pro" | "ultimate";
 
 interface Created {
   email: string;
@@ -83,8 +83,8 @@ export const TestUserCreateDialog = ({ onClose, onCreated }: Props) => {
               <label className="mb-1.5 block text-[11px] font-semibold uppercase text-muted-foreground">
                 Plano
               </label>
-              <div className="grid grid-cols-3 gap-2">
-                {(["free", "pro", "ultimate"] as Plan[]).map((p) => (
+              <div className="grid grid-cols-2 gap-2">
+                {(["free", "iniciante", "pro", "ultimate"] as Plan[]).map((p) => (
                   <button
                     key={p}
                     onClick={() => setPlan(p)}

@@ -13,16 +13,17 @@ interface Props {
   onSaved: () => void;
 }
 
-type Plan = "free" | "pro" | "ultimate";
+type Plan = "free" | "iniciante" | "pro" | "ultimate";
 
 const PLAN_LABELS: Record<Plan, string> = {
   free: "Free (sem assinatura)",
+  iniciante: "Iniciante — acesso inicial pago",
   pro: "Pro — gestão de personagens",
   ultimate: "Ultimate — tudo liberado",
 };
 
 export const UserPlanDialog = ({ userId, email, currentPlan, onClose, onSaved }: Props) => {
-  const initial: Plan = (["free", "pro", "ultimate"] as Plan[]).includes(currentPlan as Plan)
+  const initial: Plan = (["free", "iniciante", "pro", "ultimate"] as Plan[]).includes(currentPlan as Plan)
     ? (currentPlan as Plan)
     : "free";
   const [plan, setPlan] = useState<Plan>(initial);
@@ -77,8 +78,8 @@ export const UserPlanDialog = ({ userId, email, currentPlan, onClose, onSaved }:
         <div className="space-y-3">
           <div>
             <label className="mb-1 block text-xs font-semibold text-muted-foreground">Plano</label>
-            <div className="grid grid-cols-3 gap-2">
-              {(["free", "pro", "ultimate"] as Plan[]).map((p) => (
+            <div className="grid grid-cols-2 gap-2">
+              {(["free", "iniciante", "pro", "ultimate"] as Plan[]).map((p) => (
                 <button
                   key={p}
                   onClick={() => setPlan(p)}

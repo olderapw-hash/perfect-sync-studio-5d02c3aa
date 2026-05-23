@@ -97,17 +97,12 @@ export const ProtectedRoute = ({
     if (isTrial) {
       return <Navigate to="/trial" replace />;
     }
-    if (!tenant?.onboarding_completed) {
-      return <Navigate to="/onboarding" replace />;
-    }
+    // Onboarding do servidor (configuração do api_cls) deixou de ser bloqueante:
+    // o usuário entra direto no /admin (validando a licença pelo DeviceValidationGate)
+    // e um tutorial dentro do painel guia a configuração do servidor.
   }
-
-  // Admins não-superadmin ainda precisam ter onboarding feito (tenant próprio).
-  if (requireSubscription && isAdmin && !isSuperadmin && !isGuestMember) {
-    if (!tenant?.onboarding_completed) {
-      return <Navigate to="/onboarding" replace />;
-    }
-  }
+  // Idem para admins não-superadmin: permitir acesso ao /admin mesmo sem
+  // tenant.onboarding_completed; o tutorial inline cuida disso.
 
   if (requireAdmin && !canEnterAdmin) {
     const hasPending = pendingInvites.length > 0;

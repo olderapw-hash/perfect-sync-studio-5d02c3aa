@@ -27,10 +27,12 @@ const CheckoutSuccess = () => {
     };
   }, [session, refetch]);
 
-  // Auto-redirect to onboarding once subscription is active
+  // Auto-redirect to /admin once subscription is active. Within /admin the
+  // DeviceValidationGate will prompt the user to paste the license activation
+  // key sent via e-mail. After that, a tutorial overlay guides server setup.
   useEffect(() => {
     if (isActive) {
-      const t = setTimeout(() => navigate("/onboarding", { replace: true }), 1500);
+      const t = setTimeout(() => navigate("/admin", { replace: true }), 1500);
       return () => clearTimeout(t);
     }
   }, [isActive, navigate]);

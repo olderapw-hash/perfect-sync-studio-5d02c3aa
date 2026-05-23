@@ -58,6 +58,7 @@ import SitePage from "./pages/admin/SitePage.tsx";
 import InstallerReleasesPage from "./pages/admin/InstallerReleasesPage.tsx";
 import GmCommanderPage from "./pages/admin/GmCommanderPage.tsx";
 import LicensesPage from "./pages/admin/LicensesPage.tsx";
+import DevicesPage from "./pages/admin/DevicesPage.tsx";
 import OperatorManagementPage from "./pages/admin/OperatorManagementPage.tsx";
 import AccountSettingsPage from "./pages/admin/AccountSettingsPage.tsx";
 import PrivacyPolicy from "./pages/PrivacyPolicy.tsx";

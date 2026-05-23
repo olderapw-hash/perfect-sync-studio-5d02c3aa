@@ -1,7 +1,7 @@
 // Tutorial inline que aparece dentro do /admin quando o usuário ainda não
 // configurou um servidor PW (tenant.onboarding_completed = false). Ele orienta
-// passo a passo a configuração do api_cls.php e leva pro wizard completo em
-// /onboarding. Pode ser dispensado e fica registrado em localStorage por usuário.
+// passo a passo a configuração do api_cls.php e leva o usuário para a gestão
+// de servidores dentro do próprio painel. Pode ser dispensado e fica registrado em localStorage por usuário.
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -102,7 +102,7 @@ export const ServerSetupTutorial = () => {
             Configurar depois
           </Button>
           <Button asChild>
-            <Link to="/onboarding">
+            <Link to="/servers">
               <Rocket className="mr-2 h-4 w-4" />
               Configurar servidor agora
             </Link>

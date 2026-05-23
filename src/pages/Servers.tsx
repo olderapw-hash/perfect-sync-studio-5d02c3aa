@@ -26,6 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useServers, type Server as ServerRow } from "@/hooks/useServers";
 import { useServerPermissions } from "@/hooks/useServerPermissions";
+import { useSubscription } from "@/hooks/useSubscription";
 import { testServerConnection } from "@/lib/serverConnection";
 import { friendlyConnectionError } from "@/lib/connectionErrors";
 import { Button } from "@/components/ui/button";
@@ -56,10 +57,14 @@ const Servers = () => {
   const { session, loading: authLoading } = useAuth();
   const { servers, loading, refetch, setActive } = useServers();
   const { can, loading: permsLoading } = useServerPermissions();
+  const { plan, loading: subLoading } = useSubscription();
   const [editing, setEditing] = useState<ServerRow | null>(null);
   const [creating, setCreating] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  const isPaidServerPlan = plan === "ultimate";
+  const hasServers = servers.length > 0;
 
   useEffect(() => {
     if (!authLoading && !session) navigate("/auth", { replace: true });
@@ -111,7 +116,7 @@ const Servers = () => {
     setDeleteId(null);
   };
 
-  if (authLoading || loading || permsLoading) {
+  if (authLoading || loading || permsLoading || subLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -119,10 +124,41 @@ const Servers = () => {
     );
   }
 
-  // 403 amigável: usuário sem permissão pra administrar servidores.
-  // Owner sempre tem manage_servers. Membros sem essa permissão
-  // só veem o servidor onde já estão (não podem cadastrar novos / remover).
-  if (!can("manage_servers")) {
+  // A página de servidores é área de controle da VPS / multi-servidor.
+  // Usuários do Ultimate podem abrir e cadastrar novos servidores.
+  // Usuários com servidores já existentes também podem entrar para visualizar
+  // e operar o que já possuem. Quem não tem plano compatível nem servidor
+  // existente vê o bloqueio correto de plano, em vez de um falso erro de permissão.
+  if (!hasServers && !isPaidServerPlan) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-6">
+        <div className="max-w-md rounded-2xl border border-destructive/40 bg-card/60 p-8 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/15">
+            <ShieldAlert className="h-6 w-6 text-destructive" />
+          </div>
+          <h1 className="mb-2 text-lg font-extrabold tracking-tight text-foreground">
+            Recurso indisponível no seu plano
+          </h1>
+          <p className="mb-6 text-sm text-muted-foreground">
+            O gerenciamento de VPS e múltiplos servidores faz parte do plano Ultimate.
+            Faça upgrade para cadastrar e administrar servidores por aqui.
+          </p>
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button onClick={() => navigate("/admin")} variant="outline">
+              <ArrowLeft className="mr-2 h-4 w-4" /> Voltar ao painel
+            </Button>
+            <Button onClick={() => navigate("/pricing")}>
+              <Plus className="mr-2 h-4 w-4" /> Fazer upgrade
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 403 amigável: usuário é membro de um servidor, mas não tem a permissão
+  // granular para administrá-lo.
+  if (hasServers && !can("manage_servers")) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-6">
         <div className="max-w-md rounded-2xl border border-destructive/40 bg-card/60 p-8 text-center">

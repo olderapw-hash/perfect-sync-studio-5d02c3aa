@@ -157,14 +157,15 @@ export const ServerPermissionsProvider = ({ children }: { children: ReactNode })
   }, [session?.user?.id, tenantId, isSuperadmin, serversLoading]);
 
   // Clamp por plano (aplicado APÓS o role do servidor):
-  // - trial / free  → TRIAL_MAP (já cobre tudo).
-  // - pro           → bloqueia Server Ops/Instances (manage_servers).
-  // - ultimate      → libera tudo permitido pelo role.
+  // - trial / free / iniciante → mapa enxuto.
+  // - pro                      → bloqueia Server Ops/Instances (manage_servers).
+  // - ultimate                 → libera tudo permitido pelo role.
   // Superadmin escapa do clamp pra continuar testando o painel completo.
   const effectivePermissions = useMemo<PermissionMap>(() => {
     if (isSuperadmin) return permissions;
     if (isTrial) return { ...TRIAL_MAP };
     if (plan === "free") return { ...TRIAL_MAP };
+    if (plan === "iniciante") return { ...TRIAL_MAP };
     if (plan === "pro") {
       return { ...permissions, manage_servers: false };
     }

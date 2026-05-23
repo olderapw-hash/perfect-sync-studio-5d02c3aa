@@ -64,7 +64,7 @@ const Servers = () => {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const isPaidServerPlan = plan === "ultimate";
-  const canAccessServersPage = isPaidServerPlan || servers.length > 0;
+  const hasServers = servers.length > 0;
 
   useEffect(() => {
     if (!authLoading && !session) navigate("/auth", { replace: true });
@@ -129,7 +129,7 @@ const Servers = () => {
   // Usuários com servidores já existentes também podem entrar para visualizar
   // e operar o que já possuem. Quem não tem plano compatível nem servidor
   // existente vê o bloqueio correto de plano, em vez de um falso erro de permissão.
-  if (!canAccessServersPage) {
+  if (!hasServers && !isPaidServerPlan) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-6">
         <div className="max-w-md rounded-2xl border border-destructive/40 bg-card/60 p-8 text-center">
@@ -151,6 +151,30 @@ const Servers = () => {
               <Plus className="mr-2 h-4 w-4" /> Fazer upgrade
             </Button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 403 amigável: usuário é membro de um servidor, mas não tem a permissão
+  // granular para administrá-lo.
+  if (hasServers && !can("manage_servers")) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-6">
+        <div className="max-w-md rounded-2xl border border-destructive/40 bg-card/60 p-8 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/15">
+            <ShieldAlert className="h-6 w-6 text-destructive" />
+          </div>
+          <h1 className="mb-2 text-lg font-extrabold tracking-tight text-foreground">
+            Acesso negado
+          </h1>
+          <p className="mb-6 text-sm text-muted-foreground">
+            Seu acesso não permite gerenciar servidores. Peça ao owner pra
+            ajustar suas permissões.
+          </p>
+          <Button onClick={() => navigate("/admin")} variant="outline">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Voltar ao painel
+          </Button>
         </div>
       </div>
     );

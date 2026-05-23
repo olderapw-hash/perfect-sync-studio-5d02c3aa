@@ -27,10 +27,12 @@ const CheckoutSuccess = () => {
     };
   }, [session, refetch]);
 
-  // Auto-redirect to onboarding once subscription is active
+  // Auto-redirect to /admin once subscription is active. Within /admin the
+  // DeviceValidationGate will prompt the user to paste the license activation
+  // key sent via e-mail. After that, a tutorial overlay guides server setup.
   useEffect(() => {
     if (isActive) {
-      const t = setTimeout(() => navigate("/onboarding", { replace: true }), 1500);
+      const t = setTimeout(() => navigate("/admin", { replace: true }), 1500);
       return () => clearTimeout(t);
     }
   }, [isActive, navigate]);
@@ -89,10 +91,10 @@ const CheckoutSuccess = () => {
             {pollExhausted && (
               <>
                 <Link
-                  to="/onboarding"
+                  to="/admin"
                   className="rounded-md bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:opacity-90"
                 >
-                  Já paguei, continuar pro setup
+                  Já paguei, ativar licença e abrir painel
                 </Link>
                 <p className="flex items-center justify-center gap-1 text-[10px] text-muted-foreground">
                   <Clock className="h-3 w-3" /> Se o pagamento foi confirmado pelo Paddle, sua

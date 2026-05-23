@@ -34,7 +34,7 @@ export function PixCheckoutModal({
   useEffect(() => {
     if (status === "approved") {
       const t = setTimeout(() => {
-        navigate("/onboarding", { state: { fromPayment: true } });
+        navigate("/admin", { state: { fromPayment: true } });
       }, 2000);
       return () => clearTimeout(t);
     }
@@ -90,11 +90,11 @@ export function PixCheckoutModal({
             <button
               onClick={() => {
                 onClose();
-                navigate("/onboarding", { state: { fromPayment: true } });
+                navigate("/admin", { state: { fromPayment: true } });
               }}
               className="mt-4 rounded-md bg-primary px-6 py-2.5 text-sm font-bold text-primary-foreground hover:brightness-110 transition-smooth"
             >
-              Configurar meu servidor
+              Ativar licença e abrir painel
             </button>
           </div>
         ) : isExpired ? (

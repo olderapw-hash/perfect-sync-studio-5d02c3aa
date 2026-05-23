@@ -63,7 +63,10 @@ const Servers = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const isPaidServerPlan = plan === "ultimate";
+  // Qualquer plano pago (iniciante/pro/ultimate) pode acessar a página de
+  // servidores e cadastrar a própria VPS. Free/trial sem servidor pré-existente
+  // continua bloqueado.
+  const isPaidServerPlan = plan === "iniciante" || plan === "pro" || plan === "ultimate";
   const hasServers = servers.length > 0;
 
   useEffect(() => {

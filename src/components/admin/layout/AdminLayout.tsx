@@ -242,7 +242,9 @@ export const AdminLayout = () => {
           <InstallerUpdateBanner />
           <AdminTopBar />
           <main className="flex-1 overflow-hidden">
-            <Outlet />
+            <DeviceValidationGate>
+              <Outlet />
+            </DeviceValidationGate>
           </main>
           <AdminFooter />
         </div>

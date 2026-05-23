@@ -165,7 +165,15 @@ export const ServerPermissionsProvider = ({ children }: { children: ReactNode })
     if (isSuperadmin) return permissions;
     if (isTrial) return { ...TRIAL_MAP };
     if (plan === "free") return { ...TRIAL_MAP };
-    if (plan === "iniciante") return { ...TRIAL_MAP };
+    if (plan === "iniciante") {
+      // Iniciante: pode cadastrar/operar a própria VPS, mas sem automações
+      // avançadas (bulk_apply, clear_sections, restore_backup, save_real_roles,
+      // manage_kits, manage_security, manage_members, view_audit).
+      return {
+        ...TRIAL_MAP,
+        manage_servers: true,
+      };
+    }
     if (plan === "pro") {
       return { ...permissions, manage_servers: false };
     }

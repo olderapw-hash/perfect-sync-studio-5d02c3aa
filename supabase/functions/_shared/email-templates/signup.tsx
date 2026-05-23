@@ -125,4 +125,27 @@ const button = {
   textDecoration: 'none',
   border: '1px solid #C6A15B',
 }
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
+const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0', lineHeight: '1.5' }
+const h2 = {
+  fontSize: '16px',
+  fontWeight: 'bold' as const,
+  color: '#7F1D1D',
+  margin: '20px 0 10px',
+}
+const keyBox = {
+  backgroundColor: '#181818',
+  border: '1px solid #C6A15B',
+  borderRadius: '6px',
+  padding: '14px 18px',
+  textAlign: 'center' as const,
+  margin: '12px 0 20px',
+}
+const keyText = {
+  fontFamily: 'Menlo, Consolas, monospace',
+  fontSize: '15px',
+  fontWeight: 'bold' as const,
+  color: '#E0C891',
+  letterSpacing: '1px',
+  margin: 0,
+  wordBreak: 'break-all' as const,
+}

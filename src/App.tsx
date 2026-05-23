@@ -99,11 +99,7 @@ const App = () => (
                   <Route path="/checkout/success" element={<CheckoutSuccess />} />
                   <Route
                     path="/onboarding"
-                    element={
-                      <ProtectedRoute requireAdmin={false}>
-                        <Onboarding />
-                      </ProtectedRoute>
-                    }
+                    element={<Navigate to="/admin" replace />}
                   />
 
                   {/* /admin — layout compartilhado com sidebar lateral.

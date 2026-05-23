@@ -248,6 +248,7 @@ export const AdminLayout = () => {
           <main className="flex-1 overflow-hidden">
             <DeviceValidationGate>
               <Outlet />
+              <ServerSetupTutorial />
             </DeviceValidationGate>
           </main>
           <AdminFooter />

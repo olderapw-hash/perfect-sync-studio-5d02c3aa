@@ -91,10 +91,10 @@ const CheckoutSuccess = () => {
             {pollExhausted && (
               <>
                 <Link
-                  to="/onboarding"
+                  to="/admin"
                   className="rounded-md bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:opacity-90"
                 >
-                  Já paguei, continuar pro setup
+                  Já paguei, ativar licença e abrir painel
                 </Link>
                 <p className="flex items-center justify-center gap-1 text-[10px] text-muted-foreground">
                   <Clock className="h-3 w-3" /> Se o pagamento foi confirmado pelo Paddle, sua

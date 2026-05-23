@@ -195,6 +195,14 @@ const App = () => (
                         </SuperadminRoute>
                       }
                     />
+                    <Route
+                      path="licenses/devices"
+                      element={
+                        <SuperadminRoute>
+                          <DevicesPage />
+                        </SuperadminRoute>
+                      }
+                    />
 
                     {/* Conta do usuário */}
                     <Route path="account" element={<AccountSettingsPage />} />

@@ -1,121 +1,65 @@
-## Redesign do /admin — Sistema de Cards Premium
+# Validação de licença por dispositivo
 
-Refatoração visual completa da área `/admin` mantendo **100% da lógica, rotas, hooks, permissões, APIs e autenticação intactos**. Foco: padronizar todos os cards e criar uma identidade NOC/Game Server Control Center.
+Vincular cada dispositivo (navegador) a uma licença no primeiro acesso ao painel `/admin`, com limite por plano e gestão dupla (usuário e superadmin).
 
----
+## Como funciona
 
-### Fase 1 — Fundação (design tokens + primitivos)
+1. No primeiro carregamento de `/admin`, o front gera/recupera um `device_id` (UUID em `localStorage`) e o envia para a edge function `check-device`.
+2. Se o dispositivo já estiver registrado → libera o painel e atualiza `last_seen_at`.
+3. Se não estiver → abre um modal **bloqueante** "Validar este dispositivo", pedindo o **token da licença**. O usuário pode copiar o token na própria tela (mostramos via RPC `ensure_my_vps_activation_token`).
+4. Ao colar e confirmar, chama `register-device`, que valida o token, confere o limite do plano e insere a linha em `account_devices`. Em sucesso, o painel libera.
 
-**`src/index.css`** — adicionar novas utilitárias (sem quebrar as existentes):
-- `.admin-card` — fundo glass dark, borda fina bronze/grafite, sombra com profundidade
-- `.admin-card-hover` — brilho sutil vermelho/dourado no hover
-- `.admin-card-danger` — variante para ações destrutivas (borda vinho)
-- `.admin-card-header-grid` — header com ícone + título + badge alinhados
-- `.admin-stat-number` — tipografia premium para KPIs
-- `.admin-divider-bronze` — divisor ornamental
-- Novos tokens: `--admin-surface`, `--admin-surface-elevated`, `--admin-border-subtle`, `--admin-glow-crimson`, `--admin-glow-gold`
+## Limite por plano
 
-**Componentes novos em `src/components/admin/ui/`**:
-- `AdminCard.tsx` — base (variantes: `default | elevated | danger | success`)
-- `AdminCardHeader.tsx` — ícone + título + subtítulo + slot direito (badge/ação)
-- `AdminStatCard.tsx` — KPI (label, valor grande, trend, ícone)
-- `AdminStatusCard.tsx` — serviço/recurso com pill de status
-- `AdminActionCard.tsx` — card com CTA primário
-- `AdminTableCard.tsx` — wrapper para tabelas com toolbar embutida
-- `AdminSectionCard.tsx` — agrupamento de formulários/configs com seções
-- `AdminDangerCard.tsx` — operações sensíveis com confirmação visual
-- `EmptyStateCard.tsx` — vazio elegante (ícone bronze + título + descrição + ação opcional)
-- `PageHeader.tsx` — título de página + breadcrumb + ações
-- `StatusBadge.tsx` — variantes (online/offline/warning/maintenance/critical)
-- `ActionButton.tsx` — botão padronizado (primary/ghost/danger/gold)
-- `DataPanel.tsx` — painel compacto tipo "linha de serviço" (Serviço | Status | Processos | Ação)
-- `SectionCard.tsx` — alias semântico de AdminSectionCard
+| Plano    | Máx. dispositivos |
+| -------- | ----------------- |
+| Free/Trial | 1               |
+| Pro      | 3                 |
+| Ultimate | Ilimitado         |
 
-Todos usando **apenas tokens semânticos do design system** (sem cores hardcoded).
+Se o limite for atingido, o modal mostra a lista de dispositivos atuais e oferece revogar um para liberar espaço.
 
----
+## Gestão
 
-### Fase 2 — Layout geral
+- **Minha Conta** (`/admin/account`): nova seção "Dispositivos autorizados" listando os do próprio usuário (nome inferido do user-agent, IP mascarado, último acesso, token usado mascarado). Botão "Revogar" em cada item. O dispositivo atual fica marcado e não pode revogar a si mesmo sem confirmação extra.
+- **Licenças** (`/admin/licenses`, só superadmin): nova aba/coluna "Dispositivos" por licença, com lista global (usuário, dispositivo, IP, último acesso) e botão de revogar qualquer dispositivo.
 
-**`src/components/admin/layout/AdminLayout.tsx`**:
-- Header superior premium: nome do servidor, status global (dot + label), última sincronização, botão refresh, badge de permissão do operador, quick actions
-- Manter SidebarProvider e estrutura de roteamento existentes
+## Detalhes técnicos
 
-**`src/components/admin/AdminSidebar.tsx`**:
-- Reagrupar itens em: Dashboard / Servidor / GM Commander / Personagens / Eventos / Segurança / Site / Conta
-- Item ativo com glow vermelho discreto + barra lateral bronze
-- Badges pequenos (contadores, "novo")
-- Logo Orphea Core no topo
-- Drawer no mobile (já suportado pelo shadcn sidebar)
+**Tabela nova `account_devices`**
+- `id`, `user_id`, `license_id` (FK licenses), `device_id` (UUID do client), `device_label` (ex.: "Chrome em Windows"), `user_agent`, `ip_address`, `last_seen_at`, `created_at`, `revoked_at`
+- Único por (`user_id`, `device_id`)
+- RLS: usuário lê/deleta os próprios; superadmin lê/deleta todos; insert apenas via service role (edge function)
 
----
+**Edge functions (todas com `verify_jwt = true` para usar `auth.uid()`)**
+- `check-device` → recebe `device_id`; retorna `{ status: "ok" | "needs_validation", license_token?, devices_count?, max_devices?, plan? }`
+- `register-device` → recebe `{ device_id, license_key, label }`; valida o token (deve pertencer ao próprio usuário ou ser válido global), confere limite, insere, retorna `{ ok: true }` ou `{ error, max_devices, devices: [...] }`
+- `revoke-device` → recebe `device_id`; usuário pode revogar os próprios, superadmin pode revogar qualquer um
 
-### Fase 3 — Migração das páginas (apenas wrapping/visual)
+**RPC**
+- `get_user_plan_limits(user_id)` → retorna `{ plan, max_devices }` a partir de `subscriptions`
 
-Substituir `<Card>` / divs genéricas por `AdminCard` + primitivos nas páginas, **sem tocar em lógica/handlers/hooks**:
+**Componente novo `DeviceValidationGate`**
+- Envolto em `AdminLayout` (antes do `<Outlet/>`)
+- Roda `check-device` uma vez por sessão; enquanto retorna `needs_validation`, renderiza modal bloqueante em vez do painel
+- Usa `react-query` com cache de 5min e refetch ao logar
 
-- `ControlCenterPage` → KPIs com `AdminStatCard`, serviços com `DataPanel` (linha compacta), não cards gigantes
-- `GmCommanderPage` → `AdminActionCard` para comunicação/moderação/recompensas; `AdminDangerCard` para ações perigosas
-- `SecurityOverviewPage`, `SecurityHistoryPage`, `SecurityModerationPage`, `SecuritySettingsPage` → `AdminCard` + `AdminTableCard`
-- `ServerLogsPage`, `ServerHistoryPage`, `MailHistoryPage` → `AdminTableCard` com estética de terminal/auditoria
-- `RankPvpPage` → leaderboard com destaque TOP 3 (bronze/prata/dourado discreto)
-- `RolesPage`, `RolesHistoryPage`, `RolesBackupsPage` → `AdminCard` compactos + busca padronizada
-- `MailTemplatesPage`, `ServerMessagesPage` → cards editoriais com preview
-- `AccountSettingsPage`, `SitePage` → `AdminSectionCard` agrupando toggles/forms
-- Demais páginas admin → wrapping consistente
-- Substituir todos os estados vazios por `EmptyStateCard`
+**Arquivos a criar/editar**
+- `supabase/migrations/<timestamp>_account_devices.sql` — tabela, RLS, RPC `get_user_plan_limits`
+- `supabase/functions/check-device/index.ts`
+- `supabase/functions/register-device/index.ts`
+- `supabase/functions/revoke-device/index.ts`
+- `supabase/config.toml` — registra as 3 funções (sem `verify_jwt = false`)
+- `src/hooks/useDeviceId.ts` — gera/lê UUID em `localStorage`
+- `src/hooks/useDeviceValidation.ts` — react-query para `check-device`
+- `src/components/admin/DeviceValidationGate.tsx` — wrapper + modal
+- `src/components/admin/DeviceList.tsx` — lista reutilizável
+- `src/components/admin/layout/AdminLayout.tsx` — envolve `<Outlet/>` com o gate
+- `src/pages/admin/AccountSettingsPage.tsx` — nova seção "Dispositivos"
+- `src/pages/admin/LicensesPage.tsx` — nova coluna/aba "Dispositivos"
 
----
+## Fora de escopo
 
-### Fase 4 — Padronização final
-
-- `PageHeader` em todas as páginas
-- `StatusBadge` substitui badges ad-hoc
-- `ActionButton` para CTAs principais
-- Espaçamentos (`p-5`, `gap-4`), tipografia e tamanhos de ícone uniformes
-
----
-
-### Garantias
-
-- **Nenhuma alteração** em: rotas, hooks (`useAuth`, `useOperatorPermissions`, `useClsconfig`, etc.), libs de API (`pwApiActions`, `mailSend`, etc.), Supabase client, edge functions, schemas, lógica de permissão, formulários, handlers
-- Build sem erros
-- Apenas arquivos UI/JSX tocados; props e contratos dos componentes funcionais preservados
-- Todas as cores via tokens HSL semânticos
-
----
-
-### Detalhes técnicos
-
-```text
-src/
-├── index.css                              (+ tokens e utilitárias .admin-*)
-├── components/admin/
-│   ├── ui/                                NOVO
-│   │   ├── AdminCard.tsx
-│   │   ├── AdminCardHeader.tsx
-│   │   ├── AdminStatCard.tsx
-│   │   ├── AdminStatusCard.tsx
-│   │   ├── AdminActionCard.tsx
-│   │   ├── AdminTableCard.tsx
-│   │   ├── AdminSectionCard.tsx
-│   │   ├── AdminDangerCard.tsx
-│   │   ├── EmptyStateCard.tsx
-│   │   ├── PageHeader.tsx
-│   │   ├── StatusBadge.tsx
-│   │   ├── ActionButton.tsx
-│   │   ├── DataPanel.tsx
-│   │   └── SectionCard.tsx
-│   ├── AdminSidebar.tsx                   (visual + agrupamento)
-│   └── layout/AdminLayout.tsx             (header premium)
-└── pages/admin/*.tsx                       (substituição de Card → AdminCard, sem mexer em lógica)
-```
-
-### Escopo desta entrega
-
-Devido ao tamanho (~25 páginas admin), proponho entregar em **duas etapas dentro desta sessão**:
-
-1. **Agora**: Fundação completa (Fase 1 + 2) + migração das páginas mais visíveis (ControlCenter, GmCommander, SecurityOverview, RankPvp, RolesPage, MailHistory, ServerLogs, AccountSettings).
-2. **Próxima mensagem (se aprovado)**: Migração das páginas restantes seguindo o mesmo padrão.
-
-Confirma que posso seguir assim?
+- Notificação por e-mail quando um novo dispositivo é validado (pode ser adicionado depois).
+- Geolocalização de IP.
+- Bloqueio de IPs/países.

@@ -23,7 +23,9 @@ import {
   ArrowUpRight,
   QrCode,
   Loader2,
+  Laptop,
 } from "lucide-react";
+import { DeviceList } from "@/components/admin/DeviceList";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -82,6 +84,24 @@ const AccountSettingsPage = () => {
 
         {/* Subscription */}
         <SubscriptionCard />
+
+        {/* Devices */}
+        <Card className="border-border/60 bg-card/60 backdrop-blur-md">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Laptop className="h-4 w-4 text-primary" />
+              <CardTitle className="text-sm font-bold uppercase tracking-wider">
+                Dispositivos autorizados
+              </CardTitle>
+            </div>
+            <CardDescription className="text-xs">
+              Navegadores que validaram a licença da sua conta. Revogue um se não reconhecer ou se atingiu o limite do plano.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DeviceList scope="mine" />
+          </CardContent>
+        </Card>
 
         {/* Change Email */}
         <ChangeEmailCard currentEmail={user?.email ?? ""} />

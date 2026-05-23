@@ -65,6 +65,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import gmCommanderIcon from "@/assets/gm-commander-icon.png";
+import { DeviceValidationGate } from "@/components/admin/DeviceValidationGate";
 
 const GmCommanderIcon = ({ className }: { className?: string }) => (
   <img src={gmCommanderIcon} alt="" className={cn("object-contain", className)} />
@@ -207,7 +208,10 @@ const SUPERADMIN_SECTIONS: NavSection[] = [
     label: "Licenças",
     icon: Key,
     basePath: "/admin/licenses",
-    children: [{ to: "/admin/licenses", label: "Gerenciar licenças", end: true }],
+    children: [
+      { to: "/admin/licenses", label: "Gerenciar licenças", end: true },
+      { to: "/admin/licenses/devices", label: "Dispositivos autorizados" },
+    ],
   },
 ];
 
@@ -241,7 +245,9 @@ export const AdminLayout = () => {
           <InstallerUpdateBanner />
           <AdminTopBar />
           <main className="flex-1 overflow-hidden">
-            <Outlet />
+            <DeviceValidationGate>
+              <Outlet />
+            </DeviceValidationGate>
           </main>
           <AdminFooter />
         </div>

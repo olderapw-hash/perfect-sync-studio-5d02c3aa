@@ -208,7 +208,10 @@ const SUPERADMIN_SECTIONS: NavSection[] = [
     label: "Licenças",
     icon: Key,
     basePath: "/admin/licenses",
-    children: [{ to: "/admin/licenses", label: "Gerenciar licenças", end: true }],
+    children: [
+      { to: "/admin/licenses", label: "Gerenciar licenças", end: true },
+      { to: "/admin/licenses/devices", label: "Dispositivos autorizados" },
+    ],
   },
 ];
 

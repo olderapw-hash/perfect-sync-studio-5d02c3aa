@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { CheckCircle2, Clock, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
+import { supabase } from "@/integrations/supabase/client";
 
 const CheckoutSuccess = () => {
   const navigate = useNavigate();
@@ -27,15 +28,24 @@ const CheckoutSuccess = () => {
     };
   }, [session, refetch]);
 
-  // Auto-redirect to /admin once subscription is active. Within /admin the
-  // DeviceValidationGate will prompt the user to paste the license activation
-  // key sent via e-mail. After that, a tutorial overlay guides server setup.
+  // Quando a assinatura confirma: 1) concede role admin via RPC,
+  // 2) faz hard reload em /admin pra useAuth recarregar roles atualizadas.
+  // Dentro do /admin o DeviceValidationGate pede a chave de ativação da licença.
+  const grantedRef = useRef(false);
   useEffect(() => {
-    if (isActive) {
-      const t = setTimeout(() => navigate("/admin", { replace: true }), 1500);
-      return () => clearTimeout(t);
-    }
-  }, [isActive, navigate]);
+    if (!isActive || grantedRef.current) return;
+    grantedRef.current = true;
+    (async () => {
+      try {
+        await supabase.rpc("grant_admin_for_current_user");
+      } catch (err) {
+        console.error("[checkout] grant_admin_for_current_user failed", err);
+      }
+      setTimeout(() => {
+        window.location.replace("/admin");
+      }, 1200);
+    })();
+  }, [isActive]);
 
   if (authLoading) {
     return (

@@ -108,20 +108,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const checkRoles = async (userId: string) => {
-    const { data, error } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId);
-    if (error) {
-      console.error("[auth] checkRoles error", error);
+    const fetchRoles = async () => {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId);
+      if (error) {
+        console.error("[auth] checkRoles error", error);
+        return null;
+      }
+      return (data ?? []).map((r) => r.role);
+    };
+
+    let roles = await fetchRoles();
+    if (roles === null) {
       setIsAdmin(false);
       setIsSuperadmin(false);
       return;
     }
-    const roles = (data ?? []).map((r) => r.role);
+
+    // Auto-grant admin para usuários com licença ativa que ainda não têm a
+    // role (ex.: pagaram mas a role nunca foi concedida). A RPC retorna
+    // false sem efeito se não houver licença ativa — seguro chamar sempre.
+    if (!roles.includes("admin" as never) && !roles.includes("superadmin" as never)) {
+      try {
+        const { data: granted } = await supabase.rpc("grant_admin_for_current_user");
+        if (granted === true) {
+          const refreshed = await fetchRoles();
+          if (refreshed) roles = refreshed;
+        }
+      } catch (err) {
+        console.error("[auth] grant_admin_for_current_user failed", err);
+      }
+    }
+
     const superadmin = roles.includes("superadmin" as never);
     setIsSuperadmin(superadmin);
-    // Superadmin implica admin
     setIsAdmin(superadmin || roles.includes("admin" as never));
   };
 

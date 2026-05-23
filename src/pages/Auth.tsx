@@ -189,15 +189,15 @@ const Auth = () => {
     if (authLoading || subLoading || serversLoading || !session) return;
     const next = new URLSearchParams(window.location.search).get("next");
     if (next && ["/pricing", "/onboarding", "/servers", "/install"].includes(next)) {
-      navigate(next, { replace: true }); return;
+      navigate(next === "/onboarding" ? "/admin" : next, { replace: true }); return;
     }
     const hasServerAccess = servers.length > 0;
     const hasCompletedActiveServer = !!active?.onboarding_completed;
     const isVpsMode = !!import.meta.env.VITE_LICENSE_KEY;
     const bypassPayment = isSuperadmin || isAdmin || isVpsMode;
     if (hasCompletedActiveServer) { navigate("/admin", { replace: true }); return; }
-    if (hasServerAccess) { navigate("/onboarding", { replace: true }); return; }
-    if (isActive || bypassPayment) { navigate("/onboarding", { replace: true }); return; }
+    if (hasServerAccess) { navigate("/admin", { replace: true }); return; }
+    if (isActive || bypassPayment) { navigate("/admin", { replace: true }); return; }
     navigate("/pricing", { replace: true });
   }, [active?.onboarding_completed, authLoading, isActive, isAdmin, isSuperadmin, navigate, servers.length, serversLoading, session, subLoading]);
 

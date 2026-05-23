@@ -99,30 +99,9 @@ export const DeviceValidationGate = ({ children }: { children: React.ReactNode }
           Para acessar o painel neste navegador, cole o token da sua licença. Você só precisa fazer isso uma vez por dispositivo.
         </p>
 
-        {result.license_token && (
-          <div className="mt-3 rounded-md border border-border/60 bg-background/60 p-3">
-            <div className="mb-1 flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                Seu token
-              </span>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="h-6 px-2 text-[10px]"
-                onClick={() => {
-                  navigator.clipboard.writeText(result.license_token!);
-                  toast.success("Copiado!");
-                }}
-              >
-                <Copy className="mr-1 h-3 w-3" /> Copiar
-              </Button>
-            </div>
-            <code className="block break-all font-mono text-[11px] text-foreground">
-              {result.license_token}
-            </code>
-          </div>
-        )}
+        <p className="mt-3 rounded-md border border-border/60 bg-background/60 p-3 text-[11px] text-muted-foreground">
+          A chave de ativação foi enviada para o seu e-mail de confirmação de cadastro. Você também pode consultá-la em <span className="font-semibold text-foreground">Minha conta</span> após validar este dispositivo.
+        </p>
 
         <div className="mt-4 space-y-2">
           <Label className="text-xs">Token da licença</Label>

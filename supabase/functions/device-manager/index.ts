@@ -141,7 +141,6 @@ Deno.serve(async (req) => {
         plan,
         max_devices: maxDevices,
         devices_count: activeDevices?.length ?? 0,
-        license_token: license?.vps_activation_token ?? license?.license_key ?? null,
         active_devices: activeDevices ?? [],
       });
     }

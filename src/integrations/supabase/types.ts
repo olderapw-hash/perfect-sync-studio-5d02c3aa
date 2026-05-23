@@ -14,6 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_devices: {
+        Row: {
+          created_at: string
+          device_id: string
+          device_label: string | null
+          id: string
+          ip_address: string | null
+          last_seen_at: string
+          license_id: string | null
+          license_key_masked: string | null
+          revoked_at: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          device_label?: string | null
+          id?: string
+          ip_address?: string | null
+          last_seen_at?: string
+          license_id?: string | null
+          license_key_masked?: string | null
+          revoked_at?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          device_label?: string | null
+          id?: string
+          ip_address?: string | null
+          last_seen_at?: string
+          license_id?: string | null
+          license_key_masked?: string | null
+          revoked_at?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_devices_license_id_fkey"
+            columns: ["license_id"]
+            isOneToOne: false
+            referencedRelation: "licenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_files: {
         Row: {
           created_at: string
@@ -1670,6 +1720,7 @@ export type Database = {
         }[]
       }
       get_tenant_secret: { Args: { _tenant_id: string }; Returns: string }
+      get_user_plan_limits: { Args: { _user_id: string }; Returns: Json }
       has_active_subscription: {
         Args: { check_env?: string; user_uuid: string }
         Returns: boolean

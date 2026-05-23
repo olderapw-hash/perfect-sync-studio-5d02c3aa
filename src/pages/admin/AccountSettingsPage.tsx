@@ -23,7 +23,9 @@ import {
   ArrowUpRight,
   QrCode,
   Loader2,
+  Laptop,
 } from "lucide-react";
+import { DeviceList } from "@/components/admin/DeviceList";
 import {
   AlertDialog,
   AlertDialogAction,

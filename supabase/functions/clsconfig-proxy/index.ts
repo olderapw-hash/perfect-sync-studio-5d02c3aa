@@ -51,6 +51,9 @@ const ALLOWED_ACTIONS = new Set([
   "sendSystemMessage",
   "getMaintenanceMode",
   "setMaintenanceMode",
+  // Game Portal Admin config (site/portal do jogo).
+  "getGamePortalAdminConfig",
+  "saveGamePortalAdminConfig",
   // Server Ops v3 — controle real de servicos.
   "getManageableServices",
   "startService",

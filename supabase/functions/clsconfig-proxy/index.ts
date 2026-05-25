@@ -54,6 +54,7 @@ const ALLOWED_ACTIONS = new Set([
   // Game Portal Admin config (site/portal do jogo).
   "getGamePortalAdminConfig",
   "saveGamePortalAdminConfig",
+  "createStaffAccount",
   // Server Ops v3 — controle real de servicos.
   "getManageableServices",
   "startService",

@@ -190,6 +190,8 @@ const ACTION_PERMISSION: Record<string, string> = {
   sendSystemMessage: "save_templates",
   getMaintenanceMode: "view",
   setMaintenanceMode: "manage_servers",
+  getGamePortalAdminConfig: "view",
+  saveGamePortalAdminConfig: "manage_servers",
   // Server Ops v3 — leitura é "view"; ações destrutivas exigem manage_servers.
   getManageableServices: "view",
   startService: "manage_servers",

@@ -51,6 +51,9 @@ const ALLOWED_ACTIONS = new Set([
   "sendSystemMessage",
   "getMaintenanceMode",
   "setMaintenanceMode",
+  // Game Portal Admin config (site/portal do jogo).
+  "getGamePortalAdminConfig",
+  "saveGamePortalAdminConfig",
   // Server Ops v3 — controle real de servicos.
   "getManageableServices",
   "startService",
@@ -187,6 +190,8 @@ const ACTION_PERMISSION: Record<string, string> = {
   sendSystemMessage: "save_templates",
   getMaintenanceMode: "view",
   setMaintenanceMode: "manage_servers",
+  getGamePortalAdminConfig: "view",
+  saveGamePortalAdminConfig: "manage_servers",
   // Server Ops v3 — leitura é "view"; ações destrutivas exigem manage_servers.
   getManageableServices: "view",
   startService: "manage_servers",

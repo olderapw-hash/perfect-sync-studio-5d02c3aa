@@ -135,9 +135,11 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [sysMessage, setSysMessage] = useState("");
-  
-
-  // Preview/Queue state
+  const [bulkNotifyEnabled, setBulkNotifyEnabled] = useState(true);
+  const [bulkNotifyOnQueue, setBulkNotifyOnQueue] = useState(true);
+  const [bulkNotifyMessage, setBulkNotifyMessage] = useState(
+    "[GM] {command_label}: {details} ({success_count}/{target_count} jogadores).",
+  );
   const [preview, setPreview] = useState<PreviewBulkTargetsResponse | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [queueLoading, setQueueLoading] = useState(false);
@@ -216,6 +218,15 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
     return p;
   }, [commandKey, itemId, itemCount, goldAmount, cashAmount, subject, body, sysMessage]);
 
+  const buildBulkNotifyPayload = useCallback(
+    () => ({
+      bulk_notify_enabled: bulkNotifyEnabled,
+      bulk_notify_message: bulkNotifyMessage.trim(),
+      bulk_notify_on_queue: bulkNotifyOnQueue,
+    }),
+    [bulkNotifyEnabled, bulkNotifyMessage, bulkNotifyOnQueue],
+  );
+
   const handlePreview = useCallback(async () => {
     setPreviewLoading(true);
     setError(null);
@@ -252,6 +263,7 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
         command_key: commandKey,
         ...sel,
         ...payload,
+        ...buildBulkNotifyPayload(),
       });
       setQueuedJobId(res.job.id);
       setStep("queued");
@@ -278,7 +290,7 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
     } finally {
       setQueueLoading(false);
     }
-  }, [commandKey, buildSelection, buildCommandPayload, onActed]);
+  }, [commandKey, buildSelection, buildCommandPayload, buildBulkNotifyPayload, onActed]);
 
   const loadJobs = useCallback(async () => {
     setJobsLoading(true);
@@ -592,6 +604,33 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
                     <AlertTriangle className="inline h-3 w-3 mr-1" />
                     sendSystemMessage é global nesta fase e ignora filtros de alvo.
                   </div>
+                </div>
+              )}
+
+              {commandKey !== "sendSystemMessage" && (
+                <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <Label className="text-[11px] font-semibold">Aviso no chat do servidor</Label>
+                    <Switch checked={bulkNotifyEnabled} onCheckedChange={setBulkNotifyEnabled} id="bulk-notify" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch checked={bulkNotifyOnQueue} onCheckedChange={setBulkNotifyOnQueue} id="bulk-notify-queue" />
+                    <Label htmlFor="bulk-notify-queue" className="text-[10px] text-muted-foreground">
+                      Avisar ao enfileirar/agendar
+                    </Label>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">Mensagem (placeholders: {"{command_label}"}, {"{details}"}, {"{target_count}"}, {"{success_count}"})</Label>
+                    <Textarea
+                      value={bulkNotifyMessage}
+                      onChange={(e) => setBulkNotifyMessage(e.target.value)}
+                      rows={3}
+                      className="text-xs font-mono border-border/60 bg-card/60"
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    Envia broadcast de sistema ao enfileirar e ao concluir o job (exceto mensagem global).
+                  </p>
                 </div>
               )}
 

@@ -117,6 +117,7 @@ import { OperatorPermissionsProvider, useOperatorPermissions } from "@/hooks/use
 import { useServers } from "@/hooks/useServers";
 import { useServerPermissions } from "@/hooks/useServerPermissions";
 import { logAuditEvent } from "@/lib/auditLog";
+import { canUseDirectVpsApi, normalizeMallCashBalance, type NormalizedMallCashBalance } from "@/lib/gamePortalApi";
 import { cn } from "@/lib/utils";
 import {
   EndpointMissingError,
@@ -134,7 +135,13 @@ import {
   type GrantMallCashResponse,
   type MallCashBalanceResponse,
   type MallCashWallet,
+  type MeridianTitlePreset,
+  type MeridianTitleApplyResponse,
+  type MeridianTitlePreviewResponse,
   type PlayerTargetProfile,
+  type QuickPunishmentExecuteResponse,
+  type QuickPunishmentPreset,
+  type QuickPunishmentPreviewResponse,
   type SecurityActionResponse,
 } from "@/lib/pwApiActions";
 
@@ -243,6 +250,12 @@ const FALLBACK_SUPPORTED = new Set([
   "muteRole",
   "sendSystemMessage",
   "clearRolePk",
+  "getQuickPunishmentCatalog",
+  "previewQuickPunishment",
+  "executeQuickPunishment",
+  "getMeridianTitlePresetCatalog",
+  "previewMeridianTitlePreset",
+  "applyMeridianTitlePreset",
   // GM Permissions v2 — backend confirmado.
   "getGmPermissionCatalog",
   "getGmPermissionState",
@@ -325,7 +338,7 @@ const ROLE_LABELS: Record<string, string> = {
   super_admin: "Super Admin",
 };
 
-type TabKey = "compensation" | "moderation" | "communication" | "permissions" | "bulk" | "history";
+type TabKey = "compensation" | "moderation" | "communication" | "permissions" | "meridian" | "bulk" | "history";
 
 
 const DEFAULT_TAB_ICONS: Record<TabKey, string> = {
@@ -333,6 +346,7 @@ const DEFAULT_TAB_ICONS: Record<TabKey, string> = {
   moderation: "Hammer",
   communication: "MessageSquare",
   permissions: "Shield",
+  meridian: "BookOpen",
   bulk: "Users",
   history: "History",
 };
@@ -498,7 +512,12 @@ function GmCommanderPageInner() {
             <p className="text-xs leading-relaxed text-muted-foreground">
               Compensação, moderação e comunicação operacional. Toda ação
               destrutiva passa por preview (dry_run) antes da execução real.
-           </p>
+              {canUseDirectVpsApi() ? (
+                <span className="ml-1.5 inline-flex items-center rounded border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-400">
+                  VPS direto
+                </span>
+              ) : null}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             {/* Operator role badge */}
@@ -555,6 +574,7 @@ function GmCommanderPageInner() {
               { key: "moderation" as TabKey, label: "Moderação", gateAction: "kickRole" },
               { key: "communication" as TabKey, label: "Comunicação", gateAction: "sendSystemMessage" },
               { key: "permissions" as TabKey, label: "Permissões GM", gateAction: "grantGmPermission" },
+              { key: "meridian" as TabKey, label: "Meridiano / Títulos", gateAction: "getMeridianTitlePresetCatalog" },
               { key: "bulk" as TabKey, label: "Bulk Commander", gateAction: "queueBulkCommand" },
               { key: "history" as TabKey, label: "Histórico", gateAction: "getGmActionHistory" },
             ] as const)
@@ -587,6 +607,9 @@ function GmCommanderPageInner() {
           <TabsContent value="permissions" className="space-y-4">
             <GmPermissionsTab caps={caps} onActed={refreshHistory} isSuperadmin={isSuperadmin} cardVisibility={cardVisibility} onToggleVisibility={toggleCardVisibility} />
           </TabsContent>
+          <TabsContent value="meridian" className="space-y-4">
+            <MeridianTitlesTab caps={caps} onActed={refreshHistory} />
+          </TabsContent>
           <TabsContent value="bulk" className="space-y-4">
             <BulkCommanderTab caps={caps} onActed={refreshHistory} />
           </TabsContent>
@@ -613,6 +636,7 @@ const TAB_LABELS: Record<TabKey, string> = {
   moderation: "Moderação",
   communication: "Comunicação",
   permissions: "Permissões GM",
+  meridian: "Meridiano / Títulos",
   bulk: "Bulk Commander",
   history: "Histórico",
 };
@@ -1274,12 +1298,41 @@ function SendMailItemCard({
 }) {
   const toast = useFeedback();
   const { active } = useServers();
+  const [lookup, setLookup] = useState("");
   const [roleid, setRoleid] = useState("");
   const [itemId, setItemId] = useState("");
   const [count, setCount] = useState("1");
   const [subject, setSubject] = useState("Compensação");
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
+  const [resolving, setResolving] = useState(false);
+
+  const resolveTarget = async () => {
+    const raw = lookup.trim();
+    if (!raw) {
+      toast.error("Informe nick ou roleid");
+      return;
+    }
+    setResolving(true);
+    try {
+      const query = /^\d+$/.test(raw) ? { roleid: Number(raw) } : { name: raw };
+      const res = await pwApi.getPlayerTargetProfile(query);
+      const rid = res.profile?.roleid;
+      if (!rid) {
+        const note =
+          (res.profile as { resolution_note?: string } | undefined)?.resolution_note ??
+          "Personagem sem roleid (conta vazia?)";
+        toast.error(note);
+        return;
+      }
+      setRoleid(String(rid));
+      toast.success(`Alvo: ${res.profile?.name ?? rid} (roleid ${rid})`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setResolving(false);
+    }
+  };
 
   const submit = async () => {
     const r = Number(roleid);
@@ -1326,6 +1379,14 @@ function SendMailItemCard({
       action="sendMailItem"
       caps={caps}
     >
+      <FieldRow label="Buscar alvo (nick ou roleid)">
+        <div className="flex gap-2">
+          <Input value={lookup} onChange={(e) => setLookup(e.target.value)} placeholder="Azumy ou 1184" />
+          <Button type="button" variant="outline" size="sm" onClick={() => void resolveTarget()} disabled={resolving}>
+            {resolving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Crosshair className="h-3.5 w-3.5" />}
+          </Button>
+        </div>
+      </FieldRow>
       <FieldRow label="Roleid">
         <Input value={roleid} onChange={(e) => setRoleid(e.target.value)} placeholder="1024" />
       </FieldRow>
@@ -1439,6 +1500,115 @@ function SendMailGoldCard({
   );
 }
 
+function MallCashNotifyMailSettings() {
+  const toast = useFeedback();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [enabled, setEnabled] = useState(true);
+  const [title, setTitle] = useState("Gold da Loja creditado");
+  const [thanks, setThanks] = useState("");
+  const [bodyTemplate, setBodyTemplate] = useState("");
+  const [placeholders, setPlaceholders] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    pwApi
+      .getMallCashNotifyMailConfig()
+      .then((res) => {
+        if (cancelled || !res.config) return;
+        setEnabled(res.config.enabled);
+        setTitle(res.config.title);
+        setThanks(res.config.thanks);
+        setBodyTemplate(res.config.body_template);
+        setPlaceholders(res.placeholders ?? {});
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          toast.error(e instanceof Error ? e.message : String(e));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [toast]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const res = await pwApi.saveMallCashNotifyMailConfig({
+        enabled,
+        title: title.trim(),
+        thanks: thanks.trim(),
+        body_template: bodyTemplate,
+      });
+      if (res.config) {
+        setEnabled(res.config.enabled);
+        setTitle(res.config.title);
+        setThanks(res.config.thanks);
+        setBodyTemplate(res.config.body_template);
+      }
+      toast.success("Correio pós-grant salvo");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="rounded-md border border-purple-500/25 bg-purple-500/5 p-3 space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-purple-300">Correio após creditar</p>
+          <p className="text-[10px] text-muted-foreground">Enviado automaticamente ao jogador após grantMallCash.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Switch checked={enabled} onCheckedChange={setEnabled} id="mall-mail-enabled" />
+          <Label htmlFor="mall-mail-enabled" className="text-[10px]">
+            Ativo
+          </Label>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-3">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <>
+          <FieldRow label="Título do correio">
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} className="text-xs" />
+          </FieldRow>
+          <FieldRow label="Corpo (template)">
+            <Textarea
+              value={bodyTemplate}
+              onChange={(e) => setBodyTemplate(e.target.value)}
+              rows={6}
+              className="text-xs font-mono"
+            />
+          </FieldRow>
+          <FieldRow label="Agradecimento ({thanks})">
+            <Input value={thanks} onChange={(e) => setThanks(e.target.value)} className="text-xs" />
+          </FieldRow>
+          {Object.keys(placeholders).length > 0 && (
+            <p className="text-[10px] text-muted-foreground">
+              Placeholders: {Object.keys(placeholders).join(", ")}
+            </p>
+          )}
+          <Button type="button" variant="outline" size="sm" onClick={() => void save()} disabled={saving} className="w-full">
+            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Settings className="h-3.5 w-3.5" />}
+            Salvar template do correio
+          </Button>
+        </>
+      )}
+    </div>
+  );
+}
+
 function GrantMallCashCard({
   caps,
   onActed,
@@ -1448,30 +1618,62 @@ function GrantMallCashCard({
 }) {
   const toast = useFeedback();
   const { active } = useServers();
+  const [lookup, setLookup] = useState("");
   const [roleid, setRoleid] = useState("");
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("manual-test");
   const [walletLoading, setWalletLoading] = useState(false);
-  const [wallet, setWallet] = useState<MallCashBalanceResponse | null>(null);
+  const [resolving, setResolving] = useState(false);
+  const [wallet, setWallet] = useState<NormalizedMallCashBalance | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [showUnits, setShowUnits] = useState(false);
+  const [targetOnline, setTargetOnline] = useState<boolean | null>(null);
 
-  const fetchWallet = useCallback(async () => {
-    const r = Number(roleid);
+  const fetchWallet = useCallback(async (rid?: number) => {
+    const r = rid ?? Number(roleid);
     if (!r) {
-      toast.error("Informe um roleid válido");
+      toast.error("Informe um roleid valido");
       return;
     }
     setWalletLoading(true);
     try {
-      const res = await pwApi.getMallCashBalance(r);
-      setWallet(res);
+      const raw = await pwApi.getMallCashBalance(r);
+      setWallet(normalizeMallCashBalance(raw));
     } catch (e) {
+      setWallet(null);
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setWalletLoading(false);
     }
-  }, [roleid]);
+  }, [roleid, toast]);
+
+  const resolveTarget = async () => {
+    const raw = lookup.trim();
+    if (!raw) {
+      toast.error("Informe nick ou roleid");
+      return;
+    }
+    setResolving(true);
+    try {
+      const query = /^\d+$/.test(raw) ? { roleid: Number(raw) } : { name: raw };
+      const res = await pwApi.getPlayerTargetProfile(query);
+      const rid = res.profile?.roleid;
+      if (!rid) {
+        const note =
+          (res.profile as { resolution_note?: string } | undefined)?.resolution_note ??
+          "Personagem sem roleid (conta vazia?)";
+        toast.error(note);
+        return;
+      }
+      setRoleid(String(rid));
+      setTargetOnline(res.profile?.online === true ? true : res.profile?.online === false ? false : null);
+      await fetchWallet(rid);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setResolving(false);
+    }
+  };
 
   const exec = async (dryRun: boolean): Promise<GrantMallCashResponse> => {
     const r = Number(roleid);
@@ -1486,23 +1688,36 @@ function GrantMallCashCard({
 
   const onSuccess = (res: GrantMallCashResponse) => {
     const change = res.balance_change?.cash_total_gold ?? 0;
+    const queued = Boolean(res.grant_queued);
     const operationallyOk =
-      res.success && (change > 0 || res.grant_result?.error_code === 0);
+      res.success &&
+      (change > 0 || res.grant_result?.error_code === 0 || queued);
     if (operationallyOk) {
-      toast.success(
-        `Grant aplicado · +${change} gold (cash_total: ${
-          res.wallet_after?.cash_total_gold ?? "—"
-        })`,
-      );
+      const mailOk = res.notification_mail?.success;
+      const mailWarn = res.notification_mail_warning;
+      if (queued) {
+        toast.success(
+          `Gold enfileirado (+${Number(amount)} gold) · jogador deve sair do jogo para creditar`,
+          res.warning ? { description: res.warning } : undefined,
+        );
+      } else {
+        toast.success(
+          `Grant aplicado · +${change} gold (saldo loja: ${
+            res.wallet_after?.cash_total_gold ?? "—"
+          })${mailOk ? " · correio enviado" : mailWarn ? " · correio falhou" : ""}`,
+          mailWarn ? { description: mailWarn } : res.warning ? { description: res.warning } : undefined,
+        );
+      }
       void logAuditEvent({
         action: "gm.grantMallCash",
         tenantId: active?.id ?? null,
         target: String(roleid),
-        status: "ok",
+        status: queued ? "queued" : "ok",
         metadata: {
           amount: Number(amount),
           balance_change: res.balance_change,
           error_code: res.grant_result?.error_code,
+          grant_queued: queued,
         },
       });
     } else {
@@ -1512,11 +1727,14 @@ function GrantMallCashCard({
         }, change=${change}`,
       );
     }
-    setWallet({
-      success: true,
-      roleid: Number(roleid),
-      wallet: res.wallet_after ?? {},
-    });
+    setWallet(
+      normalizeMallCashBalance({
+        success: true,
+        roleid: Number(roleid),
+        wallet: res.wallet_after ?? {},
+        target: { roleid: Number(roleid) },
+      }),
+    );
     onActed();
   };
 
@@ -1539,6 +1757,14 @@ function GrantMallCashCard({
       caps={caps}
       tone="premium"
     >
+      <FieldRow label="Buscar alvo (nick ou roleid)">
+        <div className="flex gap-2">
+          <Input value={lookup} onChange={(e) => setLookup(e.target.value)} placeholder="Azumy ou 1184" />
+          <Button type="button" variant="outline" size="sm" onClick={() => void resolveTarget()} disabled={resolving}>
+            {resolving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Crosshair className="h-3.5 w-3.5" />}
+          </Button>
+        </div>
+      </FieldRow>
       <FieldRow label="Roleid">
         <div className="flex gap-2">
           <Input value={roleid} onChange={(e) => setRoleid(e.target.value)} placeholder="1024" />
@@ -1555,7 +1781,12 @@ function GrantMallCashCard({
         </div>
       </FieldRow>
 
-      {wallet && <WalletPreview wallet={wallet.wallet} showUnits={showUnits} />}
+      {wallet && <WalletPreview wallet={wallet.wallet} showUnits={showUnits} account={wallet.account} />}
+      {targetOnline === true && (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+          Personagem <strong>online</strong>. O gold pode ir para a fila <code className="text-[10px]">usecashnow</code> (error -8) até sair do jogo. Teste com valores pequenos (ex: 10 gold) ou peça logout completo antes.
+        </div>
+      )}
       <div className="flex items-center justify-end gap-2 text-[10px] text-muted-foreground">
         <Switch checked={showUnits} onCheckedChange={setShowUnits} id="units" />
         <Label htmlFor="units" className="text-[10px]">
@@ -1578,6 +1809,8 @@ function GrantMallCashCard({
         <Input value={reason} onChange={(e) => setReason(e.target.value)} />
       </FieldRow>
 
+      <MallCashNotifyMailSettings />
+
       <Button onClick={handleOpenConfirm} className="w-full" variant="default">
         <Sparkles className="h-3.5 w-3.5" />
         Conceder gold da loja
@@ -1587,24 +1820,37 @@ function GrantMallCashCard({
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
         title="Conceder gold da Mall"
-        description={`+${amount} gold para roleid ${roleid}. O dry_run só simula — execute o real depois de validar.`}
+        description={`+${amount} gold para roleid ${roleid}. Dry_run só valida alvo/saldo — o grant real chama usecash.`}
         exec={exec}
         onSuccess={onSuccess}
         renderPreview={(res) => (
           <div className="space-y-1 text-xs">
-            <Row label="error_code" value={res.grant_result?.error_code ?? "—"} />
+            <Row label="userid" value={res.target?.userid ?? res.userid ?? "—"} />
             <Row
-              label="cash_total antes"
-              value={res.wallet_before?.cash_total_gold ?? "—"}
+              label="usecash units"
+              value={
+                res.grant?.cash_units ??
+                (res.dry_run && Number(amount) > 0 ? Number(amount) * 100 : "—")
+              }
             />
-            <Row
-              label="cash_total depois"
-              value={res.wallet_after?.cash_total_gold ?? "—"}
-            />
-            <Row
-              label="balance_change"
-              value={`+${res.balance_change?.cash_total_gold ?? 0} gold`}
-            />
+            <Row label="cash_total antes" value={res.wallet_before?.cash_total_gold ?? "—"} />
+            {res.dry_run ? (
+              <p className="mt-1 text-muted-foreground">
+                Dry-run não executa usecash. Confira o alvo e clique em Executar de verdade.
+              </p>
+            ) : (
+              <>
+                <Row label="error_code" value={res.grant_result?.error_code ?? "—"} />
+                <Row label="cash_total depois" value={res.wallet_after?.cash_total_gold ?? "—"} />
+                <Row
+                  label="balance_change"
+                  value={`+${res.balance_change?.cash_total_gold ?? 0} gold`}
+                />
+                {res.grant_queued && (
+                  <p className="mt-1 text-amber-500">Enfileirado em usecashnow — logout necessário.</p>
+                )}
+              </>
+            )}
             {res.warning && (
               <p className="mt-1 italic text-amber-500">⚠ {res.warning}</p>
             )}
@@ -1618,28 +1864,36 @@ function GrantMallCashCard({
 function WalletPreview({
   wallet,
   showUnits,
+  account,
 }: {
-  wallet: MallCashWallet;
+  wallet?: MallCashWallet | null;
   showUnits: boolean;
+  account?: string | null;
 }) {
+  const safeWallet = wallet && typeof wallet === "object" ? wallet : {};
+  const accountLabel = typeof account === "string" ? account : null;
   return (
     <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5 text-xs">
       <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-purple-400">
         Carteira da Mall
       </div>
-      <div className="grid grid-cols-3 gap-1.5">
-        <WalletStat label="cash" main={wallet.cash_gold} sub={showUnits ? wallet.cash_units : undefined} />
-        <WalletStat label="cash_add" main={wallet.cash_add_gold} sub={showUnits ? wallet.cash_add_units : undefined} />
+      {accountLabel ? (
+        <Row label="conta" value={accountLabel} />
+      ) : null}
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
         <WalletStat
-          label="TOTAL"
-          main={wallet.cash_total_gold}
-          sub={showUnits ? wallet.cash_total_units : undefined}
+          label="Saldo loja"
+          main={safeWallet.shop_balance_gold ?? safeWallet.cash_total_gold}
+          sub={showUnits ? (safeWallet.shop_balance_units ?? safeWallet.cash_total_units) : undefined}
           highlight
         />
+        <WalletStat label="Recarregado" main={safeWallet.cash_add_gold} sub={showUnits ? safeWallet.cash_add_units : undefined} />
+        <WalletStat label="Gasto" main={safeWallet.cash_used_gold} sub={showUnits ? safeWallet.cash_used_units : undefined} />
+        <WalletStat label="cash" main={safeWallet.cash_gold} sub={showUnits ? safeWallet.cash_units : undefined} />
       </div>
       <p className="mt-1.5 text-[10px] italic text-muted-foreground">
-        Crédito real geralmente reflete em <code>cash_add</code>. Confira sempre
-        pelo <strong>cash_total</strong>.
+        <strong>Saldo loja</strong> = recarregado − gasto (igual ao saldo in-game).
+        <code className="ml-1">cash_add</code> sozinho nao e o saldo atual.
       </p>
     </div>
   );
@@ -1683,6 +1937,481 @@ function WalletStat({
 /* Moderação                                                                   */
 /* -------------------------------------------------------------------------- */
 
+function formatDurationLabel(seconds: number): string {
+  if (seconds <= 0) return "—";
+  if (seconds >= 86400 && seconds % 86400 === 0) {
+    const d = seconds / 86400;
+    return d === 1 ? "1 dia" : `${d} dias`;
+  }
+  if (seconds >= 3600 && seconds % 3600 === 0) {
+    const h = seconds / 3600;
+    return h === 1 ? "1 hora" : `${h} horas`;
+  }
+  if (seconds >= 60 && seconds % 60 === 0) {
+    const m = seconds / 60;
+    return m === 1 ? "1 min" : `${m} min`;
+  }
+  return `${seconds}s`;
+}
+
+function gmFromSecurity(res: SecurityActionResponse) {
+  return { ...res, ...(res.gm_action ?? {}) };
+}
+
+function feedbackSecurityAction(
+  toast: FeedbackAPI,
+  res: SecurityActionResponse,
+  okTitle: string,
+  okDescription?: string,
+) {
+  const gm = gmFromSecurity(res);
+  if (!res.success && gm.success !== true) {
+    toast.error(String(gm.error ?? res.error ?? "Falhou"));
+    return false;
+  }
+  toast.success(okTitle, {
+    description: okDescription ?? (typeof gm.message === "string" ? gm.message : undefined),
+  });
+  const warn = (gm as { warning?: string }).warning;
+  if (warn) toast.warning(String(warn));
+  return true;
+}
+
+function ModerationPlayerLookup({
+  onResolved,
+  hint,
+}: {
+  onResolved: (profile: PlayerTargetProfile) => void;
+  hint?: string;
+}) {
+  const toast = useFeedback();
+  const [lookup, setLookup] = useState("");
+  const [resolving, setResolving] = useState(false);
+  const [resolvedName, setResolvedName] = useState<string | null>(null);
+
+  const resolveTarget = async () => {
+    const raw = lookup.trim();
+    if (!raw) {
+      toast.error("Informe nick ou roleid");
+      return;
+    }
+    setResolving(true);
+    try {
+      const query = /^\d+$/.test(raw) ? { roleid: Number(raw) } : { name: raw };
+      const res = await pwApi.getPlayerTargetProfile(query);
+      const profile = res.profile;
+      if (!profile?.roleid && !profile?.userid) {
+        toast.error(
+          (profile as { resolution_note?: string } | undefined)?.resolution_note ??
+            "Jogador não encontrado",
+        );
+        return;
+      }
+      setResolvedName(profile?.name ?? null);
+      onResolved(profile);
+      toast.success(
+        `Alvo: ${profile?.name ?? "—"} · roleid ${profile?.roleid ?? "—"} · userid ${profile?.userid ?? "—"}${
+          profile?.online === true ? " · online" : profile?.online === false ? " · offline" : ""
+        }`,
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setResolving(false);
+    }
+  };
+
+  return (
+    <>
+      <FieldRow label="Buscar jogador (nick ou roleid)">
+        <div className="flex gap-2">
+          <Input
+            value={lookup}
+            onChange={(e) => setLookup(e.target.value)}
+            placeholder="Nick ou roleid"
+            onKeyDown={(e) => e.key === "Enter" && void resolveTarget()}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={resolving || !lookup.trim()}
+            onClick={() => void resolveTarget()}
+          >
+            {resolving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Target className="h-3.5 w-3.5" />
+            )}
+          </Button>
+        </div>
+      </FieldRow>
+      {resolvedName && (
+        <p className="mb-1 text-[10px] text-success">Resolvido: {resolvedName}</p>
+      )}
+      {hint && <p className="mb-2 text-[10px] text-muted-foreground">{hint}</p>}
+    </>
+  );
+}
+
+function QuickPunishmentCard({
+  caps,
+  onActed,
+}: {
+  caps: Map<string, GmCommandCapability>;
+  onActed: () => void;
+}) {
+  const toast = useFeedback();
+  const { active } = useServers();
+  const [presets, setPresets] = useState<QuickPunishmentPreset[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [presetKey, setPresetKey] = useState("");
+  const [lookup, setLookup] = useState("");
+  const [roleid, setRoleid] = useState("");
+  const [userid, setUserid] = useState("");
+  const [resolvedName, setResolvedName] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
+  const [durationSeconds, setDurationSeconds] = useState("");
+  const [kickOnline, setKickOnline] = useState(true);
+  const [resolving, setResolving] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const selected = presets.find((p) => p.key === presetKey) ?? null;
+  const roleidNum = Number(roleid);
+  const useridNum = Number(userid);
+  const durationNum = Number(durationSeconds);
+  const roleTargetOk = Number.isFinite(roleidNum) && roleidNum > 0;
+  const accountTargetOk =
+    (Number.isFinite(useridNum) && useridNum > 0) || roleTargetOk;
+  const targetOk =
+    selected?.target_scope === "account" ? accountTargetOk : roleTargetOk;
+  const durationOk =
+    !selected?.duration_required ||
+    (Number.isFinite(durationNum) && durationNum > 0);
+  const reasonOk = reason.trim().length > 0;
+  const canSubmit = !!selected && targetOk && durationOk && reasonOk;
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setCatalogLoading(true);
+      try {
+        const res = await pwApi.getQuickPunishmentCatalog();
+        if (cancelled) return;
+        const list = res.presets ?? [];
+        setPresets(list);
+        if (list.length > 0) {
+          setPresetKey(list[0].key);
+          setDurationSeconds(String(list[0].default_duration_seconds || ""));
+        }
+      } catch (e) {
+        if (!cancelled) {
+          toast.error(e instanceof Error ? e.message : String(e));
+        }
+      } finally {
+        if (!cancelled) setCatalogLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [toast]);
+
+  useEffect(() => {
+    if (!selected) return;
+    setDurationSeconds(String(selected.default_duration_seconds || ""));
+    if (!selected.supports_kick_online) setKickOnline(false);
+    else setKickOnline(true);
+  }, [selected?.key]);
+
+  const resolveTarget = async () => {
+    const raw = lookup.trim();
+    if (!raw) {
+      toast.error("Informe nick ou roleid");
+      return;
+    }
+    setResolving(true);
+    try {
+      const query = /^\d+$/.test(raw) ? { roleid: Number(raw) } : { name: raw };
+      const res = await pwApi.getPlayerTargetProfile(query);
+      const profile = res.profile;
+      const rid = profile?.roleid;
+      const uid = profile?.userid;
+      if (!rid && !uid) {
+        toast.error(
+          (profile as { resolution_note?: string } | undefined)?.resolution_note ??
+            "Jogador não encontrado",
+        );
+        return;
+      }
+      if (rid) setRoleid(String(rid));
+      if (uid) setUserid(String(uid));
+      setResolvedName(profile?.name ?? null);
+      toast.success(
+        `Alvo: ${profile?.name ?? "—"} · roleid ${rid ?? "—"} · userid ${uid ?? "—"}`,
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setResolving(false);
+    }
+  };
+
+  const buildPayload = () => {
+    if (!selected) throw new Error("Preset não selecionado");
+    const payload: {
+      preset_key: string;
+      reason: string;
+      roleid?: number;
+      userid?: number;
+      duration_seconds?: number;
+      kick_online?: boolean;
+    } = {
+      preset_key: selected.key,
+      reason: reason.trim(),
+    };
+    if (selected.duration_required && durationNum > 0) {
+      payload.duration_seconds = durationNum;
+    }
+    if (selected.supports_kick_online && kickOnline) {
+      payload.kick_online = true;
+    }
+    if (selected.target_scope === "account") {
+      if (useridNum > 0) payload.userid = useridNum;
+      if (roleidNum > 0) payload.roleid = roleidNum;
+    } else if (roleidNum > 0) {
+      payload.roleid = roleidNum;
+    }
+    return payload;
+  };
+
+  const renderPlanPreview = (plan: QuickPunishmentPreviewResponse["plan"]) => {
+    if (!plan) return <p className="text-xs">Sem plano de preview.</p>;
+    return (
+      <div className="space-y-1 text-xs">
+        <Row label="Preset" value={plan.label ?? plan.preset_key ?? "—"} />
+        <Row label="Ação" value={plan.underlying_action ?? "—"} />
+        <Row label="Escopo" value={plan.target_scope ?? "—"} />
+        <Row
+          label="Alvo"
+          value={`roleid ${plan.target?.roleid ?? "—"} · userid ${plan.target?.userid ?? "—"}`}
+        />
+        {plan.duration_seconds != null && plan.duration_seconds > 0 && (
+          <Row
+            label="Duração"
+            value={`${plan.duration_seconds}s (${formatDurationLabel(plan.duration_seconds)})`}
+          />
+        )}
+        {plan.permanent && <Row label="Permanente" value="sim" />}
+        {plan.kick_online && <Row label="Kick online" value="sim" />}
+        {plan.reason && <Row label="Motivo" value={plan.reason} />}
+        {Array.isArray(plan.warnings) && plan.warnings.length > 0 && (
+          <ul className="mt-2 list-disc space-y-0.5 pl-4 text-[10px] text-amber-600">
+            {plan.warnings.map((w) => (
+              <li key={w}>{w}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <GmCard
+      icon={Zap}
+      title="Punições Rápidas"
+      subtitle="Presets de kick, mute e ban com preview do plano antes de executar."
+      action="executeQuickPunishment"
+      caps={caps}
+      tone="danger"
+    >
+      {catalogLoading ? (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          Carregando catálogo…
+        </div>
+      ) : presets.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          Nenhum preset disponível nesta versão da API.
+        </p>
+      ) : (
+        <>
+          <FieldRow label="Preset">
+            <Select value={presetKey} onValueChange={setPresetKey}>
+              <SelectTrigger>
+                <SelectValue placeholder="Escolha a punição" />
+              </SelectTrigger>
+              <SelectContent>
+                {presets.map((p) => (
+                  <SelectItem key={p.key} value={p.key}>
+                    {p.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selected?.summary && (
+              <p className="mt-1 text-[10px] text-muted-foreground">{selected.summary}</p>
+            )}
+          </FieldRow>
+
+          <FieldRow label="Buscar jogador (nick ou roleid)">
+            <div className="flex gap-2">
+              <Input
+                value={lookup}
+                onChange={(e) => setLookup(e.target.value)}
+                placeholder="Nick ou roleid"
+                onKeyDown={(e) => e.key === "Enter" && void resolveTarget()}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={resolving || !lookup.trim()}
+                onClick={() => void resolveTarget()}
+              >
+                {resolving ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Target className="h-3.5 w-3.5" />
+                )}
+              </Button>
+            </div>
+          </FieldRow>
+
+          {selected?.target_scope === "account" ? (
+            <FieldRow label="Userid (conta)">
+              <Input
+                value={userid}
+                onChange={(e) => setUserid(e.target.value)}
+                placeholder="Ex.: 512"
+                inputMode="numeric"
+              />
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                Pode informar userid direto ou resolver pelo nick acima (roleid também aceito).
+              </p>
+            </FieldRow>
+          ) : null}
+
+          <FieldRow
+            label={
+              selected?.target_scope === "account"
+                ? "Roleid (opcional, para resolver conta)"
+                : "Roleid (personagem)"
+            }
+          >
+            <Input
+              value={roleid}
+              onChange={(e) => setRoleid(e.target.value)}
+              placeholder="Ex.: 1024"
+              inputMode="numeric"
+            />
+            {resolvedName && (
+              <p className="mt-1 text-[10px] text-success">
+                Resolvido: {resolvedName}
+              </p>
+            )}
+          </FieldRow>
+
+          {selected?.duration_required && (
+            <FieldRow label="Duração (segundos)">
+              <Input
+                value={durationSeconds}
+                onChange={(e) => setDurationSeconds(e.target.value)}
+                placeholder={String(selected.default_duration_seconds || 3600)}
+                inputMode="numeric"
+              />
+              <div className="mt-1 flex flex-wrap gap-1">
+                {[
+                  { label: "1h", s: 3600 },
+                  { label: "6h", s: 21600 },
+                  { label: "24h", s: 86400 },
+                  { label: "7d", s: 604800 },
+                ].map(({ label, s }) => (
+                  <Button
+                    key={label}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-6 px-2 text-[10px]"
+                    onClick={() => setDurationSeconds(String(s))}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+              {durationNum > 0 && (
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  ≈ {formatDurationLabel(durationNum)}
+                </p>
+              )}
+            </FieldRow>
+          )}
+
+          {selected?.supports_kick_online && (
+            <FieldRow label="Kick se online">
+              <Switch checked={kickOnline} onCheckedChange={setKickOnline} />
+            </FieldRow>
+          )}
+
+          <FieldRow label="Motivo (obrigatório)">
+            <Input
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Ex.: spam no chat global"
+            />
+          </FieldRow>
+
+          <Button
+            variant="destructive"
+            className="w-full"
+            disabled={!canSubmit}
+            onClick={() => setConfirmOpen(true)}
+          >
+            <Zap className="h-3.5 w-3.5" />
+            {selected ? `Aplicar: ${selected.label}` : "Aplicar punição"}
+          </Button>
+
+          <ConfirmActionDialog<
+            QuickPunishmentPreviewResponse | QuickPunishmentExecuteResponse
+          >
+            open={confirmOpen}
+            onOpenChange={setConfirmOpen}
+            title={selected ? `Punição: ${selected.label}` : "Punição rápida"}
+            description="Primeiro rodamos o preview do plano (sem efetivar). Confira alvo, duração e avisos antes de executar."
+            exec={async (preview) => {
+              const payload = buildPayload();
+              if (preview) return pwApi.previewQuickPunishment(payload);
+              return pwApi.executeQuickPunishment(payload);
+            }}
+            onSuccess={(res) => {
+              const execRes = res as QuickPunishmentExecuteResponse;
+              if (execRes.success) {
+                toast.success(`${execRes.preset?.label ?? "Punição"} aplicada`, {
+                  description: execRes.result?.message ?? execRes.plan?.underlying_action,
+                });
+                if (execRes.result?.warning) {
+                  toast.warning(execRes.result.warning);
+                }
+              } else {
+                toast.error(execRes.error ?? execRes.result?.error ?? "Falhou");
+              }
+              void logAuditEvent({
+                action: "gm.executeQuickPunishment",
+                tenantId: active?.id ?? null,
+                target: `preset:${presetKey}:roleid:${roleidNum || "—"}:userid:${useridNum || "—"}`,
+                status: execRes.success ? "ok" : "error",
+                metadata: { plan: execRes.plan, result: execRes.result },
+              });
+              onActed();
+            }}
+            renderPreview={(res) => renderPlanPreview(res.plan)}
+          />
+        </>
+      )}
+    </GmCard>
+  );
+}
+
 function ModerationTab({
   caps,
   onActed,
@@ -1694,6 +2423,15 @@ function ModerationTab({
   onActed: () => void;
 } & VisibilityProps) {
   const items: ActionItem[] = [
+    {
+      id: "quick-punishment",
+      action: "executeQuickPunishment",
+      title: "Punições Rápidas",
+      subtitle: "Kick, mute e ban com presets — preview do plano antes de executar.",
+      icon: Zap,
+      tone: "danger",
+      render: () => <QuickPunishmentCard caps={caps} onActed={onActed} />,
+    },
     {
       id: "kick",
       action: "kickRole",
@@ -1803,6 +2541,12 @@ function KickRoleCard({
       caps={caps}
       tone="warning"
     >
+      <ModerationPlayerLookup
+        hint="Kick só funciona com o personagem online. Use a busca para confirmar roleid."
+        onResolved={(p) => {
+          if (p.roleid) setRoleid(String(p.roleid));
+        }}
+      />
       <FieldRow label="Roleid (personagem)">
         <Input
           value={roleid}
@@ -1836,8 +2580,13 @@ function KickRoleCard({
         description={`Desconectar Personagem #${roleidNum}? Esta operação é imediata. Não afeta a conta.`}
         exec={async () => pwApi.kickRole({ roleid: roleidNum, reason })}
         onSuccess={(res) => {
-          if (res.success) {
-            toast.success(`Personagem #${roleidNum} desconectado`);
+          if (
+            feedbackSecurityAction(
+              toast,
+              res,
+              `Personagem #${roleidNum} desconectado`,
+            )
+          ) {
             void logAuditEvent({
               action: "gm.kickRole",
               tenantId: active?.id ?? null,
@@ -1845,8 +2594,6 @@ function KickRoleCard({
               status: "ok",
             });
             onActed();
-          } else {
-            toast.error(res.error ?? "Falhou");
           }
         }}
         renderPreview={() => null}
@@ -1892,6 +2639,12 @@ function BanAccountCard({
       caps={caps}
       tone="danger"
     >
+      <ModerationPlayerLookup
+        onResolved={(p) => {
+          if (p.userid) setUserid(String(p.userid));
+          if (p.roleid) setRoleid(String(p.roleid));
+        }}
+      />
       <FieldRow label="Userid (conta)">
         <Input
           value={userid}
@@ -1999,39 +2752,34 @@ function BanAccountCard({
           })
         }
         onSuccess={(res) => {
-          if (res.success) {
-            const gm = res.gm_action;
-            const ab = gm?.account_ban;
-            const sk = gm?.session_kick;
+          const gm = gmFromSecurity(res);
+          if (!feedbackSecurityAction(toast, res, `Conta #${useridNum} banida`)) return;
 
-            const lines: string[] = ["✅ Conta bloqueada para login"];
-            if (ab?.forbid_until) {
-              lines.push(`Bloqueio até: ${ab.forbid_until}`);
-            } else if (ab?.forbid_until_unix) {
-              lines.push(`Bloqueio até: ${fmtDate(ab.forbid_until_unix)}`);
-            }
-            if (sk?.success) {
-              lines.push("✅ Sessão online derrubada com sucesso");
-            }
-
-            toast.success(lines.join("\n"));
-            void logAuditEvent({
-              action: "gm.banAccount",
-              tenantId: active?.id ?? null,
-              target: `userid:${useridNum}`,
-              status: "ok",
-              metadata: {
-                permanent,
-                duration_seconds: durationNum,
-                account_forbid_backend: gm?.account_forbid_backend ?? null,
-                kick_online: roleidValid && kickAfterBan,
-                roleid: roleidValid ? roleidNum : null,
-              },
-            });
-            onActed();
-          } else {
-            toast.error(res.error ?? "Falhou");
+          const ab = gm.account_ban;
+          const sk = gm.session_kick;
+          if (ab?.forbid_until || ab?.forbid_until_unix) {
+            toast.info(
+              `Bloqueio até: ${ab.forbid_until ?? fmtDate(ab.forbid_until_unix as number)}`,
+            );
           }
+          if (sk?.success) {
+            toast.info("Sessão online derrubada");
+          }
+
+          void logAuditEvent({
+            action: "gm.banAccount",
+            tenantId: active?.id ?? null,
+            target: `userid:${useridNum}`,
+            status: "ok",
+            metadata: {
+              permanent,
+              duration_seconds: durationNum,
+              account_forbid_backend: gm.account_forbid_backend ?? null,
+              kick_online: roleidValid && kickAfterBan,
+              roleid: roleidValid ? roleidNum : null,
+            },
+          });
+          onActed();
         }}
         renderPreview={(res) => {
           const gm = res.gm_action;
@@ -2140,6 +2888,12 @@ function UnbanAccountCard({
       action="unbanAccount"
       caps={caps}
     >
+      <ModerationPlayerLookup
+        onResolved={(p) => {
+          if (p.userid) setUserid(String(p.userid));
+          if (p.roleid) setRoleid(String(p.roleid));
+        }}
+      />
       <FieldRow label="Userid (conta)">
         <Input
           value={userid}
@@ -2241,6 +2995,8 @@ function UnbanAccountCard({
             }
 
             toast.success(lines.join("\n"));
+            const gmWarn = (gm as { warning?: string } | undefined)?.warning;
+            if (gmWarn) toast.warning(String(gmWarn));
             void logAuditEvent({
               action: "gm.unbanAccount",
               tenantId: active?.id ?? null,
@@ -2379,6 +3135,21 @@ function MuteCard({
       caps={caps}
       tone="warning"
     >
+      <ModerationPlayerLookup
+        hint={
+          isAccount
+            ? "Preenche userid (e roleid se disponível)."
+            : "Preenche roleid do personagem."
+        }
+        onResolved={(p) => {
+          if (isAccount) {
+            if (p.userid) setTarget(String(p.userid));
+            else if (p.roleid) setTarget(String(p.roleid));
+          } else if (p.roleid) {
+            setTarget(String(p.roleid));
+          }
+        }}
+      />
       <FieldRow label={idLabel}>
         <Input
           value={target}
@@ -2451,8 +3222,13 @@ function MuteCard({
           return pwApi.muteRole({ roleid: targetNum, ...base });
         }}
         onSuccess={(res) => {
-          if (res.success) {
-            toast.success(`${entityLabel} #${targetNum} silenciado`);
+          if (
+            feedbackSecurityAction(
+              toast,
+              res,
+              `${entityLabel} #${targetNum} silenciado`,
+            )
+          ) {
             void logAuditEvent({
               action: `gm.${action}`,
               tenantId: active?.id ?? null,
@@ -2461,8 +3237,6 @@ function MuteCard({
               metadata: { permanent, duration_seconds: durationNum },
             });
             onActed();
-          } else {
-            toast.error(res.error ?? "Falhou");
           }
         }}
         renderPreview={(res) => (
@@ -2774,77 +3548,31 @@ function CommunicationTab({
 }
 
 /* -------------------------------------------------------------------------- */
-/* Permissões GM — checklist denso (espelha pwadmin)                           */
+/* Permissoes GM — PW 1.7.8 (addGM / DELETE auth)                              */
 /* -------------------------------------------------------------------------- */
 
-/**
- * Catálogo canônico das regras GM (fallback quando getGmPermissionCatalog
- * não está disponível ou não traz labels). Os labels seguem exatamente a
- * lista validada do servidor PW.
- */
-const FALLBACK_RULE_CATALOG: GmPermissionRule[] = [
-  { id: 0, label: "Alternar nome / ID", category: "info" },
-  { id: 1, label: "Ocultar / ser Deus", category: "stealth" },
-  { id: 2, label: "Online ou nao", category: "info" },
-  { id: 3, label: "Conversa ou nao", category: "chat" },
-  { id: 4, label: "Mover para o papel", category: "movement" },
-  { id: 5, label: "Papel de busca", category: "info" },
-  { id: 6, label: "Mover como sera", category: "movement" },
-  { id: 7, label: "Mover para NPC", category: "movement" },
-  { id: 8, label: "Mover para mapa (copiar)", category: "movement" },
-  { id: 9, label: "Melhore a velocidade", category: "buff" },
-  { id: 10, label: "Acompanhe o jogador", category: "tracking" },
-  { id: 11, label: "Listar usuarios", category: "info" },
-  { id: 100, label: "Forca offline", category: "moderation" },
-  { id: 101, label: "Proibida conversa", category: "moderation" },
-  { id: 102, label: "Proibir o comercio", category: "moderation" },
-  { id: 103, label: "Proibir vender", category: "moderation" },
-  { id: 104, label: "Transmissao", category: "comm" },
-  { id: 105, label: "Desligar o servidor", category: "server" },
-  { id: 200, label: "Invocar monstro", category: "spawn" },
-  { id: 201, label: "Dispel convocacao", category: "spawn" },
-  { id: 202, label: "Pretender", category: "misc" },
-  { id: 203, label: "GM master", category: "elite" },
-  { id: 204, label: "Duplo exp", category: "boost" },
-  { id: 205, label: "Conexoes simultaneas (lambda)", category: "elite" },
-  { id: 206, label: "Gerente de atividades", category: "events" },
-  { id: 207, label: "Nenhum comercio", category: "moderation" },
-  { id: 208, label: "Sem leilao", category: "moderation" },
-  { id: 209, label: "Sem correspondencia", category: "moderation" },
-  { id: 210, label: "Nenhuma faccao", category: "moderation" },
-  { id: 211, label: "Dinheiro Duplo", category: "boost" },
-  { id: 212, label: "Duplo Drop", category: "boost" },
-  { id: 213, label: "Duplo Alma", category: "boost" },
-  { id: 214, label: "Nenhum ponto de venda", category: "moderation" },
-  { id: 215, label: "Interruptor PVP", category: "world" },
-];
-
-const TEMPLATE_DEFAULT_IDS = FALLBACK_RULE_CATALOG.map((r) => r.id);
-
-function mergeRuleCatalog(
-  serverRules?: GmPermissionRule[] | Record<string, GmPermissionRule>,
-): GmPermissionRule[] {
-  const map = new Map<number, GmPermissionRule>();
-  for (const r of FALLBACK_RULE_CATALOG) map.set(r.id, r);
-  if (Array.isArray(serverRules)) {
-    for (const r of serverRules) {
-      const merged = { ...map.get(r.id), ...r };
-      map.set(r.id, merged);
-    }
-  } else if (serverRules && typeof serverRules === "object") {
-    for (const [k, v] of Object.entries(serverRules)) {
-      const id = Number(k);
-      if (Number.isFinite(id)) {
-        const merged = { ...map.get(id), ...v, id };
-        map.set(id, merged);
+function extractGmRuleIds(value: unknown): number[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (typeof item === "number" && Number.isFinite(item)) return item;
+      if (typeof item === "string" && item.trim() !== "" && Number.isFinite(Number(item))) {
+        return Number(item);
       }
-    }
-  }
-  return Array.from(map.values()).sort((a, b) => a.id - b.id);
+      if (item && typeof item === "object") {
+        const obj = item as { rid?: unknown; id?: unknown };
+        if (obj.rid != null && Number.isFinite(Number(obj.rid))) return Number(obj.rid);
+        if (obj.id != null && Number.isFinite(Number(obj.id))) return Number(obj.id);
+      }
+      return NaN;
+    })
+    .filter((n) => Number.isFinite(n) && n >= 0);
 }
 
-function ruleLabel(r: GmPermissionRule): string {
-  return r.label ?? r.name ?? `Regra ${r.id}`;
+function currentGmRuleCount(state: GmPermissionStateResponse | null): number {
+  if (!state) return 0;
+  const ps = state.permission_state;
+  return extractGmRuleIds(ps?.current_rule_ids ?? ps?.current_rules ?? state.current_rules).length;
 }
 
 function GmPermissionsTab({
@@ -2866,58 +3594,50 @@ function GmPermissionsTab({
     { kind: "userid", value: "" },
   );
   const [reason, setReason] = useState("gm-permission-update");
+  const [zoneid, setZoneid] = useState("1");
+  const [gamesysNote, setGamesysNote] = useState("");
   const [state, setState] = useState<GmPermissionStateResponse | null>(null);
   const [resolvedProfile, setResolvedProfile] = useState<PlayerTargetProfile | null>(null);
-  const [catalogRules, setCatalogRules] = useState<GmPermissionRule[]>(FALLBACK_RULE_CATALOG);
-  const [selected, setSelected] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(false);
   const [resolving, setResolving] = useState(false);
   const [busy, setBusy] = useState(false);
   const [missing, setMissing] = useState(false);
+  const [kickOnline, setKickOnline] = useState(true);
   const [lastResult, setLastResult] = useState<GmPermissionMutationResponse | null>(null);
 
   const supportedRead = isSupported("getGmPermissionState", caps);
   const supportedGrant = isSupported("grantGmPermission", caps);
   const supportedRevoke = isSupported("revokeGmPermission", caps);
 
-  // Carrega catálogo uma vez (não bloqueante).
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await pwApi.getGmPermissionCatalog();
-        if (cancelled) return;
-        setCatalogRules(mergeRuleCatalog(res.rule_catalog ?? res.rules));
-      } catch (e) {
-        if (e instanceof EndpointMissingError) {
-          // Catálogo ausente → mantém fallback canônico (já setado).
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const currentRuleCount = useMemo(() => currentGmRuleCount(state), [state]);
 
-  const currentRules = useMemo<Set<number>>(() => {
-    const list =
-      state?.permission_state?.current_rules ?? state?.current_rules ?? [];
-    return new Set(list);
-  }, [state]);
-
-  const summary: GmPermissionSummary = state?.permission_summary ?? {};
+  const hasGm = currentRuleCount > 0;
 
   const applyPermissionState = useCallback((res: GmPermissionStateResponse) => {
     setState(res);
-    const cur = res.permission_state?.current_rules ?? res.current_rules ?? [];
-    setSelected(new Set(cur));
-    if (res.rule_catalog) setCatalogRules(mergeRuleCatalog(res.rule_catalog));
+    const gs = (res as GmPermissionStateResponse & {
+      gamesys?: { effective_zoneid?: number; note?: string; zoneid_mismatch?: boolean };
+      effective_zoneid?: number;
+    }).gamesys;
+    const effectiveZone =
+      gs?.effective_zoneid ??
+      (res as GmPermissionStateResponse & { effective_zoneid?: number }).effective_zoneid;
+    if (effectiveZone != null && effectiveZone > 0) {
+      setZoneid(String(effectiveZone));
+    }
+    if (gs?.note) {
+      setGamesysNote(gs.note);
+    } else if (gs?.zoneid_mismatch) {
+      setGamesysNote("gdeliveryd e gamedbd tem zoneid diferente — confira gamesys.conf");
+    } else {
+      setGamesysNote("");
+    }
   }, []);
 
   const loadState = useCallback(async () => {
     const v = Number(target.value);
     if (!v) {
-      toast.error(`Informe ${target.kind} válido`);
+      toast.error(`Informe ${target.kind} valido`);
       return;
     }
     setLoading(true);
@@ -2925,17 +3645,14 @@ function GmPermissionsTab({
     setLastResult(null);
     try {
       const res = await pwApi.getGmPermissionState({ [target.kind]: v });
-      setState(res);
-      const cur = res.permission_state?.current_rules ?? res.current_rules ?? [];
-      setSelected(new Set(cur));
-      if (res.rule_catalog) setCatalogRules(mergeRuleCatalog(res.rule_catalog));
+      applyPermissionState(res);
     } catch (e) {
       if (e instanceof EndpointMissingError) setMissing(true);
       else toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
-  }, [target]);
+  }, [applyPermissionState, target, toast]);
 
   const consultResolvedTarget = useCallback(
     async (nextTarget: { kind: "userid" | "roleid"; value: string }) => {
@@ -3036,85 +3753,75 @@ function GmPermissionsTab({
     }
   }, [consultResolvedTarget, lookup, pickResolvedTarget, toast]);
 
-  const toggleRule = (id: number) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const selectAll = () => setSelected(new Set(catalogRules.map((r) => r.id)));
-  const clearAll = () => setSelected(new Set());
-  const selectTemplate = () => {
-    const templ =
-      state?.permission_state?.template_rules ??
-      state?.template_rules ??
-      TEMPLATE_DEFAULT_IDS;
-    setSelected(new Set(templ));
-  };
-
-  const buildPayload = (rule_ids?: number[]) => {
+  const buildPayload = () => {
     const v = Number(target.value);
-    return {
+    const z = Number(zoneid);
+    const payload: {
+      reason: string;
+      kick_online: boolean;
+      userid?: number;
+      roleid?: number;
+      zoneid?: number;
+    } = {
       reason,
+      kick_online: kickOnline,
       [target.kind]: v,
-      ...(rule_ids ? { rule_ids } : {}),
-    } as const;
+    };
+    if (resolvedProfile?.userid != null && resolvedProfile.userid > 0) {
+      payload.userid = resolvedProfile.userid;
+    }
+    if (resolvedProfile?.roleid != null && resolvedProfile.roleid > 0) {
+      payload.roleid = resolvedProfile.roleid;
+    }
+    if (Number.isFinite(z) && z > 0) {
+      payload.zoneid = z;
+    }
+    return payload;
   };
 
-  const runMutation = async (
-    type: "grant" | "revoke",
-    mode: "template" | "selected" | "diff",
-  ) => {
+  const runGmAction = async (type: "grant" | "revoke") => {
     const v = Number(target.value);
     if (!v) {
-      toast.error(`Informe ${target.kind} válido`);
+      toast.error(`Informe ${target.kind} valido`);
       return;
     }
     if (!reason.trim()) {
-      toast.error("Reason obrigatório");
+      toast.error("Motivo obrigatorio");
       return;
     }
-    let rule_ids: number[] | undefined;
-    if (mode === "template") {
-      rule_ids = undefined; // template completo
-    } else if (mode === "selected") {
-      rule_ids = Array.from(selected).sort((a, b) => a - b);
-      if (rule_ids.length === 0) {
-        toast.error("Selecione pelo menos uma regra");
-        return;
-      }
-    } else {
-      // diff: o que está selecionado mas NÃO está atual (grant) / o que está atual mas NÃO selecionado (revoke)
-      if (type === "grant") {
-        rule_ids = Array.from(selected).filter((id) => !currentRules.has(id));
-      } else {
-        rule_ids = Array.from(currentRules).filter((id) => !selected.has(id));
-      }
-      if (rule_ids.length === 0) {
-        toast.info("Nada a aplicar — checklist já espelha o estado atual");
-        return;
-      }
-    }
+
     setBusy(true);
     try {
       const fn = type === "grant" ? pwApi.grantGmPermission : pwApi.revokeGmPermission;
-      const res = await fn(buildPayload(rule_ids));
+      const res = await fn(buildPayload());
       setLastResult(res);
       if (res.success) {
-        const ins = res.inserted_rule_count ?? res.permission_change?.inserted?.length ?? 0;
-        const del = res.deleted_rule_count ?? res.permission_change?.deleted?.length ?? 0;
+        const afterCount =
+          res.permission_summary_after?.after_rule_count ??
+          res.permission_summary_after?.current_rule_count ??
+          0;
+        if (type === "grant" && afterCount <= 0) {
+          toast.error("addGM nao gravou permissoes na auth. Verifique MySQL e procedure addGM na VPS.");
+          return;
+        }
         toast.success(
-          `${type === "grant" ? "Grant" : "Revoke"} OK · +${ins} / -${del} regras`,
+          res.message ||
+            (type === "grant"
+              ? `Permissao GM aplicada via addGM (zoneid ${zoneid})`
+              : "Permissao GM removida via auth (PW 1.7.8)"),
         );
         void logAuditEvent({
           action: `gm.${type}GmPermission`,
           tenantId: active?.id ?? null,
           target: `${target.kind}:${v}`,
           status: "ok",
-          metadata: { mode, rule_ids, inserted: ins, deleted: del },
+          metadata: {
+            zoneid: Number(zoneid) || 1,
+            method: type === "grant" ? "addGM" : "delete_auth",
+            message: res.message,
+            after_rule_count: afterCount,
+            kick_online: kickOnline,
+          },
         });
         await loadState();
         onActed();
@@ -3133,37 +3840,11 @@ function GmPermissionsTab({
   }
   if (missing) return <EndpointMissingNotice action="getGmPermissionState" />;
 
-  // Agrupa regras por categoria pra leitura densa.
-  const grouped = catalogRules.reduce<Record<string, GmPermissionRule[]>>((acc, r) => {
-    const k = r.category ?? "outros";
-    (acc[k] = acc[k] ?? []).push(r);
-    return acc;
-  }, {});
-  const categoryOrder = [
-    "info",
-    "stealth",
-    "chat",
-    "movement",
-    "tracking",
-    "buff",
-    "boost",
-    "spawn",
-    "events",
-    "comm",
-    "moderation",
-    "world",
-    "elite",
-    "server",
-    "misc",
-    "outros",
-  ];
-  const orderedCats = Object.keys(grouped).sort(
-    (a, b) => categoryOrder.indexOf(a) - categoryOrder.indexOf(b),
-  );
-
   const permCardId = "gm-permissions";
   const permHidden = !isCardVisible(permCardId, cardVisibility);
-  if (!isSA && permHidden) return <p className="text-xs text-muted-foreground">Nenhum card disponível nesta seção.</p>;
+  if (!isSA && permHidden) {
+    return <p className="text-xs text-muted-foreground">Nenhum card disponivel nesta secao.</p>;
+  }
 
   return (
     <div className={cn("space-y-4", permHidden && isSA && "opacity-50")}>
@@ -3180,11 +3861,11 @@ function GmPermissionsTab({
             )}
           >
             {permHidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-            {permHidden ? "Oculto para usuários" : "Visível para usuários"}
+            {permHidden ? "Oculto para usuarios" : "Visivel para usuarios"}
           </button>
         </div>
       )}
-      {/* Alvo + reason */}
+
       <Card className="bg-card/40">
         <CardHeader className="pb-3">
           <div className="flex items-start gap-3">
@@ -3194,13 +3875,13 @@ function GmPermissionsTab({
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <CardTitle className="text-sm font-extrabold uppercase tracking-wider">
-                  Permissões GM da conta
+                  Permissoes GM (PW 1.7.8)
                 </CardTitle>
                 <CapBadge action="getGmPermissionState" caps={caps} />
               </div>
               <p className="mt-0.5 text-[11px] text-muted-foreground">
-                Resolva o alvo por <code>nick</code>, <code>userid</code> ou{" "}
-                <code>roleid</code>. Depois consulte e aplique grant/revoke total ou granular.
+                Mesmo metodo do admin_testserver: <code>addGM</code> para aplicar e{" "}
+                <code>DELETE auth</code> para remover.
               </p>
             </div>
           </div>
@@ -3229,8 +3910,8 @@ function GmPermissionsTab({
                 lookup.kind === "name"
                   ? "Nome do personagem"
                   : lookup.kind === "userid"
-                    ? "1216"
-                    : "1024"
+                    ? "128"
+                    : "1184"
               }
             />
             <Button onClick={() => void resolveTarget()} disabled={resolving}>
@@ -3273,14 +3954,17 @@ function GmPermissionsTab({
                     )}
                     {resolvedProfile.class_name && <span>classe: {resolvedProfile.class_name}</span>}
                     {resolvedProfile.level != null && <span>lvl {resolvedProfile.level}</span>}
-                    {resolvedProfile.guild && <span>cla: {resolvedProfile.guild}</span>}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {resolvedProfile.userid != null && resolvedProfile.userid > 0 && (
                     <Button
                       size="sm"
-                      variant={target.kind === "userid" && target.value === String(resolvedProfile.userid) ? "default" : "outline"}
+                      variant={
+                        target.kind === "userid" && target.value === String(resolvedProfile.userid)
+                          ? "default"
+                          : "outline"
+                      }
                       onClick={() => void useResolvedTarget("userid")}
                     >
                       Usar userid
@@ -3288,7 +3972,11 @@ function GmPermissionsTab({
                   )}
                   <Button
                     size="sm"
-                    variant={target.kind === "roleid" && target.value === String(resolvedProfile.roleid) ? "default" : "outline"}
+                    variant={
+                      target.kind === "roleid" && target.value === String(resolvedProfile.roleid)
+                        ? "default"
+                        : "outline"
+                    }
                     onClick={() => void useResolvedTarget("roleid")}
                   >
                     Usar roleid
@@ -3301,9 +3989,7 @@ function GmPermissionsTab({
           <div className="grid gap-3 sm:grid-cols-[140px_1fr_auto]">
             <Select
               value={target.kind}
-              onValueChange={(v) =>
-                setTarget((t) => ({ ...t, kind: v as "userid" | "roleid" }))
-              }
+              onValueChange={(v) => setTarget((t) => ({ ...t, kind: v as "userid" | "roleid" }))}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -3316,7 +4002,7 @@ function GmPermissionsTab({
             <Input
               value={target.value}
               onChange={(e) => setTarget((t) => ({ ...t, value: e.target.value }))}
-              placeholder={target.kind === "userid" ? "1216" : "1024"}
+              placeholder={target.kind === "userid" ? "128" : "1184"}
             />
             <Button onClick={() => void loadState()} disabled={loading || !supportedRead}>
               {loading ? (
@@ -3327,235 +4013,376 @@ function GmPermissionsTab({
               Consultar
             </Button>
           </div>
-          <FieldRow label="Motivo (auditoria)">
-            <Input value={reason} onChange={(e) => setReason(e.target.value)} />
-          </FieldRow>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <FieldRow label="Zone ID (addGM)">
+              <Input
+                type="number"
+                min={1}
+                value={zoneid}
+                onChange={(e) => setZoneid(e.target.value)}
+                placeholder="1"
+              />
+            </FieldRow>
+            <FieldRow label="Motivo (auditoria)">
+              <Input value={reason} onChange={(e) => setReason(e.target.value)} />
+            </FieldRow>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            PW 1.7.8: <code>addGM(userid, zoneid)</code> — zoneid vem do gamesys.conf (
+            gdeliveryd ou gamedbd). Valor atual sugerido: <strong>{zoneid}</strong>.
+          </p>
+          {gamesysNote && (
+            <p className="text-[11px] text-amber-400">{gamesysNote}</p>
+          )}
+
+          <div className="flex items-center justify-between gap-4 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2.5">
+            <div>
+              <div className="text-xs font-semibold text-amber-200">Kick + relog apos aplicar GM</div>
+              <div className="text-[11px] text-muted-foreground">
+                GM so aparece no jogo depois de relogar. Recomendado manter ligado.
+              </div>
+            </div>
+            <Switch checked={kickOnline} onCheckedChange={setKickOnline} />
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            &quot;Coroa&quot; no chat do jogo e patente/VIP — nao indica GM. GM vem da tabela auth (addGM) e
+            so ativa apos relogar.
+          </p>
         </CardContent>
       </Card>
 
-      {/* Resumo */}
       {state && (
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-2 sm:grid-cols-2">
           <SummaryStat
-            label="Regras atuais"
-            value={summary.current_rule_count ?? currentRules.size}
-            tone="default"
+            label="Permissoes na auth"
+            value={currentRuleCount}
+            tone={hasGm ? "success" : "default"}
           />
           <SummaryStat
-            label="Template"
-            value={`${summary.matching_rule_count ?? 0} / ${summary.template_rule_count ?? "—"}`}
-            tone={summary.fully_matches_template ? "success" : "warning"}
-          />
-          <SummaryStat
-            label="Faltantes"
-            value={summary.missing_rule_count ?? 0}
-            tone={(summary.missing_rule_count ?? 0) > 0 ? "warning" : "success"}
-          />
-          <SummaryStat
-            label="Status"
-            value={
-              summary.fully_matches_template
-                ? "FULL GM"
-                : summary.partially_matches_template
-                  ? "PARCIAL"
-                  : (summary.current_rule_count ?? currentRules.size) > 0
-                    ? "CUSTOM"
-                    : "SEM GM"
-            }
-            tone={
-              summary.fully_matches_template
-                ? "success"
-                : summary.partially_matches_template
-                  ? "warning"
-                  : "default"
-            }
+            label="Status GM"
+            value={hasGm ? "COM GM" : "SEM GM"}
+            tone={hasGm ? "success" : "warning"}
           />
         </div>
       )}
 
-      {/* Ações totais */}
       <Card className="border-purple-500/30 bg-card/40">
         <CardHeader className="pb-3">
           <CardTitle className="text-xs font-extrabold uppercase tracking-widest text-purple-400">
-            Template completo (todas as regras)
+            Aplicar / remover GM
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           <Button
-            onClick={() => void runMutation("grant", "template")}
+            onClick={() => void runGmAction("grant")}
             disabled={busy || !supportedGrant || !target.value}
             className="gap-1.5"
           >
-            <ShieldCheck className="h-3.5 w-3.5" />
-            Grant TOTAL
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+            Aplicar GM (addGM)
           </Button>
           <Button
             variant="destructive"
-            onClick={() => void runMutation("revoke", "template")}
+            onClick={() => void runGmAction("revoke")}
             disabled={busy || !supportedRevoke || !target.value}
             className="gap-1.5"
           >
-            <ShieldOff className="h-3.5 w-3.5" />
-            Revoke TOTAL
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldOff className="h-3.5 w-3.5" />}
+            Remover GM (auth)
           </Button>
-          <span className="ml-auto text-[10px] italic text-muted-foreground">
-            Aplica/remove o template GM inteiro de uma vez.
-          </span>
         </CardContent>
       </Card>
 
-      {/* Checklist granular */}
-      <Card className="bg-card/40">
-        <CardHeader className="pb-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle className="text-sm font-extrabold uppercase tracking-wider">
-              Regras GM ({selected.size}/{catalogRules.length} selecionadas)
-            </CardTitle>
-            <div className="flex flex-wrap gap-1.5">
-              <Button size="sm" variant="outline" onClick={selectTemplate}>
-                Template
-              </Button>
-              <Button size="sm" variant="outline" onClick={selectAll}>
-                Todas
-              </Button>
-              <Button size="sm" variant="outline" onClick={clearAll}>
-                Limpar
-              </Button>
-            </div>
-          </div>
-          <p className="text-[11px] text-muted-foreground">
-            Marque as regras desejadas. Use{" "}
-            <strong>Aplicar diff</strong> para sincronizar exatamente com o checklist.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <ScrollArea className="h-[420px] pr-2">
-            <div className="space-y-4">
-              {orderedCats.map((cat) => (
-                <div key={cat}>
-                  <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    {cat}
-                  </div>
-                  <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
-                    {grouped[cat].map((r) => {
-                      const isCurrent = currentRules.has(r.id);
-                      const isSel = selected.has(r.id);
-                      return (
-                        <button
-                          key={r.id}
-                          type="button"
-                          onClick={() => toggleRule(r.id)}
-                          className={cn(
-                            "flex items-start gap-2 rounded-md border px-2 py-1.5 text-left transition-colors",
-                            isSel
-                              ? "border-purple-500/60 bg-purple-500/10"
-                              : "border-border bg-card/40 hover:bg-card/60",
-                          )}
-                        >
-                          <div
-                            className={cn(
-                              "mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border",
-                              isSel
-                                ? "border-purple-400 bg-purple-500 text-white"
-                                : "border-muted-foreground/40",
-                            )}
-                          >
-                            {isSel && <CheckCircle2 className="h-3 w-3" />}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5 text-[11px]">
-                              <code className="font-mono text-[10px] text-muted-foreground">
-                                {r.id}
-                              </code>
-                              <span className="truncate font-semibold text-foreground">
-                                {ruleLabel(r)}
-                              </span>
-                            </div>
-                            {isCurrent && (
-                              <span className="text-[9px] font-bold uppercase tracking-widest text-success">
-                                ativa
-                              </span>
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
-
-          <Separator />
-
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="default"
-              onClick={() => void runMutation("grant", "selected")}
-              disabled={busy || !supportedGrant || !target.value}
-              className="gap-1.5"
-            >
-              <ShieldCheck className="h-3.5 w-3.5" />
-              Grant selecionadas
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => void runMutation("revoke", "selected")}
-              disabled={busy || !supportedRevoke || !target.value}
-              className="gap-1.5"
-            >
-              <ShieldOff className="h-3.5 w-3.5" />
-              Revoke selecionadas
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => void runMutation("grant", "diff")}
-              disabled={busy || !supportedGrant || !target.value}
-              className="gap-1.5 border-purple-500/40 text-purple-400"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              Aplicar diff (grant faltantes)
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => void runMutation("revoke", "diff")}
-              disabled={busy || !supportedRevoke || !target.value}
-              className="gap-1.5"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              Aplicar diff (revoke extras)
-            </Button>
-            {busy && <Loader2 className="ml-2 h-4 w-4 animate-spin self-center" />}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Resultado da última mutação */}
       {lastResult && (
         <Card className="border-success/40 bg-success/5">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-extrabold uppercase tracking-widest text-success">
-              Último resultado
+              Ultimo resultado
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-1.5 text-[11px] sm:grid-cols-2">
-            <Row label="inseridas" value={lastResult.inserted_rule_count ?? 0} />
-            <Row label="removidas" value={lastResult.deleted_rule_count ?? 0} />
-            <Row
-              label="antes (count)"
-              value={lastResult.permission_summary_before?.current_rule_count ?? "—"}
-            />
-            <Row
-              label="depois (count)"
-              value={lastResult.permission_summary_after?.current_rule_count ?? "—"}
-            />
-            {lastResult.warning && (
-              <p className="col-span-full italic text-amber-500">⚠ {lastResult.warning}</p>
-            )}
+          <CardContent className="space-y-2 text-[11px]">
+            <p className="font-medium text-foreground">{lastResult.message}</p>
+            <div className="grid gap-1.5 sm:grid-cols-2">
+              <Row
+                label="permissoes antes"
+                value={lastResult.permission_summary_before?.current_rule_count ?? "—"}
+              />
+              <Row
+                label="permissoes depois"
+                value={lastResult.permission_summary_after?.current_rule_count ?? "—"}
+              />
+              <Row label="metodo" value={lastResult.permission_change?.gm_method ?? "addGM"} />
+              <Row
+                label="zoneid"
+                value={String(lastResult.permission_change?.gm_zoneid ?? zoneid)}
+              />
+            </div>
           </CardContent>
         </Card>
       )}
     </div>
+  );
+}
+
+function MeridianTitlesTab({
+  caps,
+  onActed,
+}: {
+  caps: Map<string, GmCommandCapability>;
+  onActed: () => void;
+}) {
+  const toast = useFeedback();
+  const { active } = useServers();
+  const [lookup, setLookup] = useState("");
+  const [roleid, setRoleid] = useState("");
+  const [presets, setPresets] = useState<MeridianTitlePreset[]>([]);
+  const [presetKey, setPresetKey] = useState("");
+  const [kickOnline, setKickOnline] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [preview, setPreview] = useState<MeridianTitlePreviewResponse | null>(null);
+  const [applyResult, setApplyResult] = useState<MeridianTitleApplyResponse | null>(null);
+  const [missing, setMissing] = useState(false);
+
+  const selectedPreset = presets.find((p) => p.key === presetKey);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await pwApi.getMeridianTitlePresetCatalog();
+        if (cancelled) return;
+        const list = res.presets ?? [];
+        setPresets(list);
+        const preferred =
+          list.find((p) => p.key === "full_meridian_titles") ??
+          list.find((p) => (p.applies ?? []).includes("meridian") && (p.applies ?? []).includes("titles")) ??
+          list[0];
+        if (preferred) setPresetKey(preferred.key);
+      } catch (e) {
+        if (e instanceof EndpointMissingError) setMissing(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const resolveRole = async () => {
+    const raw = lookup.trim();
+    if (!raw) {
+      toast.error("Informe o nick ou roleid");
+      return;
+    }
+    setLoading(true);
+    try {
+      const query = /^\d+$/.test(raw) ? { roleid: Number(raw) } : { name: raw };
+      const res = await pwApi.getPlayerTargetProfile(query);
+      const rid = res.profile?.roleid;
+      if (!rid) {
+        toast.error(
+          (res.profile as { resolution_note?: string } | undefined)?.resolution_note ??
+            "Personagem sem roleid",
+        );
+        return;
+      }
+      setRoleid(String(rid));
+      toast.success(`Alvo: ${res.profile?.name || rid}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const buildBody = (dryRun: boolean) => ({
+    preset_key: presetKey,
+    roleid: Number(roleid),
+    kick_online: kickOnline,
+    ...(dryRun ? { dry_run: true } : {}),
+  });
+
+  const runPreview = async () => {
+    const r = Number(roleid);
+    if (!r || !presetKey) {
+      toast.error("Resolva o alvo e escolha um preset");
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await pwApi.previewMeridianTitlePreset(buildBody(true));
+      setPreview(res);
+      if (res.would_change) toast.info("Preview: havera alteracao");
+      else toast.info("Preview: nada a alterar");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const runApply = async () => {
+    const r = Number(roleid);
+    if (!r || !presetKey) {
+      toast.error("Resolva o alvo e escolha um preset");
+      return;
+    }
+    setBusy(true);
+    setApplyResult(null);
+    try {
+      const res = await pwApi.applyMeridianTitlePreset(buildBody(false));
+      setApplyResult(res);
+      if (res.success) {
+        const after = res.after as { has_full_meridian?: boolean; has_full_titles?: boolean } | undefined;
+        const mer = after?.has_full_meridian ? "meridiano full" : "meridiano parcial";
+        const tit = after?.has_full_titles ? "titulos full" : "titulos parcial";
+        toast.success(
+          res.message ||
+            (res.changed === false
+              ? "Preset ja estava aplicado."
+              : `Aplicado (${mer}, ${tit}). Relogue para ver no cliente.`),
+        );
+        void logAuditEvent({
+          action: "gm.applyMeridianTitlePreset",
+          tenantId: active?.id ?? null,
+          target: String(r),
+          status: "ok",
+          metadata: { preset_key: presetKey, changed: res.changed ?? true },
+        });
+        onActed();
+      } else {
+        toast.error(res.error ?? "Falhou");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (missing) return <EndpointMissingNotice action="getMeridianTitlePresetCatalog" />;
+
+  return (
+    <Card className="bg-card/40">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wider">
+          <BookOpen className="h-4 w-4 text-primary" />
+          Meridiano e Titulos (PW 1.7.8)
+        </CardTitle>
+        <p className="text-[11px] text-muted-foreground">
+          Presets legados de meridiano/titulos. Escolha &quot;Full Meridiano + Titulos&quot; para aplicar
+          ambos. Personagem online precisa de kick + relog.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+          <Input
+            value={lookup}
+            onChange={(e) => setLookup(e.target.value)}
+            placeholder="Nick ou roleid"
+          />
+          <Button onClick={() => void resolveRole()} disabled={loading}>
+            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Crosshair className="h-3.5 w-3.5" />}
+            Resolver
+          </Button>
+        </div>
+        <FieldRow label="Roleid alvo">
+          <Input value={roleid} onChange={(e) => setRoleid(e.target.value)} placeholder="1024" />
+        </FieldRow>
+        <FieldRow label="Preset">
+          <Select value={presetKey} onValueChange={setPresetKey}>
+            <SelectTrigger>
+              <SelectValue placeholder="Escolha o preset" />
+            </SelectTrigger>
+            <SelectContent>
+              {presets.map((p) => (
+                <SelectItem key={p.key} value={p.key}>
+                  {p.label}
+                  {(p.applies ?? []).length > 0
+                    ? ` (${(p.applies ?? []).join(" + ")})`
+                    : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FieldRow>
+        {selectedPreset?.summary && (
+          <p className="text-[10px] text-muted-foreground">{selectedPreset.summary}</p>
+        )}
+        <div className="flex items-center justify-between gap-4 rounded-md border border-border/60 px-3 py-2">
+          <span className="text-xs text-muted-foreground">Kick se online (recomendado)</span>
+          <Switch checked={kickOnline} onCheckedChange={setKickOnline} />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => void runPreview()} disabled={busy || !Number(roleid)}>
+            Preview
+          </Button>
+          <Button
+            onClick={() => void runApply()}
+            disabled={busy || !Number(roleid) || !presetKey || !isSupported("applyMeridianTitlePreset", caps)}
+          >
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            Aplicar preset
+          </Button>
+        </div>
+        {!isSupported("applyMeridianTitlePreset", caps) && (
+          <p className="text-[10px] text-amber-500">
+            Aplicar desabilitado: action ausente no catalogo GM desta VPS.
+          </p>
+        )}
+        {preview && (
+          <div className="rounded-md border border-border/60 bg-muted/20 p-3 text-[11px] space-y-1">
+            <Row label="altera" value={preview.would_change ? "sim" : "nao"} />
+            <Row label="meridiano atual" value={preview.current?.has_full_meridian ? "full" : "parcial/sem"} />
+            <Row label="titulos atual" value={preview.current?.has_full_titles ? "full" : "parcial/sem"} />
+            <Row label="meridiano depois" value={preview.after?.has_full_meridian ? "full" : "parcial/sem"} />
+            <Row label="titulos depois" value={preview.after?.has_full_titles ? "full" : "parcial/sem"} />
+            {(preview.warnings ?? []).map((w) => (
+              <p key={w} className="text-amber-400">
+                ⚠{" "}
+                {kickOnline &&
+                /online/i.test(w) &&
+                /kick_online/i.test(w)
+                  ? "Personagem online — kick automatico sera aplicado antes do preset."
+                  : w}
+              </p>
+            ))}
+          </div>
+        )}
+        {applyResult?.success && (
+          <div className="rounded-md border border-success/40 bg-success/5 p-3 text-[11px] space-y-1">
+            <Row
+              label="resultado"
+              value={
+                applyResult.changed === false
+                  ? "ja estava aplicado"
+                  : "salvo no gamedbd"
+              }
+            />
+            <Row
+              label="meridiano"
+              value={
+                (applyResult.after as { has_full_meridian?: boolean } | undefined)?.has_full_meridian
+                  ? "full"
+                  : "parcial/sem"
+              }
+            />
+            <Row
+              label="titulos"
+              value={
+                (applyResult.after as { has_full_titles?: boolean } | undefined)?.has_full_titles
+                  ? "full"
+                  : "parcial/sem"
+              }
+            />
+            <p className="text-success">
+              Saia do jogo e entre de novo para ver meridiano/titulos no cliente.
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

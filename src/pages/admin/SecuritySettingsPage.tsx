@@ -1,9 +1,9 @@
-// /admin/security/settings — wrapper da SettingsTab existente.
-import { SettingsTab } from "@/components/admin/SettingsTab";
+// /admin/security/settings — protecao da landing + sessoes ativas.
+import { LandingAccessSecurityPanel } from "@/components/admin/LandingAccessSecurityPanel";
 
 const SecuritySettingsPage = () => (
   <div className="h-full overflow-y-auto p-6">
-    <SettingsTab />
+    <LandingAccessSecurityPanel />
   </div>
 );
 

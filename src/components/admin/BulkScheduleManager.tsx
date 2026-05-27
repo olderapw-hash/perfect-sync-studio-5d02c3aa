@@ -187,6 +187,7 @@ export function BulkScheduleManager() {
         return;
       }
       const summary = full?.summary ?? s;
+      const bulkNotify = (detail.bulk_notify as Record<string, unknown> | undefined) ?? {};
       const payload: Record<string, unknown> = {
         ...cmd,
         name: summary.name,
@@ -197,6 +198,11 @@ export function BulkScheduleManager() {
         selection: summary.selection ?? detail.selection ?? {},
         enabled: !s.enabled,
       };
+      if (Object.keys(bulkNotify).length > 0) {
+        payload.bulk_notify_enabled = bulkNotify.enabled;
+        payload.bulk_notify_message = bulkNotify.message;
+        payload.bulk_notify_on_queue = bulkNotify.on_queue;
+      }
       await pwApi.updateBulkSchedule(s.id, payload as never);
       await loadSchedules();
     } catch (err) {
@@ -443,6 +449,11 @@ function ScheduleFormDialog({
   const [body, setBody] = useState("");
   const [message, setMessage] = useState("");
   const [itemPickerOpen, setItemPickerOpen] = useState(false);
+  const [bulkNotifyEnabled, setBulkNotifyEnabled] = useState(true);
+  const [bulkNotifyOnQueue, setBulkNotifyOnQueue] = useState(true);
+  const [bulkNotifyMessage, setBulkNotifyMessage] = useState(
+    "[GM] {command_label}: {details} ({success_count}/{target_count} jogadores).",
+  );
 
   const needsAudience = !NO_AUDIENCE_COMMANDS.has(commandKey);
 
@@ -471,6 +482,13 @@ function ScheduleFormDialog({
     else if (typeof cmd.reason === "string") setSubject(cmd.reason);
     if (typeof cmd.body === "string") setBody(cmd.body);
     if (typeof cmd.message === "string") setMessage(cmd.message);
+
+    const bulkNotify = (scheduleDetail?.bulk_notify as Record<string, unknown> | undefined) ?? {};
+    if (typeof bulkNotify.enabled === "boolean") setBulkNotifyEnabled(bulkNotify.enabled);
+    if (typeof bulkNotify.on_queue === "boolean") setBulkNotifyOnQueue(bulkNotify.on_queue);
+    if (typeof bulkNotify.message === "string" && bulkNotify.message.trim()) {
+      setBulkNotifyMessage(bulkNotify.message);
+    }
   }, [schedule, scheduleDetail]);
 
   const handleSave = async () => {
@@ -541,6 +559,12 @@ function ScheduleFormDialog({
       case "sendSystemMessage":
         payload.message = message || "";
         break;
+    }
+
+    if (commandKey !== "sendSystemMessage") {
+      payload.bulk_notify_enabled = bulkNotifyEnabled;
+      payload.bulk_notify_message = bulkNotifyMessage.trim();
+      payload.bulk_notify_on_queue = bulkNotifyOnQueue;
     }
 
     try {
@@ -761,6 +785,27 @@ function ScheduleFormDialog({
             <div className="space-y-2">
               <Label className="text-[10px]">Mensagem do Broadcast</Label>
               <Textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Mensagem que será enviada no chat global" className="h-16 text-xs" />
+            </div>
+          )}
+
+          {commandKey !== "sendSystemMessage" && (
+            <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <Label className="text-[10px] font-semibold">Aviso no chat ao executar</Label>
+                <Switch checked={bulkNotifyEnabled} onCheckedChange={setBulkNotifyEnabled} id="sched-bulk-notify" />
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch checked={bulkNotifyOnQueue} onCheckedChange={setBulkNotifyOnQueue} id="sched-bulk-notify-queue" />
+                <Label htmlFor="sched-bulk-notify-queue" className="text-[10px] text-muted-foreground">
+                  Avisar ao disparar o agendamento
+                </Label>
+              </div>
+              <Textarea
+                value={bulkNotifyMessage}
+                onChange={(e) => setBulkNotifyMessage(e.target.value)}
+                rows={3}
+                className="text-xs font-mono"
+              />
             </div>
           )}
 

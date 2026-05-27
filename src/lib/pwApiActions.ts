@@ -1,7 +1,9 @@
 // Cliente tipado para as actions extras da VPS (Lote 3).
 // Roteia via Edge Function `clsconfig-proxy` que injeta o `x-sync-secret`.
+// Modo self-hosted: quando VITE_GAME_PORTAL_ADMIN_SECRET existe, chama api_cls.php direto.
 // Cada action tem o contrato documentado em docs/api-contract.md.
 import { supabase } from "@/integrations/supabase/client";
+import { handleMaybeAuthOrForbidden } from "@/lib/authErrors";
 
 export interface CatalogItemDefaults {
   count?: number;
@@ -199,7 +201,9 @@ export interface SaveRoleEditableResponse {
   error?: string;
 }
 
-/** Erro padronizado quando o endpoint da VPS ainda não existe (404). */
+/**
+ * Erro padronizado quando o endpoint da VPS ainda não existe (404).
+ */
 export class EndpointMissingError extends Error {
   constructor(public action: string) {
     super(`Endpoint ?action=${action} ainda não implementado na VPS`);
@@ -226,10 +230,153 @@ export class PwApiActionError<T = unknown> extends Error {
   }
 }
 
+const VPS_MERIDIAN_ACTIONS = new Set([
+  "getMeridianTitlePresetCatalog",
+  "previewMeridianTitlePreset",
+  "applyMeridianTitlePreset",
+]);
+
+async function buildVpsDirectOperatorHeaders(): Promise<Record<string, string>> {
+  const {
+    buildPortalAdminHeaders,
+    gamePortalAdminSecret,
+  } = await import("@/lib/gamePortalApi");
+  const secret = gamePortalAdminSecret();
+  if (!secret) {
+    throw new Error("VITE_GAME_PORTAL_ADMIN_SECRET nao configurado no build");
+  }
+
+  const { supabase } = await import("@/integrations/supabase/client");
+  const { data: sessionData } = await supabase.auth.getSession();
+  const user = sessionData.session?.user;
+
+  return buildPortalAdminHeaders({
+    secret,
+    operatorId: user?.id,
+    operatorEmail: user?.email ?? undefined,
+    operatorName:
+      (user?.user_metadata?.full_name as string | undefined) ||
+      (user?.user_metadata?.name as string | undefined),
+  });
+}
+
+function parseVpsDirectPayload(rawBody: string, status: number, action: string): unknown {
+  if (!rawBody.trim()) {
+    if (status === 404) throw new EndpointMissingError(action);
+    throw new Error(`Resposta vazia da VPS (HTTP ${status})`);
+  }
+  try {
+    return JSON.parse(rawBody);
+  } catch {
+    if (status === 404) throw new EndpointMissingError(action);
+    throw new Error(`Resposta invalida da VPS (HTTP ${status}): ${rawBody.slice(0, 240)}`);
+  }
+}
+
+function assertVpsDirectResponse<T>(
+  action: string,
+  status: number,
+  rawBody: string,
+  data: unknown,
+): T {
+  if (status === 401 || status === 403) {
+    handleMaybeAuthOrForbidden(new Error(`${status} ${rawBody || "Unauthorized"}`));
+  }
+
+  if (status === 404) {
+    throw new EndpointMissingError(action);
+  }
+
+  if (data && typeof data === "object") {
+    const d = data as { success?: boolean; error?: string; endpoint_missing?: boolean };
+    if (d.endpoint_missing === true) {
+      throw new EndpointMissingError(action);
+    }
+    const err = d.error ?? "";
+    const explicitFail = d.success === false;
+    const looksMissing =
+      /not\s+found|unknown\s+action|n[ãa]o\s+encontrad|acao\s+invalida|a[cç][aã]o\s+inv[aá]lida/i.test(err);
+    if ((explicitFail || err) && looksMissing) {
+      throw new EndpointMissingError(action);
+    }
+    if (explicitFail && err) {
+      throw new PwApiActionError(action, err, status, data);
+    }
+    if (typeof d.error === "string" && d.error && d.success !== true) {
+      throw new Error(d.error);
+    }
+  }
+
+  if (!data || typeof data !== "object") {
+    if (status >= 400) {
+      throw new Error(rawBody || `HTTP ${status}`);
+    }
+  }
+
+  if (status >= 400) {
+    const err =
+      data && typeof data === "object" && "error" in data
+        ? String((data as { error?: string }).error ?? "")
+        : rawBody;
+    if (err && data && typeof data === "object") {
+      throw new PwApiActionError(action, err, status, data);
+    }
+    throw new Error(err || `HTTP ${status}`);
+  }
+
+  return data as T;
+}
+
+/** Chama api_cls.php (ou gateway Meridiano) direto na VPS — sem Supabase proxy. */
+async function callVpsActionDirect<T>(
+  action: string,
+  opts: { method: "GET" | "POST"; query?: Record<string, string | number>; body?: unknown },
+): Promise<T> {
+  const { getVpsApiBase, getVpsMeridianApiBase } = await import("@/lib/gamePortalApi");
+  const headers = await buildVpsDirectOperatorHeaders();
+  const qs = new URLSearchParams();
+  qs.set("action", action);
+  if (opts.query) {
+    for (const [k, v] of Object.entries(opts.query)) qs.set(k, String(v));
+  }
+
+  const base = VPS_MERIDIAN_ACTIONS.has(action) ? getVpsMeridianApiBase() : getVpsApiBase();
+  const url = `${base}?${qs.toString()}`;
+
+  const isIdempotent = opts.method === "GET" || /^(get|list|export)/i.test(action);
+  const maxAttempts = isIdempotent ? 3 : 1;
+  let lastStatus = 0;
+  let lastBody = "";
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const res = await fetch(url, {
+      method: opts.method,
+      headers,
+      body: opts.method === "POST" ? JSON.stringify(opts.body ?? {}) : undefined,
+    });
+    lastStatus = res.status;
+    lastBody = await res.text();
+    const transient = lastStatus >= 502 && lastStatus <= 504;
+    if (!transient || attempt >= maxAttempts - 1) {
+      const parsed = parseVpsDirectPayload(lastBody, lastStatus, action);
+      return assertVpsDirectResponse<T>(action, lastStatus, lastBody, parsed);
+    }
+    await new Promise((r) => setTimeout(r, attempt === 0 ? 400 : 1200));
+  }
+
+  const parsed = parseVpsDirectPayload(lastBody, lastStatus, action);
+  return assertVpsDirectResponse<T>(action, lastStatus, lastBody, parsed);
+}
+
 async function callAction<T>(
   action: string,
   opts: { method: "GET" | "POST"; query?: Record<string, string | number>; body?: unknown },
 ): Promise<T> {
+  const { canUseDirectVpsApi } = await import("@/lib/gamePortalApi");
+  if (canUseDirectVpsApi()) {
+    return callVpsActionDirect<T>(action, opts);
+  }
+
   const qs = new URLSearchParams();
   if (opts.query) {
     for (const [k, v] of Object.entries(opts.query)) qs.set(k, String(v));
@@ -421,6 +568,17 @@ export const pwApi = {
       body,
     });
   },
+  /** Lê multiplicadores (EXP/SP/drop/money) de gamed/script.lua. */
+  getServerRates() {
+    return callAction<GetServerRatesResponse>("getServerRates", { method: "GET" });
+  },
+  /** Grava rates em script.lua (backup automático). Requer restart GS. */
+  saveServerRates(body: SaveServerRatesPayload) {
+    return callAction<SaveServerRatesResponse>("saveServerRates", {
+      method: "POST",
+      body,
+    });
+  },
   /* ─────────── Segurança v1 (kick / ban / unban) ─────────── */
   /**
    * Desconecta um personagem online (kick). Não bane — apenas força a
@@ -510,6 +668,13 @@ export const pwApi = {
     return callAction<ServerOperationStatusResponse>("getServerOperationStatus", {
       method: "GET",
       query,
+    });
+  },
+  /** Solicita cancelamento cooperativo de operação longa em andamento. */
+  cancelServerOperation(body: { operation_id: string; reason?: string }) {
+    return callAction<CancelServerOperationResponse>("cancelServerOperation", {
+      method: "POST",
+      body,
     });
   },
   /**
@@ -620,6 +785,34 @@ export const pwApi = {
   runWatchdogCheckNow(body: { dry_run?: boolean } = {}) {
     return callAction<WatchdogCheckResponse>("runWatchdogCheckNow", { method: "POST", body });
   },
+  /* ─────────── Game Portal (cadastro publico) ─────────── */
+  getGamePortalAdminConfig() {
+    return callAction<GamePortalAdminConfigResponse>("getGamePortalAdminConfig", { method: "GET" });
+  },
+  saveGamePortalAdminConfig(body: SaveGamePortalAdminConfigPayload) {
+    return callAction<SaveGamePortalAdminConfigResponse>("saveGamePortalAdminConfig", {
+      method: "POST",
+      body,
+    });
+  },
+  createStaffAccount(body: CreateStaffAccountPayload) {
+    return callAction<CreateStaffAccountResponse>("createStaffAccount", { method: "POST", body });
+  },
+  listLandingAccessSessions() {
+    return callAction<LandingAccessSessionsResponse>("listLandingAccessSessions", { method: "GET" });
+  },
+  revokeLandingAccessSession(sessionId: string) {
+    return callAction<{ success: boolean; message?: string }>("revokeLandingAccessSession", {
+      method: "POST",
+      body: { session_id: sessionId },
+    });
+  },
+  revokeAllLandingAccessSessions() {
+    return callAction<{ success: boolean; message?: string; revoked_count?: number }>(
+      "revokeAllLandingAccessSessions",
+      { method: "POST", body: {} },
+    );
+  },
   /* ─────────── GM Commander v1 ─────────── */
   /** Catálogo de comandos GM disponíveis na VPS (capability flags). */
   getGmCommandCatalog() {
@@ -642,6 +835,13 @@ export const pwApi = {
   grantMallCash(body: GrantMallCashPayload) {
     return callAction<GrantMallCashResponse>("grantMallCash", { method: "POST", body });
   },
+  /** Template do correio enviado após grantMallCash. */
+  getMallCashNotifyMailConfig() {
+    return callAction<MallCashNotifyMailConfigResponse>("getMallCashNotifyMailConfig", { method: "GET" });
+  },
+  saveMallCashNotifyMailConfig(body: SaveMallCashNotifyMailConfigPayload) {
+    return callAction<MallCashNotifyMailConfigResponse>("saveMallCashNotifyMailConfig", { method: "POST", body });
+  },
   /** Silencia uma conta (chat global). */
   muteAccount(body: MuteAccountPayload) {
     return callAction<SecurityActionResponse>("muteAccount", { method: "POST", body });
@@ -657,6 +857,26 @@ export const pwApi = {
    */
   clearRolePk(body: ClearRolePkPayload) {
     return callAction<ClearRolePkResponse>("clearRolePk", { method: "POST", body });
+  },
+  /** Catálogo de presets de punição rápida (kick, mute, ban). */
+  getQuickPunishmentCatalog() {
+    return callAction<QuickPunishmentCatalogResponse>("getQuickPunishmentCatalog", {
+      method: "GET",
+    });
+  },
+  /** Preview do plano de punição (sem efetivar). */
+  previewQuickPunishment(body: QuickPunishmentPayload) {
+    return callAction<QuickPunishmentPreviewResponse>("previewQuickPunishment", {
+      method: "POST",
+      body,
+    });
+  },
+  /** Executa punição rápida conforme preset escolhido. */
+  executeQuickPunishment(body: QuickPunishmentPayload) {
+    return callAction<QuickPunishmentExecuteResponse>("executeQuickPunishment", {
+      method: "POST",
+      body,
+    });
   },
   /* ─────────── GM Permissions v2 ─────────── */
   /** Catálogo estático das regras GM (id → label). */
@@ -685,6 +905,21 @@ export const pwApi = {
     return callAction<GmPermissionMutationResponse>("revokeGmPermission", {
       method: "POST",
       body: { ...body, confirm: "REVOKE_GM_PERMISSION" as const },
+    });
+  },
+  getMeridianTitlePresetCatalog() {
+    return callAction<MeridianTitleCatalogResponse>("getMeridianTitlePresetCatalog", { method: "GET" });
+  },
+  previewMeridianTitlePreset(body: MeridianTitlePresetPayload) {
+    return callAction<MeridianTitlePreviewResponse>("previewMeridianTitlePreset", {
+      method: "POST",
+      body,
+    });
+  },
+  applyMeridianTitlePreset(body: MeridianTitlePresetPayload) {
+    return callAction<MeridianTitleApplyResponse>("applyMeridianTitlePreset", {
+      method: "POST",
+      body,
     });
   },
   /* ─────────── GM Commander v2 — Bulk Operations ─────────── */
@@ -1096,21 +1331,22 @@ export interface GmActionHistoryResponse {
 }
 
 /**
- * Saldo da carteira da Mall (loja). PW separa em `cash` (gold pago) e
- * `cash_add` (gold de bônus/grant). O total operacional é `cash_total`.
- *
- * Importante: na maioria dos servidores validados, `grantMallCash` reflete
- * em `cash_add` — por isso a UI deve sempre conferir `cash_total_gold`,
- * não `cash_gold` isolado.
+ * Saldo da carteira da Mall (loja). PW 1.7.8:
+ * - `shop_balance` / `cash_total` = saldo spendavel in-game (cash_add - cash_used)
+ * - `cash_add` = total recarregado (nao e saldo atual)
+ * - `cash_used` = total gasto na loja
  */
 export interface MallCashWallet {
-  /** Gold pago (1 gold = 100 units no PW). */
+  /** Saldo spendavel da loja (igual in-game). */
+  shop_balance_gold?: number;
+  shop_balance_units?: number;
   cash_gold?: number;
   cash_units?: number;
-  /** Gold bônus/grant. */
   cash_add_gold?: number;
   cash_add_units?: number;
-  /** Soma das duas carteiras (canônico para conferência). */
+  cash_used_gold?: number;
+  cash_used_units?: number;
+  /** Alias de shop_balance para compatibilidade. */
   cash_total_gold?: number;
   cash_total_units?: number;
   [k: string]: unknown;
@@ -1162,6 +1398,8 @@ export interface GrantMallCashResponse {
   dry_run?: boolean;
   roleid?: number;
   userid?: number | null;
+  target?: { userid?: number; roleid?: number; role_name?: string };
+  grant?: { amount?: number; cash_units?: number };
   amount?: number;
   reason?: string;
   grant_result?: GrantMallCashResult;
@@ -1169,9 +1407,45 @@ export interface GrantMallCashResponse {
   wallet_after?: MallCashWallet;
   balance_change?: BalanceChange;
   verification_attempts?: number;
+  grant_queued?: boolean;
+  usecash_queue?: {
+    before?: { pending_count?: number; pending_cash_units?: number };
+    after?: { pending_count?: number; pending_cash_units?: number };
+    observation?: { observed_cash_units?: number; confirmed?: boolean; partial?: boolean };
+  };
   warning?: string;
+  notification_mail?: {
+    attempted?: boolean;
+    success?: boolean;
+    skipped_reason?: string;
+    error?: string;
+    mail?: { title?: string; message?: string };
+  };
+  notification_mail_warning?: string;
   log_file?: string;
   error?: string;
+}
+
+export interface MallCashNotifyMailConfig {
+  enabled: boolean;
+  title: string;
+  body_template: string;
+  thanks: string;
+}
+
+export interface MallCashNotifyMailConfigResponse {
+  success: boolean;
+  config: MallCashNotifyMailConfig;
+  placeholders?: Record<string, string>;
+  config_file?: string;
+  error?: string;
+}
+
+export interface SaveMallCashNotifyMailConfigPayload {
+  enabled?: boolean;
+  title?: string;
+  body_template?: string;
+  thanks?: string;
 }
 
 /* ─────────── Mute (extensão da Segurança v1) ─────────── */
@@ -1229,6 +1503,7 @@ export interface GmPermissionSummary {
   partially_matches_template?: boolean;
   missing_rule_count?: number;
   matching_rule_count?: number;
+  after_rule_count?: number;
   [k: string]: unknown;
 }
 
@@ -1239,10 +1514,13 @@ export interface GmPermissionStateResponse {
   account?: string | null;
   rule_catalog?: GmPermissionRule[];
   permission_state?: {
-    current_rules?: number[];
-    template_rules?: number[];
-    matching_rules?: number[];
-    missing_rules?: number[];
+    current_rule_ids?: number[];
+    template_rule_ids?: number[];
+    current_rules?: number[] | Array<{ rid?: number; id?: number; label?: string }>;
+    template_rules?: number[] | Array<{ rid?: number; id?: number; label?: string }>;
+    matching_rules?: number[] | Array<{ rid?: number; id?: number; label?: string }>;
+    missing_rules?: number[] | Array<{ rid?: number; id?: number; label?: string }>;
+    gm_method?: string;
     [k: string]: unknown;
   };
   permission_summary?: GmPermissionSummary;
@@ -1266,20 +1544,26 @@ export interface GmPermissionMutationPayload {
   roleid?: number;
   reason: string;
   rule_ids?: number[];
+  permission_level?: number;
+  kick_online?: boolean;
   /** Anexado automaticamente pelo wrapper (não setar no UI). */
   confirm?: "GRANT_GM_PERMISSION" | "REVOKE_GM_PERMISSION";
 }
 
 export interface GmPermissionMutationResponse {
   success: boolean;
+  message?: string;
   userid?: number | null;
   roleid?: number | null;
   account?: string | null;
+  session_kick?: unknown;
   permission_summary_before?: GmPermissionSummary;
   permission_summary_after?: GmPermissionSummary;
   permission_change?: {
     inserted?: number[];
     deleted?: number[];
+    gm_method?: string;
+    gm_zoneid?: number | string;
     [k: string]: unknown;
   };
   inserted_rule_count?: number;
@@ -1427,7 +1711,7 @@ export type ServerOperationStage =
   | "unknown"
   | string;
 
-export type ServerOperationSuccessState = "running" | "success" | "failed" | "error" | string;
+export type ServerOperationSuccessState = "running" | "success" | "failed" | "error" | "cancelled" | string;
 
 export interface ServerOperationStatus {
   id: string;
@@ -1464,7 +1748,29 @@ export interface ServerOperationStatus {
     completed_at?: string | number;
   } | null;
   error?: string | null;
+  cancel_requested?: boolean;
+  cancelled?: boolean;
+  cancel_reason?: string | null;
   services?: string[];
+  instances?: string[];
+  pending_instances?: string[];
+  already_running_instances?: string[];
+  autostart_sequential_codes?: string[];
+  autostart_codes?: string[];
+  results?: Array<{
+    instances?: string[];
+    success?: boolean;
+  }>;
+  native_autostart_hold?: {
+    held_codes?: string[];
+    released?: boolean;
+    success?: boolean;
+  } | null;
+  instance_verification?: {
+    requested?: boolean;
+    success?: boolean;
+    instances?: Array<{ code?: string; state?: string; running?: boolean }>;
+  } | null;
 }
 
 export interface ServerOperationStatusResponse {
@@ -1472,6 +1778,13 @@ export interface ServerOperationStatusResponse {
   operation?: ServerOperationStatus;
   error?: string;
   endpoint_missing?: boolean;
+}
+
+export interface CancelServerOperationResponse {
+  success: boolean;
+  already_requested?: boolean;
+  operation?: ServerOperationStatus;
+  error?: string;
 }
 
 /* ─────────── Operação do Servidor v1 ─────────── */
@@ -1653,6 +1966,45 @@ export interface GetMaintenanceModeResponse {
   error?: string;
 }
 
+/* ─────────── Server Rates (script.lua) ─────────── */
+
+export interface ServerRateField {
+  key: string;
+  lua_constant: string;
+  label: string;
+  description?: string;
+  group?: string;
+  value: number;
+  value_text?: string;
+}
+
+export interface GetServerRatesResponse {
+  success: boolean;
+  source_file: string;
+  source_mtime?: number | null;
+  requires_gs_reload?: boolean;
+  reload_hint?: string;
+  bounds?: { min: number; max: number };
+  rates: Record<string, number>;
+  fields: ServerRateField[];
+  error?: string;
+}
+
+export interface SaveServerRatesPayload {
+  rates: Record<string, string | number>;
+  dry_run?: boolean;
+}
+
+export interface SaveServerRatesResponse extends GetServerRatesResponse {
+  changed?: boolean;
+  message?: string;
+  backup_file?: string;
+  updated_by?: string;
+  updated_at?: string;
+  changes?: Record<string, { before: number; after: number }>;
+  dry_run?: boolean;
+}
+
 export interface MailItemAttachment {
   item_id: number;
   count: number;
@@ -1780,6 +2132,69 @@ export interface ClearRolePkPkState {
   pariah_time?: number;
 }
 
+export interface QuickPunishmentPreset {
+  key: string;
+  label: string;
+  summary: string;
+  status: string;
+  required_role: string;
+  underlying_action: string;
+  target_scope: "role" | "account" | string;
+  duration_required: boolean;
+  default_duration_seconds: number;
+  max_duration_seconds?: number;
+  supports_kick_online?: boolean;
+}
+
+export interface QuickPunishmentCatalogResponse {
+  success: boolean;
+  presets: QuickPunishmentPreset[];
+  unsupported_presets?: QuickPunishmentPreset[];
+  collected_at?: string;
+  error?: string;
+}
+
+export interface QuickPunishmentPlan {
+  preset_key?: string;
+  label?: string;
+  required_role?: string;
+  underlying_action?: string;
+  target_scope?: string;
+  target?: { roleid?: number; userid?: number };
+  reason?: string;
+  duration_seconds?: number;
+  permanent?: boolean;
+  kick_online?: boolean;
+  kick_seconds?: number;
+  warnings?: string[];
+}
+
+export interface QuickPunishmentPayload {
+  preset_key: string;
+  roleid?: number;
+  userid?: number;
+  reason?: string;
+  duration_seconds?: number;
+  kick_online?: boolean;
+}
+
+export interface QuickPunishmentPreviewResponse {
+  success: boolean;
+  preset?: { key: string; label: string; summary?: string; required_role?: string };
+  plan?: QuickPunishmentPlan;
+  previewed_at?: string;
+  error?: string;
+}
+
+export interface QuickPunishmentExecuteResponse {
+  success: boolean;
+  preset?: { key: string; label: string; required_role?: string };
+  plan?: QuickPunishmentPlan;
+  result?: SecurityActionResponse;
+  executed_at?: string;
+  error?: string;
+}
+
 export interface ClearRolePkResponse {
   success: boolean;
   dry_run?: boolean;
@@ -1887,6 +2302,7 @@ export interface SecurityActionResponse {
   dry_run?: boolean;
   message?: string;
   error?: string;
+  warning?: string;
   /** Bloco detalhado retornado pelo backend real (ban/unban). */
   gm_action?: GmActionBlock;
 }
@@ -2217,6 +2633,142 @@ export interface WatchdogCheckResponse {
   error?: string;
 }
 
+/* ─────────── Game Portal (cadastro publico) ─────────── */
+
+export interface GamePortalAdminSettings {
+  enable_startup_gold: boolean;
+  startup_gold: string;
+  site_title: string;
+  site_subtitle: string;
+}
+
+export interface GamePortalAdminConfigResponse {
+  success: boolean;
+  enabled: boolean;
+  site_title: string;
+  site_subtitle: string;
+  banner_items?: string[];
+  links?: {
+    discord?: string;
+    youtube?: string;
+    admin_login?: string;
+  };
+  features?: {
+    change_password?: boolean;
+    startup_gold?: boolean;
+  };
+  rewards?: {
+    startup_gold_enabled?: boolean;
+    startup_gold_amount?: string;
+  };
+  settings?: GamePortalAdminSettings;
+  settings_file?: string;
+  has_runtime_overrides?: boolean;
+  error?: string;
+}
+
+export interface SaveGamePortalAdminConfigPayload {
+  enable_startup_gold?: boolean;
+  startup_gold?: string;
+  site_title?: string;
+  site_subtitle?: string;
+  landing_password_enabled?: boolean;
+  landing_password?: string;
+  clear_landing_password?: boolean;
+}
+
+export interface LandingAccessSessionEntry {
+  id: string;
+  ip?: string;
+  label?: string;
+  user_agent?: string;
+  created_at?: string;
+  last_seen_at?: string;
+  token_suffix?: string;
+  online?: boolean;
+}
+
+export interface LandingAccessSessionsResponse {
+  success: boolean;
+  protected?: boolean;
+  landing_password_enabled?: boolean;
+  landing_password_configured?: boolean;
+  sessions?: LandingAccessSessionEntry[];
+  total?: number;
+  error?: string;
+}
+
+export interface SaveGamePortalAdminConfigResponse {
+  success: boolean;
+  message?: string;
+  portal?: GamePortalAdminConfigResponse;
+  error?: string;
+}
+
+export interface CreateStaffAccountPayload {
+  login: string;
+  password: string;
+  enable_gold?: boolean;
+  gold?: string;
+  enable_gm?: boolean;
+  gm_level?: number;
+}
+
+export interface CreateStaffAccountResponse {
+  success: boolean;
+  errors?: string[];
+  messages?: string[];
+  account?: {
+    login?: string;
+    userid?: number;
+    email?: string;
+    extras?: string[];
+    gm_level?: number;
+  };
+  error?: string;
+}
+
+export interface MeridianTitlePreset {
+  key: string;
+  label: string;
+  summary?: string;
+  applies?: string[];
+}
+
+export interface MeridianTitleCatalogResponse {
+  success: boolean;
+  presets?: MeridianTitlePreset[];
+  error?: string;
+}
+
+export interface MeridianTitlePresetPayload {
+  preset_key: string;
+  roleid?: number;
+  userid?: number;
+  name?: string;
+  kick_online?: boolean;
+  dry_run?: boolean;
+}
+
+export interface MeridianTitlePreviewResponse {
+  success: boolean;
+  would_change?: boolean;
+  warnings?: string[];
+  current?: { has_full_meridian?: boolean; has_full_titles?: boolean };
+  after?: { has_full_meridian?: boolean; has_full_titles?: boolean };
+  target?: { roleid?: number; name?: string; online?: boolean };
+  error?: string;
+  [k: string]: unknown;
+}
+
+export interface MeridianTitleApplyResponse {
+  success: boolean;
+  message?: string;
+  changed?: boolean;
+  error?: string;
+  [k: string]: unknown;
+}
+
 /* ─────────── GM Commander v2 — Bulk Operations tipos ─────────── */
 
 export interface BulkSelectionParams {
@@ -2335,6 +2887,9 @@ export interface PreviewBulkTargetsResponse {
 
 export interface QueueBulkCommandPayload extends BulkSelectionParams {
   command_key: BulkCommandKey;
+  bulk_notify_enabled?: boolean;
+  bulk_notify_message?: string;
+  bulk_notify_on_queue?: boolean;
   /** Command-specific fields */
   [k: string]: unknown;
 }

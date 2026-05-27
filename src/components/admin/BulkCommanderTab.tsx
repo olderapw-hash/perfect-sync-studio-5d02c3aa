@@ -60,6 +60,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 
 import { EndpointMissingNotice } from "@/components/admin/EndpointMissingNotice";
+import { GuildMultiSelect, type SelectedGuild } from "@/components/admin/GuildMultiSelect";
 import { logAuditEvent } from "@/lib/auditLog";
 import { cn } from "@/lib/utils";
 import {
@@ -100,6 +101,26 @@ const BULK_COMMANDS: { key: BulkCommandKey; label: string; icon: React.ReactNode
   { key: "sendSystemMessage", label: "Mensagem Global", icon: <Megaphone className="h-4 w-4" />, description: "Envia mensagem de sistema (global nesta fase)" },
 ];
 
+const BULK_NOTIFY_TEXT_COLORS = [
+  { value: "green", label: "Verde" },
+  { value: "yellow", label: "Amarelo" },
+  { value: "white", label: "Branco" },
+  { value: "blue", label: "Azul" },
+  { value: "cyan", label: "Ciano" },
+  { value: "orange", label: "Laranja" },
+  { value: "purple", label: "Roxo" },
+  { value: "red", label: "Vermelho" },
+  { value: "default", label: "Padrão (sem prefixo)" },
+] as const;
+
+const BULK_NOTIFY_CHANNEL_PRESETS = [
+  { value: "system", label: "Sistema (9)" },
+  { value: "rumor", label: "Boato (7 — vermelho no canal)" },
+  { value: "world", label: "Mundo (1)" },
+  { value: "trade", label: "Comércio (2)" },
+  { value: "custom", label: "Canal manual" },
+] as const;
+
 /* ─── Types ─── */
 
 interface BulkCommanderTabProps {
@@ -120,12 +141,13 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
   const [selectionMode, setSelectionMode] = useState<string>("names");
   const [namesInput, setNamesInput] = useState("");
   const [roleidsInput, setRoleidsInput] = useState("");
-  const [guildIdInput, setGuildIdInput] = useState("");
+  const [selectedGuilds, setSelectedGuilds] = useState<SelectedGuild[]>([]);
   const [classIds, setClassIds] = useState<number[]>([]);
   const [levelMin, setLevelMin] = useState("");
   const [levelMax, setLevelMax] = useState("");
   const [allOnline, setAllOnline] = useState(false);
   const [onlineOnly, setOnlineOnly] = useState(false);
+  const [onePerIp, setOnePerIp] = useState(true);
 
   // Command payload
   const [itemId, setItemId] = useState("");
@@ -136,10 +158,11 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
   const [body, setBody] = useState("");
   const [sysMessage, setSysMessage] = useState("");
   const [bulkNotifyEnabled, setBulkNotifyEnabled] = useState(true);
-  const [bulkNotifyOnQueue, setBulkNotifyOnQueue] = useState(true);
-  const [bulkNotifyMessage, setBulkNotifyMessage] = useState(
-    "[GM] {command_label}: {details} ({success_count}/{target_count} jogadores).",
-  );
+  const [bulkNotifyOnQueue, setBulkNotifyOnQueue] = useState(false);
+  const [bulkNotifyMessage, setBulkNotifyMessage] = useState("[GM] {item_name}");
+  const [bulkNotifyChannelPreset, setBulkNotifyChannelPreset] = useState("system");
+  const [bulkNotifyChannelCustom, setBulkNotifyChannelCustom] = useState("9");
+  const [bulkNotifyTextColor, setBulkNotifyTextColor] = useState("green");
   const [preview, setPreview] = useState<PreviewBulkTargetsResponse | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [queueLoading, setQueueLoading] = useState(false);
@@ -169,8 +192,8 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
           break;
         }
         case "guild": {
-          const gid = parseInt(guildIdInput);
-          if (!isNaN(gid) && gid > 0) sel.guild_id = gid;
+          const ids = selectedGuilds.map(g => g.guild_id).filter(id => id > 0);
+          if (ids.length) sel.guild_ids = ids;
           break;
         }
         case "class": {
@@ -184,13 +207,14 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
       }
     }
     if (onlineOnly && !allOnline) sel.online_only = true;
+    if (commandKey !== "sendSystemMessage") sel.one_per_ip = onePerIp;
     const lMin = parseInt(levelMin);
     const lMax = parseInt(levelMax);
     if (!isNaN(lMin) && lMin > 0) sel.level_min = lMin;
     if (!isNaN(lMax) && lMax > 0) sel.level_max = lMax;
     if (selectionMode === "class" && classIds.length) sel.class_ids = classIds;
     return sel;
-  }, [selectionMode, namesInput, roleidsInput, guildIdInput, classIds, levelMin, levelMax, allOnline, onlineOnly]);
+  }, [selectionMode, namesInput, roleidsInput, selectedGuilds, classIds, levelMin, levelMax, allOnline, onlineOnly, onePerIp, commandKey]);
 
   const buildCommandPayload = useCallback((): Record<string, unknown> => {
     const p: Record<string, unknown> = {};
@@ -219,12 +243,31 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
   }, [commandKey, itemId, itemCount, goldAmount, cashAmount, subject, body, sysMessage]);
 
   const buildBulkNotifyPayload = useCallback(
-    () => ({
-      bulk_notify_enabled: bulkNotifyEnabled,
-      bulk_notify_message: bulkNotifyMessage.trim(),
-      bulk_notify_on_queue: bulkNotifyOnQueue,
-    }),
-    [bulkNotifyEnabled, bulkNotifyMessage, bulkNotifyOnQueue],
+    () => {
+      const payload: Record<string, unknown> = {
+        bulk_notify_enabled: bulkNotifyEnabled,
+        bulk_notify_message: bulkNotifyMessage.trim(),
+        bulk_notify_on_queue: bulkNotifyOnQueue,
+        bulk_notify_text_color: bulkNotifyTextColor,
+      };
+      if (bulkNotifyChannelPreset === "custom") {
+        const channel = parseInt(bulkNotifyChannelCustom, 10);
+        if (!Number.isNaN(channel) && channel > 0) {
+          payload.bulk_notify_channel = channel;
+        }
+      } else {
+        payload.bulk_notify_channel_preset = bulkNotifyChannelPreset;
+      }
+      return payload;
+    },
+    [
+      bulkNotifyEnabled,
+      bulkNotifyMessage,
+      bulkNotifyOnQueue,
+      bulkNotifyChannelPreset,
+      bulkNotifyChannelCustom,
+      bulkNotifyTextColor,
+    ],
   );
 
   const handlePreview = useCallback(async () => {
@@ -396,7 +439,7 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
                       <SelectContent>
                         <SelectItem value="names">Por Nomes</SelectItem>
                         <SelectItem value="roleids">Por Role IDs</SelectItem>
-                        <SelectItem value="guild">Por Guild ID</SelectItem>
+                        <SelectItem value="guild">Por Guild</SelectItem>
                         <SelectItem value="class">Por Classe</SelectItem>
                         <SelectItem value="level">Por Faixa de Level</SelectItem>
                       </SelectContent>
@@ -428,15 +471,10 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
                   )}
 
                   {selectionMode === "guild" && (
-                    <div className="space-y-1">
-                      <Label className="text-[11px] text-muted-foreground">Guild ID</Label>
-                      <Input
-                        value={guildIdInput}
-                        onChange={e => setGuildIdInput(e.target.value)}
-                        placeholder="ID numérico da guild"
-                        className="h-9 text-xs border-border/60 bg-card/60"
-                      />
-                    </div>
+                    <GuildMultiSelect
+                      selected={selectedGuilds}
+                      onChange={setSelectedGuilds}
+                    />
                   )}
 
                   {selectionMode === "class" && (
@@ -481,6 +519,15 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
                 <div className="flex items-center gap-3 pt-1">
                   <Switch checked={onlineOnly} onCheckedChange={setOnlineOnly} id="online-only" />
                   <Label htmlFor="online-only" className="text-[11px] text-muted-foreground">Filtrar apenas online</Label>
+                </div>
+              )}
+
+              {commandKey !== "sendSystemMessage" && (
+                <div className="flex items-center gap-3 pt-1">
+                  <Switch checked={onePerIp} onCheckedChange={setOnePerIp} id="one-per-ip" />
+                  <Label htmlFor="one-per-ip" className="text-[11px] text-muted-foreground">
+                    1 prêmio por IP (anti-mula)
+                  </Label>
                 </div>
               )}
             </CardContent>
@@ -620,7 +667,7 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
                     </Label>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-[10px] text-muted-foreground">Mensagem (placeholders: {"{command_label}"}, {"{details}"}, {"{target_count}"}, {"{success_count}"})</Label>
+                    <Label className="text-[10px] text-muted-foreground">Mensagem (placeholders: {"{item_name}"}, {"{command_label}"}, {"{details}"})</Label>
                     <Textarea
                       value={bulkNotifyMessage}
                       onChange={(e) => setBulkNotifyMessage(e.target.value)}
@@ -628,8 +675,54 @@ export function BulkCommanderTab({ caps, onActed }: BulkCommanderTabProps) {
                       className="text-xs font-mono border-border/60 bg-card/60"
                     />
                   </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Canal do chat</Label>
+                      <Select value={bulkNotifyChannelPreset} onValueChange={setBulkNotifyChannelPreset}>
+                        <SelectTrigger className="h-8 text-xs border-border/60 bg-card/60">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {BULK_NOTIFY_CHANNEL_PRESETS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Cor do texto</Label>
+                      <Select value={bulkNotifyTextColor} onValueChange={setBulkNotifyTextColor}>
+                        <SelectTrigger className="h-8 text-xs border-border/60 bg-card/60">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {BULK_NOTIFY_TEXT_COLORS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  {bulkNotifyChannelPreset === "custom" && (
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Número do canal (1–255)</Label>
+                      <Input
+                        value={bulkNotifyChannelCustom}
+                        onChange={(e) => setBulkNotifyChannelCustom(e.target.value)}
+                        placeholder="9"
+                        className="h-8 text-xs border-border/60 bg-card/60"
+                      />
+                    </div>
+                  )}
                   <p className="text-[10px] text-muted-foreground">
-                    Envia broadcast de sistema ao enfileirar e ao concluir o job (exceto mensagem global).
+                    Cor usa prefixo ^RRGGBB no texto (padrão PW). Canal 9 = anúncio; 7 = boato (vermelho no canal).
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    Envia broadcast ao concluir o job (e ao enfileirar, se ativado).
                   </p>
                 </div>
               )}

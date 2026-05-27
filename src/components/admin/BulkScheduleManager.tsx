@@ -46,6 +46,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ItemCatalogAdvancedDialog } from "@/components/admin/ItemCatalogAdvancedDialog";
+import { GuildMultiSelect, type SelectedGuild } from "@/components/admin/GuildMultiSelect";
 
 import { cn } from "@/lib/utils";
 import {
@@ -75,6 +76,26 @@ const COMMAND_LABELS: Record<string, string> = {
 
 /** Commands that don't need audience selection */
 const NO_AUDIENCE_COMMANDS = new Set(["sendSystemMessage"]);
+
+const BULK_NOTIFY_TEXT_COLORS = [
+  { value: "green", label: "Verde" },
+  { value: "yellow", label: "Amarelo" },
+  { value: "white", label: "Branco" },
+  { value: "blue", label: "Azul" },
+  { value: "cyan", label: "Ciano" },
+  { value: "orange", label: "Laranja" },
+  { value: "purple", label: "Roxo" },
+  { value: "red", label: "Vermelho" },
+  { value: "default", label: "Padrão (sem prefixo)" },
+] as const;
+
+const BULK_NOTIFY_CHANNEL_PRESETS = [
+  { value: "system", label: "Sistema (9)" },
+  { value: "rumor", label: "Boato (7 — vermelho no canal)" },
+  { value: "world", label: "Mundo (1)" },
+  { value: "trade", label: "Comércio (2)" },
+  { value: "custom", label: "Canal manual" },
+] as const;
 
 const PW_CLASSES_SCHEDULE = [
   { id: 0, name: "Guerreiro" },
@@ -202,6 +223,10 @@ export function BulkScheduleManager() {
         payload.bulk_notify_enabled = bulkNotify.enabled;
         payload.bulk_notify_message = bulkNotify.message;
         payload.bulk_notify_on_queue = bulkNotify.on_queue;
+        if (bulkNotify.text_color != null) payload.bulk_notify_text_color = bulkNotify.text_color;
+        else if (bulkNotify.color != null) payload.bulk_notify_text_color = bulkNotify.color;
+        if (bulkNotify.channel_preset != null) payload.bulk_notify_channel_preset = bulkNotify.channel_preset;
+        else if (bulkNotify.channel != null) payload.bulk_notify_channel = bulkNotify.channel;
       }
       await pwApi.updateBulkSchedule(s.id, payload as never);
       await loadSchedules();
@@ -436,10 +461,11 @@ function ScheduleFormDialog({
 
   const [selMode, setSelMode] = useState("all_online");
   const [namesInput, setNamesInput] = useState("");
-  const [guildId, setGuildId] = useState("");
+  const [selectedGuilds, setSelectedGuilds] = useState<SelectedGuild[]>([]);
   const [classIds, setClassIds] = useState<number[]>([]);
   const [levelMin, setLevelMin] = useState("");
   const [levelMax, setLevelMax] = useState("");
+  const [onePerIp, setOnePerIp] = useState(true);
 
   const [itemId, setItemId] = useState("");
   const [itemCount, setItemCount] = useState("1");
@@ -450,10 +476,11 @@ function ScheduleFormDialog({
   const [message, setMessage] = useState("");
   const [itemPickerOpen, setItemPickerOpen] = useState(false);
   const [bulkNotifyEnabled, setBulkNotifyEnabled] = useState(true);
-  const [bulkNotifyOnQueue, setBulkNotifyOnQueue] = useState(true);
-  const [bulkNotifyMessage, setBulkNotifyMessage] = useState(
-    "[GM] {command_label}: {details} ({success_count}/{target_count} jogadores).",
-  );
+  const [bulkNotifyOnQueue, setBulkNotifyOnQueue] = useState(false);
+  const [bulkNotifyMessage, setBulkNotifyMessage] = useState("[GM] {item_name}");
+  const [bulkNotifyChannelPreset, setBulkNotifyChannelPreset] = useState("system");
+  const [bulkNotifyChannelCustom, setBulkNotifyChannelCustom] = useState("9");
+  const [bulkNotifyTextColor, setBulkNotifyTextColor] = useState("green");
 
   const needsAudience = !NO_AUDIENCE_COMMANDS.has(commandKey);
 
@@ -465,12 +492,38 @@ function ScheduleFormDialog({
       ?? {};
     if (sel.all_online) setSelMode("all_online");
     else if (sel.names) { setSelMode("names"); setNamesInput(Array.isArray(sel.names) ? (sel.names as string[]).join("\n") : ""); }
-    else if (sel.guild_id) { setSelMode("guild"); setGuildId(String(sel.guild_id)); }
+    else if (sel.guild_ids || sel.guild_id) {
+      setSelMode("guild");
+      const guildIds = Array.isArray(sel.guild_ids)
+        ? (sel.guild_ids as number[]).map(Number).filter(id => id > 0)
+        : sel.guild_id
+          ? [Number(sel.guild_id)]
+          : [];
+      if (guildIds.length) {
+        void pwApi.searchGuildDirectory({ guild_ids: guildIds })
+          .then(res => {
+            const entries = res.entries || [];
+            if (entries.length) {
+              setSelectedGuilds(entries.map(e => ({
+                guild_id: Number(e.guild_id),
+                guild_name: e.guild_name?.trim() || `Guild #${e.guild_id}`,
+              })));
+            } else {
+              setSelectedGuilds(guildIds.map(id => ({ guild_id: id, guild_name: `Guild #${id}` })));
+            }
+          })
+          .catch(() => {
+            setSelectedGuilds(guildIds.map(id => ({ guild_id: id, guild_name: `Guild #${id}` })));
+          });
+      }
+    }
     else if (sel.class_ids) { setSelMode("class"); setClassIds(sel.class_ids as number[]); }
     else setSelMode("all_online");
 
     if (sel.level_min) setLevelMin(String(sel.level_min));
     if (sel.level_max) setLevelMax(String(sel.level_max));
+    if (typeof sel.one_per_ip === "boolean") setOnePerIp(sel.one_per_ip);
+    else setOnePerIp(true);
 
     // command_payload real vindo do getBulkSchedule
     const cmd = (scheduleDetail?.command_payload as Record<string, unknown> | undefined) ?? {};
@@ -488,6 +541,17 @@ function ScheduleFormDialog({
     if (typeof bulkNotify.on_queue === "boolean") setBulkNotifyOnQueue(bulkNotify.on_queue);
     if (typeof bulkNotify.message === "string" && bulkNotify.message.trim()) {
       setBulkNotifyMessage(bulkNotify.message);
+    }
+    const textColor = bulkNotify.text_color ?? bulkNotify.color;
+    if (typeof textColor === "string" && textColor.trim()) {
+      setBulkNotifyTextColor(textColor);
+    }
+    const channelPreset = bulkNotify.channel_preset;
+    if (typeof channelPreset === "string" && channelPreset.trim()) {
+      setBulkNotifyChannelPreset(channelPreset);
+    } else if (typeof bulkNotify.channel === "number" && bulkNotify.channel > 0) {
+      setBulkNotifyChannelPreset("custom");
+      setBulkNotifyChannelCustom(String(bulkNotify.channel));
     }
   }, [schedule, scheduleDetail]);
 
@@ -525,13 +589,18 @@ function ScheduleFormDialog({
       switch (selMode) {
         case "all_online": selection.all_online = true; break;
         case "names": selection.names = namesInput.split(/[,\n]+/).map(s => s.trim()).filter(Boolean); break;
-        case "guild": selection.guild_id = parseInt(guildId) || 0; break;
+        case "guild": {
+          const guildIds = selectedGuilds.map(g => g.guild_id).filter(id => id > 0);
+          if (guildIds.length) selection.guild_ids = guildIds;
+          break;
+        }
         case "class": selection.class_ids = classIds; break;
       }
       const lMin = parseInt(levelMin);
       const lMax = parseInt(levelMax);
       if (!isNaN(lMin) && lMin > 0) selection.level_min = lMin;
       if (!isNaN(lMax) && lMax > 0) selection.level_max = lMax;
+      if (commandKey !== "sendSystemMessage") selection.one_per_ip = onePerIp;
     } else {
       // sendSystemMessage — VPS still expects some selection criteria
       selection.all_online = true;
@@ -565,6 +634,15 @@ function ScheduleFormDialog({
       payload.bulk_notify_enabled = bulkNotifyEnabled;
       payload.bulk_notify_message = bulkNotifyMessage.trim();
       payload.bulk_notify_on_queue = bulkNotifyOnQueue;
+      payload.bulk_notify_text_color = bulkNotifyTextColor;
+      if (bulkNotifyChannelPreset === "custom") {
+        const channel = parseInt(bulkNotifyChannelCustom, 10);
+        if (!Number.isNaN(channel) && channel > 0) {
+          payload.bulk_notify_channel = channel;
+        }
+      } else {
+        payload.bulk_notify_channel_preset = bulkNotifyChannelPreset;
+      }
     }
 
     try {
@@ -678,7 +756,7 @@ function ScheduleFormDialog({
                 <SelectContent>
                   <SelectItem value="all_online">Todos Online</SelectItem>
                   <SelectItem value="names">Por Nomes</SelectItem>
-                  <SelectItem value="guild">Por Guild ID</SelectItem>
+                  <SelectItem value="guild">Por Guild</SelectItem>
                   <SelectItem value="class">Por Classe</SelectItem>
                 </SelectContent>
               </Select>
@@ -687,7 +765,10 @@ function ScheduleFormDialog({
                 <Textarea value={namesInput} onChange={e => setNamesInput(e.target.value)} placeholder="Um nome por linha" className="h-16 text-xs" />
               )}
               {selMode === "guild" && (
-                <Input value={guildId} onChange={e => setGuildId(e.target.value)} placeholder="Guild ID" className="h-9 text-xs" />
+                <GuildMultiSelect
+                  selected={selectedGuilds}
+                  onChange={setSelectedGuilds}
+                />
               )}
               {selMode === "class" && (
                 <div className="flex flex-wrap gap-1.5">
@@ -719,6 +800,15 @@ function ScheduleFormDialog({
                   <Input value={levelMax} onChange={e => setLevelMax(e.target.value)} className="h-8 text-xs" />
                 </div>
               </div>
+
+              {commandKey !== "sendSystemMessage" && (
+                <div className="flex items-center gap-3 pt-1">
+                  <Switch checked={onePerIp} onCheckedChange={setOnePerIp} id="schedule-one-per-ip" />
+                  <Label htmlFor="schedule-one-per-ip" className="text-[11px] text-muted-foreground">
+                    1 prêmio por IP (anti-mula)
+                  </Label>
+                </div>
+              )}
             </div>
           )}
 
@@ -806,6 +896,41 @@ function ScheduleFormDialog({
                 rows={3}
                 className="text-xs font-mono"
               />
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">Canal do chat</Label>
+                  <Select value={bulkNotifyChannelPreset} onValueChange={setBulkNotifyChannelPreset}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {BULK_NOTIFY_CHANNEL_PRESETS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value} className="text-xs">{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">Cor do texto</Label>
+                  <Select value={bulkNotifyTextColor} onValueChange={setBulkNotifyTextColor}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {BULK_NOTIFY_TEXT_COLORS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value} className="text-xs">{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {bulkNotifyChannelPreset === "custom" && (
+                <Input
+                  value={bulkNotifyChannelCustom}
+                  onChange={(e) => setBulkNotifyChannelCustom(e.target.value)}
+                  placeholder="Canal 1-255"
+                  className="h-8 text-xs"
+                />
+              )}
+              <p className="text-[10px] text-muted-foreground">
+                Cor via prefixo ^RRGGBB. Canal 9 = anúncio; 7 = boato (vermelho no canal).
+              </p>
             </div>
           )}
 

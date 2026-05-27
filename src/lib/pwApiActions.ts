@@ -1503,6 +1503,7 @@ export interface GmPermissionSummary {
   partially_matches_template?: boolean;
   missing_rule_count?: number;
   matching_rule_count?: number;
+  after_rule_count?: number;
   [k: string]: unknown;
 }
 
@@ -1561,6 +1562,8 @@ export interface GmPermissionMutationResponse {
   permission_change?: {
     inserted?: number[];
     deleted?: number[];
+    gm_method?: string;
+    gm_zoneid?: number | string;
     [k: string]: unknown;
   };
   inserted_rule_count?: number;
@@ -2299,6 +2302,7 @@ export interface SecurityActionResponse {
   dry_run?: boolean;
   message?: string;
   error?: string;
+  warning?: string;
   /** Bloco detalhado retornado pelo backend real (ban/unban). */
   gm_action?: GmActionBlock;
 }

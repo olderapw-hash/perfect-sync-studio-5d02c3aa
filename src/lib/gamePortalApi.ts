@@ -368,7 +368,7 @@ export interface MallCashBalanceDirectResponse {
   account?: unknown;
   target?: { roleid?: number; userid?: number; role_name?: string };
   wallet?: MallCashWalletSnapshot;
-  collected_at?: string;
+  collected_at?: string | number;
   error?: string;
 }
 
@@ -378,7 +378,7 @@ export interface NormalizedMallCashBalance {
   userid?: number | null;
   account?: string | null;
   wallet: MallCashWalletSnapshot;
-  collected_at?: string;
+  collected_at?: string | number;
   error?: string;
 }
 

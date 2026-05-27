@@ -111,6 +111,7 @@ export function LandingAccessSecurityPanel() {
       }
 
       await load();
+    } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg);
       toast.error(msg);

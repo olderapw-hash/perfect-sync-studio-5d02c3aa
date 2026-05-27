@@ -7,7 +7,7 @@ export interface LogAuditOptions {
   action: string;
   tenantId?: string | null;
   target?: string | null;
-  status?: "ok" | "error";
+  status?: "ok" | "error" | "queued";
   httpStatus?: number | null;
   error?: string | null;
   metadata?: Record<string, unknown> | null;

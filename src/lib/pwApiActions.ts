@@ -929,6 +929,12 @@ export const pwApi = {
       body: params,
     });
   },
+  searchGuildDirectory(params: SearchGuildDirectoryParams = {}) {
+    return callAction<GuildDirectoryResponse>("searchGuildDirectory", {
+      method: "POST",
+      body: params,
+    });
+  },
   getPlayerTargetProfile(target: { roleid?: number; userid?: number; name?: string }) {
     const query: Record<string, string> = {};
     if (target.roleid != null) query.roleid = String(target.roleid);
@@ -1503,7 +1509,6 @@ export interface GmPermissionSummary {
   partially_matches_template?: boolean;
   missing_rule_count?: number;
   matching_rule_count?: number;
-  after_rule_count?: number;
   [k: string]: unknown;
 }
 
@@ -1562,8 +1567,6 @@ export interface GmPermissionMutationResponse {
   permission_change?: {
     inserted?: number[];
     deleted?: number[];
-    gm_method?: string;
-    gm_zoneid?: number | string;
     [k: string]: unknown;
   };
   inserted_rule_count?: number;
@@ -2302,7 +2305,6 @@ export interface SecurityActionResponse {
   dry_run?: boolean;
   message?: string;
   error?: string;
-  warning?: string;
   /** Bloco detalhado retornado pelo backend real (ban/unban). */
   gm_action?: GmActionBlock;
 }
@@ -2782,6 +2784,7 @@ export interface BulkSelectionParams {
   level_max?: number;
   online_only?: boolean;
   all_online?: boolean;
+  one_per_ip?: boolean;
   ranking_key?: string;
   ranking_limit?: number;
 }
@@ -2806,6 +2809,32 @@ export interface PlayerDirectoryResponse {
   warnings?: string[];
   online_diagnostics?: Record<string, number>;
   capabilities?: Record<string, boolean>;
+  error?: string;
+}
+
+export interface GuildDirectoryEntry {
+  guild_id: number;
+  guild_name?: string;
+  level?: number;
+  member_count?: number;
+  master_roleid?: number;
+  [k: string]: unknown;
+}
+
+export interface SearchGuildDirectoryParams {
+  q?: string;
+  guild_id?: number;
+  guild_ids?: number[];
+  limit?: number;
+}
+
+export interface GuildDirectoryResponse {
+  success: boolean;
+  entries: GuildDirectoryEntry[];
+  count: number;
+  query?: string;
+  warnings?: string[];
+  sources?: string[];
   error?: string;
 }
 
@@ -2872,6 +2901,12 @@ export interface BulkCommandPayloadPreview {
   message?: string;
 }
 
+export interface BulkDedupeByIpInfo {
+  enabled?: boolean;
+  removed_count?: number;
+  unknown_ip_count?: number;
+}
+
 export interface PreviewBulkTargetsResponse {
   success: boolean;
   command_key: string;
@@ -2880,6 +2915,7 @@ export interface PreviewBulkTargetsResponse {
   sample_targets: BulkTarget[];
   selection: Record<string, unknown>;
   warnings: string[];
+  dedupe_by_ip?: BulkDedupeByIpInfo;
   command_payload_preview: BulkCommandPayloadPreview;
   previewed_at: string;
   error?: string;
@@ -2890,6 +2926,9 @@ export interface QueueBulkCommandPayload extends BulkSelectionParams {
   bulk_notify_enabled?: boolean;
   bulk_notify_message?: string;
   bulk_notify_on_queue?: boolean;
+  bulk_notify_channel?: number;
+  bulk_notify_channel_preset?: string;
+  bulk_notify_text_color?: string;
   /** Command-specific fields */
   [k: string]: unknown;
 }

@@ -263,6 +263,7 @@ const FALLBACK_SUPPORTED = new Set([
   "revokeGmPermission",
   // GM Commander v2 — Bulk Operations (Fase A homologada).
   "searchPlayerDirectory",
+  "searchGuildDirectory",
   "resolveBulkTargets",
   "previewBulkTargets",
   "queueBulkCommand",

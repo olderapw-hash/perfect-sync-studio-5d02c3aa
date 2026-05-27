@@ -1504,6 +1504,7 @@ export interface GmPermissionCatalogResponse {
 export interface GmPermissionSummary {
   template_available?: boolean;
   current_rule_count?: number;
+  after_rule_count?: number;
   template_rule_count?: number;
   fully_matches_template?: boolean;
   partially_matches_template?: boolean;
@@ -1567,6 +1568,8 @@ export interface GmPermissionMutationResponse {
   permission_change?: {
     inserted?: number[];
     deleted?: number[];
+    gm_method?: string;
+    gm_zoneid?: number | string;
     [k: string]: unknown;
   };
   inserted_rule_count?: number;
@@ -2304,6 +2307,7 @@ export interface SecurityActionResponse {
   /** Echo de dry_run quando aplicável. */
   dry_run?: boolean;
   message?: string;
+  warning?: string;
   error?: string;
   /** Bloco detalhado retornado pelo backend real (ban/unban). */
   gm_action?: GmActionBlock;

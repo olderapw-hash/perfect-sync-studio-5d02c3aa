@@ -51,10 +51,8 @@ const ALLOWED_ACTIONS = new Set([
   "sendSystemMessage",
   "getMaintenanceMode",
   "setMaintenanceMode",
-  // Game Portal Admin config (site/portal do jogo).
-  "getGamePortalAdminConfig",
-  "saveGamePortalAdminConfig",
-  "createStaffAccount",
+  "getServerRates",
+  "saveServerRates",
   // Server Ops v3 — controle real de servicos.
   "getManageableServices",
   "startService",
@@ -66,6 +64,7 @@ const ALLOWED_ACTIONS = new Set([
   "startServer",
   "stopServer",
   "restartServer",
+  "cancelServerOperation",
   // Server Ops v3 — polling de progresso de operações longas.
   "getServerOperationStatus",
   "getServerOperationsHistory",
@@ -87,11 +86,20 @@ const ALLOWED_ACTIONS = new Set([
   "enableWatchdog",
   "disableWatchdog",
   "runWatchdogCheckNow",
+  // Game Portal — cadastro publico (config admin + gold inicial).
+  "getGamePortalAdminConfig",
+  "saveGamePortalAdminConfig",
+  "createStaffAccount",
+  "listLandingAccessSessions",
+  "revokeLandingAccessSession",
+  "revokeAllLandingAccessSessions",
   // GM Commander v1 — catálogo + histórico + mall cash + mutes.
   "getGmCommandCatalog",
   "getGmActionHistory",
   "getMallCashBalance",
   "grantMallCash",
+  "getMallCashNotifyMailConfig",
+  "saveMallCashNotifyMailConfig",
   "muteAccount",
   "muteRole",
   // GM Commander v2 — permissões GM granulares (espelha pwadmin).
@@ -191,9 +199,8 @@ const ACTION_PERMISSION: Record<string, string> = {
   sendSystemMessage: "save_templates",
   getMaintenanceMode: "view",
   setMaintenanceMode: "manage_servers",
-  getGamePortalAdminConfig: "view",
-  saveGamePortalAdminConfig: "manage_servers",
-  createStaffAccount: "manage_servers",
+  getServerRates: "view",
+  saveServerRates: "manage_servers",
   // Server Ops v3 — leitura é "view"; ações destrutivas exigem manage_servers.
   getManageableServices: "view",
   startService: "manage_servers",
@@ -203,6 +210,7 @@ const ACTION_PERMISSION: Record<string, string> = {
   startServer: "manage_servers",
   stopServer: "manage_servers",
   restartServer: "manage_servers",
+  cancelServerOperation: "manage_servers",
   // Polling de status de operações é leitura.
   getServerOperationStatus: "view",
   getServerOperationsHistory: "view_audit",
@@ -224,11 +232,20 @@ const ACTION_PERMISSION: Record<string, string> = {
   enableWatchdog: "manage_servers",
   disableWatchdog: "manage_servers",
   runWatchdogCheckNow: "manage_servers",
+  // Game Portal — leitura viewer; salvar exige manage_servers.
+  getGamePortalAdminConfig: "view",
+  saveGamePortalAdminConfig: "manage_servers",
+  listLandingAccessSessions: "manage_security",
+  revokeLandingAccessSession: "manage_security",
+  revokeAllLandingAccessSessions: "manage_security",
+  createStaffAccount: "manage_servers",
   // GM Commander v1 — leitura "view"; ações sensíveis exigem manage_security.
   getGmCommandCatalog: "view",
   getGmActionHistory: "view_audit",
   getMallCashBalance: "view",
   grantMallCash: "manage_security",
+  getMallCashNotifyMailConfig: "view",
+  saveMallCashNotifyMailConfig: "manage_security",
   muteAccount: "manage_security",
   muteRole: "manage_security",
   // GM Permissions: leitura "view"; grant/revoke exigem manage_security.
@@ -622,9 +639,12 @@ Deno.serve(async (req: Request) => {
     "startServer", "stopServer", "restartServer",
     "startService", "stopService", "restartService",
     "setMaintenanceMode",
+    "saveServerRates",
     "setInstanceAutoStart", "startInstance", "startInstances",
     "stopInstance", "stopInstances", "restartInstance", "restartInstances",
     "backupNow", "saveWatchdogConfig", "enableWatchdog", "disableWatchdog", "runWatchdogCheckNow",
+    "saveGamePortalAdminConfig",
+    "createStaffAccount",
   ]);
 
   // Actions that require at least the "pro" plan (write actions beyond view/read).
@@ -863,6 +883,8 @@ const NEW_ACTIONS_FALLBACK_MISSING = new Set([
   "sendSystemMessage",
   "getMaintenanceMode",
   "setMaintenanceMode",
+  "getServerRates",
+  "saveServerRates",
   "getManageableServices",
   "startService",
   "stopService",
@@ -870,6 +892,7 @@ const NEW_ACTIONS_FALLBACK_MISSING = new Set([
   "startServer",
   "stopServer",
   "restartServer",
+  "cancelServerOperation",
   "getServerOperationStatus",
   // GM Commander v3 / Meridiano-Títulos.
   "getQuickPunishmentCatalog",

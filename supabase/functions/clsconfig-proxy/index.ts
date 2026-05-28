@@ -29,6 +29,7 @@ const corsHeaders = {
 
 const ALLOWED_ACTIONS = new Set([
   "getClsconfig",
+  "getClsconfigDebug",
   "getItemCatalog",
   "listBackups",
   "restoreBackup",
@@ -173,6 +174,7 @@ const MERIDIAN_TITLE_ACTIONS = new Set([
 // Mapa Action → permissão exigida (deve refletir src/lib/serverPermissions.ts).
 const ACTION_PERMISSION: Record<string, string> = {
   getClsconfig: "view",
+  getClsconfigDebug: "view",
   getItemCatalog: "view",
   listBackups: "view",
   getRoleEditable: "view",

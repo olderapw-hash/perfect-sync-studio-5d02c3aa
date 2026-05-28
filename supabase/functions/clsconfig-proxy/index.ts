@@ -159,6 +159,7 @@ const ALLOWED_ACTIONS = new Set([
   "previewMeridianTitlePreset",
   "applyMeridianTitlePreset",
   "getSkillCatalog",
+  "getAccountCharacters",
 ]);
 
 /**
@@ -310,6 +311,7 @@ const ACTION_PERMISSION: Record<string, string> = {
   getMeridianTitlePresetCatalog: "view",
   previewMeridianTitlePreset: "view",
   applyMeridianTitlePreset: "manage_servers",
+  getAccountCharacters: "view",
 };
 
 function jsonError(message: string, status: number): Response {

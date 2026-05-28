@@ -15,6 +15,7 @@ export const ACTION_PERMISSION: Record<string, ServerPermissionKey> = {
   getClsconfig: "view",
   getClsconfigDebug: "view",
   getItemCatalog: "view",
+  getSkillCatalog: "view",
   listBackups: "view",
   getRoleEditable: "view",
 

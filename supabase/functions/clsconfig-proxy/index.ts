@@ -158,6 +158,7 @@ const ALLOWED_ACTIONS = new Set([
   "getMeridianTitlePresetCatalog",
   "previewMeridianTitlePreset",
   "applyMeridianTitlePreset",
+  "getSkillCatalog",
 ]);
 
 /**
@@ -176,6 +177,7 @@ const ACTION_PERMISSION: Record<string, string> = {
   getClsconfig: "view",
   getClsconfigDebug: "view",
   getItemCatalog: "view",
+  getSkillCatalog: "view",
   listBackups: "view",
   getRoleEditable: "view",
   getBackupContent: "view",

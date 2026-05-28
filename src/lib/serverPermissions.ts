@@ -13,6 +13,7 @@ import type { ServerPermissionKey } from "@/hooks/useServerPermissions";
 export const ACTION_PERMISSION: Record<string, ServerPermissionKey> = {
   // leitura
   getClsconfig: "view",
+  getClsconfigDebug: "view",
   getItemCatalog: "view",
   listBackups: "view",
   getRoleEditable: "view",

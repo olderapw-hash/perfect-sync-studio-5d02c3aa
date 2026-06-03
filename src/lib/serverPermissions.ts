@@ -67,6 +67,7 @@ export const ACTION_PERMISSION: Record<string, ServerPermissionKey> = {
   queueBulkCommand: "manage_security",
   getBulkCommandJob: "view_audit",
   getBulkCommandJobs: "view_audit",
+  clearBulkCommandJobs: "manage_security",
 
   // GM Commander v3 — Punições rápidas / Broadcast / Meridiano-Títulos.
   getQuickPunishmentCatalog: "view",

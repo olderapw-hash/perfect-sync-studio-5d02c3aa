@@ -118,6 +118,7 @@ const ALLOWED_ACTIONS = new Set([
   "queueBulkCommand",
   "getBulkCommandJob",
   "getBulkCommandJobs",
+  "clearBulkCommandJobs",
   // GM Commander v2 — Bulk Templates (Phase B).
   "saveBulkTemplate",
   "getBulkTemplate",
@@ -268,6 +269,7 @@ const ACTION_PERMISSION: Record<string, string> = {
   queueBulkCommand: "manage_security",
   getBulkCommandJob: "view_audit",
   getBulkCommandJobs: "view_audit",
+  clearBulkCommandJobs: "manage_security",
   // GM Commander v2 — Bulk Templates (Phase B).
   getBulkTemplates: "view",
   getBulkTemplate: "view",

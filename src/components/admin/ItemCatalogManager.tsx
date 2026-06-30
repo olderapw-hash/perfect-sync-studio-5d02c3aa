@@ -149,6 +149,28 @@ export const ItemCatalogManager = () => {
 
     setBusy(true);
     try {
+      // Diagnóstico: confirma sessão Supabase e roles antes de tentar upload.
+      const { data: sess } = await supabase.auth.getSession();
+      const authUid = sess.session?.user?.id ?? null;
+      const authEmail = sess.session?.user?.email ?? null;
+      console.info("[catalog] auth session", { authUid, authEmail });
+      if (!authUid) {
+        throw new Error(
+          "Sessão Supabase ausente. Faça logout/login (o operador da VPS não basta — precisa estar autenticado no Supabase).",
+        );
+      }
+      const { data: roles, error: rolesErr } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", authUid);
+      console.info("[catalog] roles", { roles, rolesErr });
+      const roleNames = (roles ?? []).map((r) => r.role);
+      if (!roleNames.includes("admin") && !roleNames.includes("superadmin")) {
+        throw new Error(
+          `Usuário ${authEmail ?? authUid} sem role admin/superadmin no Supabase. Roles: [${roleNames.join(", ") || "nenhuma"}]`,
+        );
+      }
+
       let iconsPrefix: string;
       let tabPath: string | null = null;
       let parsedSize = 0;
@@ -169,7 +191,10 @@ export const ItemCatalogManager = () => {
           .upload(tabPath, new Blob([tabBuf], { type: "text/tab-separated-values" }), {
             upsert: true,
           });
-        if (tabErr) throw tabErr;
+        if (tabErr) {
+          console.error("[catalog] .tab upload failed", tabErr);
+          throw new Error(`Upload do .tab falhou: ${tabErr.message}`);
+        }
       }
 
       // 2) Upload de ícones (em lotes paralelos)
